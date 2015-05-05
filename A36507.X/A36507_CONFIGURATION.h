@@ -4,7 +4,6 @@
 
 // Required Parameters
 #define __USE_CAN_1
-#define __USE_EXTERNAL_EEPROM               
 #define FCY_CLK                             20000000
 #define ETM_CAN_MY_ADDRESS                  ETM_CAN_ADDR_ETHERNET_BOARD
 #define PIN_CAN_OPERATION_LED               _LATG13

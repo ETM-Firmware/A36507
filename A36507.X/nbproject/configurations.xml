@@ -28,9 +28,13 @@
         <itemPath>TCPmodbus/TCPmodbus.h</itemPath>
       </logicalFolder>
       <itemPath>A36507.h</itemPath>
-      <itemPath>FIRMWARE_VERSION.h</itemPath>
+      <itemPath>A36507_CONFIGURATION.h</itemPath>
       <itemPath>Buffern.h</itemPath>
+      <itemPath>ETM_ANALOG.h</itemPath>
       <itemPath>ETMmodbus.h</itemPath>
+      <itemPath>FIRMWARE_VERSION.h</itemPath>
+      <itemPath>P1395_CAN_CORE.h</itemPath>
+      <itemPath>P1395_CAN_CORE_PRIVATE.h</itemPath>
       <itemPath>P1395_CAN_MASTER.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
@@ -56,14 +60,10 @@
       </logicalFolder>
       <itemPath>A36507.c</itemPath>
       <itemPath>Buffern.c</itemPath>
-      <itemPath>DS3231.c</itemPath>
-      <itemPath>ETM_EEPROM_EXTERNAL.c</itemPath>
-      <itemPath>ETM_I2C.c</itemPath>
+      <itemPath>ETM_ANALOG.c</itemPath>
       <itemPath>ETMmodbus.c</itemPath>
       <itemPath>P1395_CAN_MASTER.c</itemPath>
       <itemPath>ETM_CAN_UTILITY.s</itemPath>
-      <itemPath>ETM_ANALOG.c</itemPath>
-      <itemPath>ETM_SCALE.s</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -76,6 +76,7 @@
     <Elem>Include</Elem>
     <Elem>TCPmodbus</Elem>
     <Elem>../../P1395_Modules</Elem>
+    <Elem>../../ETM_LIBRARY</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -93,6 +94,7 @@
       <compileType>
         <linkerTool>
           <linkerLibItems>
+            <linkerLibFileItem>../../ETM_LIBRARY/ETM_LIBRARY.X.a</linkerLibFileItem>
           </linkerLibItems>
         </linkerTool>
         <archiverTool>
@@ -220,12 +222,12 @@
       </C30-LD>
       <C30Global>
         <property key="common-include-directories"
-                  value="..\..\P1395_Modules;..\A36507.X\;TCPmodbus"/>
+                  value="..\..\ETM_LIBRARY;TCPmodbus;..\A36507.X"/>
         <property key="dual-boot-partition" value="0"/>
         <property key="fast-math" value="false"/>
         <property key="generic-16-bit" value="false"/>
         <property key="legacy-libc" value="false"/>
-        <property key="oXC16glb-macros" value="__A36507"/>
+        <property key="oXC16glb-macros" value="__A36507;__USE_EXTERNAL_EEPROM"/>
         <property key="output-file-format" value="elf"/>
         <property key="relaxed-math" value="false"/>
         <property key="save-temps" value="false"/>
@@ -265,7 +267,6 @@
         <property key="UART 1" value="true"/>
         <property key="UART 2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>

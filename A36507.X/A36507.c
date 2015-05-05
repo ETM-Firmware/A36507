@@ -997,6 +997,8 @@ unsigned int CheckAllModulesConfigured(void) {
 
 }
 
+unsigned int dan_test[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,1000};
+
 void InitializeA36507(void) {
   unsigned int loop_counter;
 
@@ -1091,7 +1093,6 @@ void InitializeA36507(void) {
 
   // Load System powered time from EEPROM
   ETMEEPromReadPage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&global_data_A36507.system_powered_seconds);
-
 }
 
 #define DEFAULT_UNUSED_EEPROM                     0
