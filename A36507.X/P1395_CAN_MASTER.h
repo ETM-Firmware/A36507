@@ -2,7 +2,6 @@
 #define __P1395_CAN_MASTER_H
 
 #include "P1395_CAN_CORE.h"
-#include "P1395_CAN_CORE_PRIVATE.h"
 
 
 typedef struct {

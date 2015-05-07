@@ -94,7 +94,8 @@
       <compileType>
         <linkerTool>
           <linkerLibItems>
-            <linkerLibFileItem>../../ETM_LIBRARY/ETM_LIBRARY.X.a</linkerLibFileItem>
+            <linkerLibFileItem>../../ETM_LIBRARY/lib/ETM_EEPROM_EXTERNAL.X.a</linkerLibFileItem>
+            <linkerLibFileItem>../../ETM_LIBRARY/lib/ETM_LIBRARY.X.a</linkerLibFileItem>
           </linkerLibItems>
         </linkerTool>
         <archiverTool>
