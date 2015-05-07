@@ -27,15 +27,6 @@
         <itemPath>TCPmodbus/HardwareProfile.h</itemPath>
         <itemPath>TCPmodbus/TCPmodbus.h</itemPath>
       </logicalFolder>
-      <itemPath>A36507.h</itemPath>
-      <itemPath>A36507_CONFIGURATION.h</itemPath>
-      <itemPath>Buffern.h</itemPath>
-      <itemPath>ETM_ANALOG.h</itemPath>
-      <itemPath>ETMmodbus.h</itemPath>
-      <itemPath>FIRMWARE_VERSION.h</itemPath>
-      <itemPath>P1395_CAN_CORE.h</itemPath>
-      <itemPath>P1395_CAN_CORE_PRIVATE.h</itemPath>
-      <itemPath>P1395_CAN_MASTER.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -60,10 +51,9 @@
       </logicalFolder>
       <itemPath>A36507.c</itemPath>
       <itemPath>Buffern.c</itemPath>
-      <itemPath>ETM_ANALOG.c</itemPath>
       <itemPath>ETMmodbus.c</itemPath>
       <itemPath>P1395_CAN_MASTER.c</itemPath>
-      <itemPath>ETM_CAN_UTILITY.s</itemPath>
+      <itemPath>P1395_CAN_CORE.s</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -223,7 +213,7 @@
       </C30-LD>
       <C30Global>
         <property key="common-include-directories"
-                  value="..\..\ETM_LIBRARY;TCPmodbus;..\A36507.X"/>
+                  value="TCPmodbus;..\..\ETM_LIBRARY\inc;..\A36507.X"/>
         <property key="dual-boot-partition" value="0"/>
         <property key="fast-math" value="false"/>
         <property key="generic-16-bit" value="false"/>

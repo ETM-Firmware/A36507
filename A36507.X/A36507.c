@@ -1,6 +1,8 @@
 #include "A36507.h"
 #include "FIRMWARE_VERSION.h"
 
+#define FCY_CLK  20000000
+
 #define etm_can_status_register   etm_can_ethernet_board_data.status_data
 #define local_debug_data          etm_can_ethernet_board_data.debug_data
 #define local_can_errors          etm_can_ethernet_board_data.can_status
@@ -633,9 +635,9 @@ void DoA36507(void) {
   
 
 
-  if (_T5IF) {
+  if (_T2IF) {
     // 10ms Timer has expired
-    _T5IF = 0;
+    _T2IF = 0;
     global_data_A36507.millisecond_counter += 10;
     
 #ifndef __IGNORE_TCU
@@ -751,7 +753,7 @@ void DoA36507(void) {
 
       high_speed_data_buffer_a[0].x_ray_on_seconds_lsw = global_data_A36507.time_seconds_now;
       high_speed_data_buffer_a[0].x_ray_on_milliseconds = global_data_A36507.millisecond_counter;
-      high_speed_data_buffer_a[0].x_ray_on_milliseconds += TMR5>>10;  // Need to divide by 1250 to get milliseconds
+      high_speed_data_buffer_a[0].x_ray_on_milliseconds += TMR2>>10;  // Need to divide by 1250 to get milliseconds
       high_speed_data_buffer_a[0].hvlambda_readback_high_energy_lambda_program_voltage = 0;
       high_speed_data_buffer_a[0].hvlambda_readback_low_energy_lambda_program_voltage = 1;
       high_speed_data_buffer_a[0].hvlambda_readback_peak_lambda_voltage = 2;
@@ -1032,11 +1034,11 @@ void InitializeA36507(void) {
   TRISF = A36507_TRISF_VALUE;
   TRISG = A36507_TRISG_VALUE;
 
-  // Initialize TMR5
-  PR5   = PR5_VALUE_10_MILLISECONDS;
-  TMR5  = 0;
-  _T5IF = 0;
-  T5CON = T5CON_VALUE;
+  // Initialize TMR2
+  PR2   = PR2_VALUE_10_MILLISECONDS;
+  TMR2  = 0;
+  _T2IF = 0;
+  T2CON = T2CON_VALUE;
 
   // manually clock out I2C CLK
   // DPARKER make this a generic reset I2C Function
@@ -1053,7 +1055,8 @@ void InitializeA36507(void) {
   ConfigureDS3231(&U6_DS3231, I2C_PORT, RTC_DEFAULT_CONFIG, FCY_CLK, ETM_I2C_400K_BAUD);
 
   // Initialize the Can module
-  ETMCanMasterInitialize();
+  ETMCanMasterInitialize(FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
+  ETMCanMasterLoadConfiguration(36507, 0, FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_MINOR_REV);
   
   // Initialize TCPmodbus Module
   TCPmodbus_init();

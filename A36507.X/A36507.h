@@ -13,7 +13,7 @@
 #include "P1395_CAN_MASTER.h"
 
 
-#include "ETM_LIBRARY.h"
+#include "ETM.h"
 
 
 
@@ -24,11 +24,12 @@
   CAN1 - Can module
   CAN2 - Reserved in case we need CAN 2
 
-  Timer1 - Used by Ehternet Module
-  Timer2 - Used to time CAN transmits - This is configured by ETM CAN module
-  Timer3 - Used as timeout on status update receives - This is configured by ETM CAN module
+  Timer1 - Used by Ethernet Module
 
-  Timer5 - Used for ethernet board timing
+  Timer4 - Used to time CAN transmits - This is configured by ETM CAN module
+  Timer5 - Used as timeout on status update receives - This is configured by ETM CAN module
+
+  Timer2 - Used for Ethernet Board 10ms timing 
 
   UART1 - Reserved for TCU Communication
   UART2 - Reserved for Serial GUI
@@ -112,10 +113,10 @@
 #define PIN_OUT_TP_16                         _LATB9
 
 
-// --------------- CONFIGURE TMR5 MODULE ----------------------- //
-#define T5CON_VALUE                    (T5_ON & T5_IDLE_CON & T5_GATE_OFF & T5_PS_1_8 & T5_SOURCE_INT)
-#define PR5_PERIOD_US                  10000   // 10mS
-#define PR5_VALUE_10_MILLISECONDS      ((FCY_CLK/1000000)*PR5_PERIOD_US/8)
+// --------------- CONFIGURE TMR2 MODULE ----------------------- //
+#define T2CON_VALUE                    (T2_ON & T2_IDLE_CON & T2_GATE_OFF & T2_PS_1_8 & T2_SOURCE_INT)
+#define PR2_PERIOD_US                  10000   // 10mS
+#define PR2_VALUE_10_MILLISECONDS      ((FCY_CLK/1000000)*PR2_PERIOD_US/8)
 
 
 

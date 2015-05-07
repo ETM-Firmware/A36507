@@ -3,17 +3,22 @@
 #include "P1395_CAN_MASTER.h"
 #include "A36507.h"
 
-// ----------- Can Timers T2 & T3 Configuration ----------- //
-#define T2_FREQUENCY_HZ          40  // This is 25mS rate
-#define T3_FREQUENCY_HZ          4   // This is 250ms rate
+// ----------- Can Timers T4 & T5 Configuration ----------- //
+#define T4_FREQUENCY_HZ          40  // This is 25mS rate
+#define T5_FREQUENCY_HZ          4   // This is 250ms rate
 
 // DPARKER remove the need for timers.h here
-#define T2CON_VALUE              (T2_OFF & T2_IDLE_CON & T2_GATE_OFF & T2_PS_1_256 & T2_32BIT_MODE_OFF & T2_SOURCE_INT)
-#define PR2_VALUE                (FCY_CLK/256/T2_FREQUENCY_HZ)
+#define T4CON_VALUE              (T4_OFF & T4_IDLE_CON & T4_GATE_OFF & T4_PS_1_256 & T4_32BIT_MODE_OFF & T4_SOURCE_INT)
 
-#define T3CON_VALUE              (T3_OFF & T3_IDLE_CON & T3_GATE_OFF & T3_PS_1_256 & T3_SOURCE_INT)
-#define PR3_VALUE                (FCY_CLK/256/T3_FREQUENCY_HZ)
+#define T5CON_VALUE              (T5_OFF & T5_IDLE_CON & T5_GATE_OFF & T5_PS_1_256 & T5_SOURCE_INT)
 
+
+typedef struct {
+  unsigned int  address;
+  unsigned long led;
+} TYPE_CAN_PARAMETERS;
+
+TYPE_CAN_PARAMETERS can_params;
 
 TYPE_EVENT_LOG event_log;
 
@@ -125,7 +130,7 @@ void ETMCanMasterSet2FromSlave(ETMCanMessage* message_ptr);
 void ETMCanMasterUpdateSlaveStatus(ETMCanMessage* message_ptr);
 /*
   This moves the data from the status message into the RAM copy on the master
-  It also keeps track of which boards have sent a status message and clears TMR3 once all boards have reported a status message
+  It also keeps track of which boards have sent a status message and clears TMR5 once all boards have reported a status message
 */
 
 void ETMCanMasterProcessLogData(void);
@@ -136,7 +141,16 @@ void ETMCanMasterProcessLogData(void);
 
 void ETMCanMasterClearDebug(void);
 
-void ETMCanMasterInitialize(void) {
+void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, unsigned long can_operation_led, unsigned int can_interrupt_priority) {
+  unsigned long timer_period_value;
+
+  if (can_interrupt_priority > 7) {
+    can_interrupt_priority = 7;
+  }
+
+  can_params.address = etm_can_address;
+  can_params.led = can_operation_led;
+
   etm_can_persistent_data.reset_count++;
   
   _SYNC_CONTROL_WORD = 0;
@@ -149,7 +163,7 @@ void ETMCanMasterInitialize(void) {
 
   _CXIE = 0;
   _CXIF = 0;
-  _CXIP = ETM_CAN_INTERRUPT_PRIORITY;
+  _CXIP = can_interrupt_priority;
   
   CXINTF = 0;
   
@@ -171,7 +185,17 @@ void ETMCanMasterInitialize(void) {
   CXCTRL = CXCTRL_CONFIG_MODE_VALUE;
   while(CXCTRLbits.OPMODE != 4);
   
-  CXCFG1 = ETM_CAN_CXCFG1_VALUE;
+  if (fcy == 25000000) {
+    CXCFG1 = CXCFG1_25MHZ_FCY_VALUE;    
+  } else if (fcy == 20000000) {
+    CXCFG1 = CXCFG1_20MHZ_FCY_VALUE;    
+  } else if (fcy == 10000000) {
+    CXCFG1 = CXCFG1_10MHZ_FCY_VALUE;    
+  } else {
+    // If you got here we can't configure the can module
+    // DPARKER WHAT TO DO HERE
+  }
+  
   CXCFG2 = CXCFG2_VALUE;
   
   
@@ -217,28 +241,55 @@ void ETMCanMasterInitialize(void) {
   // Enable Can interrupt
   _CXIE = 1;
 
-  // Configure T2
-  T2CON = T2CON_VALUE;
-  PR2 = PR2_VALUE;  
-  TMR2 = 0;
-  _T2IF = 0;
-  _T2IE = 0;
-  T2CONbits.TON = 1;
 
-  // Configure T3
-  T3CON = T3CON_VALUE;
-  PR3 = PR3_VALUE;
-  _T3IF = 0;
-  _T3IE = 0;
-  T3CONbits.TON = 1;
+  // Configure T4
+  timer_period_value = fcy;
+  timer_period_value >>= 8;
+  timer_period_value /= T4_FREQUENCY_HZ;
+  if (timer_period_value > 0xFFFF) {
+    timer_period_value = 0xFFFF;
+  }
+  T4CON = T4CON_VALUE;
+  PR4 = timer_period_value;  
+  TMR4 = 0;
+  _T4IF = 0;
+  _T4IE = 0;
+  T4CONbits.TON = 1;
+
+  // Configure T5
+  timer_period_value = fcy;
+  timer_period_value >>= 8;
+  timer_period_value /= T5_FREQUENCY_HZ;
+  if (timer_period_value > 0xFFFF) {
+    timer_period_value = 0xFFFF;
+  }
+  T5CON = T5CON_VALUE;
+  PR5 = timer_period_value;
+  TMR5 = 0;
+  _T5IF = 0;
+  _T5IE = 0;
+  T5CONbits.TON = 1;
 
 
-  etm_can_my_configuration.agile_number_high_word = ETM_CAN_AGILE_ID_HIGH;
-  etm_can_my_configuration.agile_number_low_word  = ETM_CAN_AGILE_ID_LOW;
-  etm_can_my_configuration.agile_dash             = ETM_CAN_AGILE_DASH;
-  etm_can_my_configuration.agile_rev_ascii        = ETM_CAN_AGILE_REV;
-  etm_can_my_configuration.serial_number          = ETM_CAN_SERIAL_NUMBER;
 }
+
+
+void ETMCanMasterLoadConfiguration(unsigned long agile_id, unsigned int agile_dash, unsigned int firmware_agile_rev, unsigned int firmware_branch, unsigned int firmware_minor_rev) {
+
+  etm_can_my_configuration.agile_number_low_word = (agile_id & 0xFFFF);
+  agile_id >>= 16;
+  etm_can_my_configuration.agile_number_high_word = agile_id;
+  etm_can_my_configuration.agile_dash = agile_dash;
+  etm_can_my_configuration.firmware_branch = firmware_branch;
+  etm_can_my_configuration.firmware_major_rev = firmware_agile_rev;
+  etm_can_my_configuration.firmware_minor_rev = firmware_minor_rev;
+
+  // Load default values for agile rev and serial number at this time
+  // Need some way to update these with the real numbers
+  etm_can_my_configuration.agile_rev_ascii = 'A';
+  etm_can_my_configuration.serial_number = 0;
+}
+
 
 void ETMCanMasterDoCan(void) {
   // Record the max TX counter
@@ -309,10 +360,10 @@ void ETMCanMasterTimedTransmit(void) {
   }
 
 
-  if (_T2IF) {
+  if (_T4IF) {
     // should be true once every 25mS
     // each of the 8 cases will be true once every 200mS
-    _T2IF = 0;
+    _T4IF = 0;
 
     if (!_STATUS_PERSONALITY_LOADED) {
       // Just send out a sync message
@@ -669,8 +720,8 @@ void ETMCanMasterUpdateSlaveStatus(ETMCanMessage* message_ptr) {
     // Clear the status received register
     *(unsigned int*)&board_status_received = 0x0000; 
     
-    // Reset T3 to start the next timer cycle
-    TMR3 = 0;
+    // Reset T5 to start the next timer cycle
+    TMR5 = 0;
   }
 }
 
@@ -1213,10 +1264,10 @@ void __attribute__((interrupt(__save__(CORCON,SR)), no_auto_psv)) _CXInterrupt(v
     CXINTFbits.ERRIF = 0;
   } else {
     // FLASH THE CAN LED
-    if (PIN_CAN_OPERATION_LED) {
-      PIN_CAN_OPERATION_LED = 0;
+    if (ETMReadPinLatch(can_params.led)) {
+      ETMClearPin(can_params.led);
     } else {
-      PIN_CAN_OPERATION_LED = 1;
+      ETMSetPin(can_params.led);
     }
   }
 
@@ -1240,8 +1291,8 @@ void __attribute__((interrupt(__save__(CORCON,SR)), no_auto_psv)) _CXInterrupt(v
 
 
 void ETMCanMasterCheckForTimeOut(void) {
-  if (_T3IF) {
-    _T3IF = 0;
+  if (_T5IF) {
+    _T5IF = 0;
     local_can_errors.timeout++;
     etm_can_persistent_data.can_timeout_count = local_can_errors.timeout;
     _CONTROL_CAN_COM_LOSS = 1;

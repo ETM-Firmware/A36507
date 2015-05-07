@@ -4,6 +4,17 @@
 #include "P1395_CAN_CORE.h"
 
 
+#define __IGNORE_ION_PUMP_MODULE
+#define __IGNORE_AFC_MODULE
+#define __IGNORE_GUN_DRIVER_MODULE
+//#define __IGNORE_COOLING_INTERFACE_MODULE
+#define __IGNORE_HEATER_MAGNET_MODULE
+#define __IGNORE_HV_LAMBDA_MODULE
+#define __IGNORE_PULSE_CURRENT_MODULE
+#define __IGNORE_PULSE_SYNC_MODULE
+#define __IGNORE_TCU
+
+
 typedef struct {
   unsigned high_energy_pulse:1;
   unsigned arc_this_pulse:1;
@@ -397,8 +408,19 @@ extern ETMCanHighSpeedData              etm_can_high_speed_data_test;
 
 
 void ETMCanMasterDoCan(void);
-void ETMCanMasterInitialize(void);
 
+// Public Functions
+void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, unsigned long can_operation_led, unsigned int can_interrupt_priority);
+/*
+  This is called once when the processor starts up to initialize the can bus and all of the can variables
+*/
+
+void ETMCanMasterLoadConfiguration(unsigned long agile_id, unsigned int agile_dash, unsigned int firmware_agile_rev, unsigned int firmware_branch, unsigned int firmware_minor_rev);
+/*
+  This is called once when the prcoessor starts up to load the board configuration into RAM so it can be sent over CAN to the ECB
+*/
+
+// DPARKER how do you set the agile rev and the serial number?? Should this be done over can?
 
 
 // Can Module Buffers
@@ -506,5 +528,10 @@ typedef struct {
  
 
 extern TYPE_EVENT_LOG event_log;
+
+
+
+
+
 
 #endif

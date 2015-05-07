@@ -6,6 +6,8 @@
 #include "A36507.h"
 #include "Buffern.h"
 
+#define FCY_CLK  20000000
+// DPARKER ADD THIS TO CONFIG
 
 unsigned int ETMmodbus_timer_10ms;
 
