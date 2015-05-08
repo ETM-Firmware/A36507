@@ -125,7 +125,7 @@
 
 
 // --------------- CONFIGURE TMR2 MODULE ----------------------- //
-#define T2CON_VALUE                    (T2_ON & T2_IDLE_CON & T2_GATE_OFF & T2_PS_1_8 & T2_SOURCE_INT)
+#define T2CON_VALUE                    (T2_ON & T2_IDLE_CON & T2_GATE_OFF & T2_PS_1_8 & T2_32BIT_MODE_OFF & T2_SOURCE_INT)
 #define PR2_PERIOD_US                  10000   // 10mS
 #define PR2_VALUE_10_MILLISECONDS      ((FCY_CLK/1000000)*PR2_PERIOD_US/8)
 
