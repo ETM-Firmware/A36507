@@ -4,17 +4,6 @@
 #include "P1395_CAN_CORE.h"
 
 
-#define __IGNORE_ION_PUMP_MODULE
-#define __IGNORE_AFC_MODULE
-#define __IGNORE_GUN_DRIVER_MODULE
-//#define __IGNORE_COOLING_INTERFACE_MODULE
-#define __IGNORE_HEATER_MAGNET_MODULE
-#define __IGNORE_HV_LAMBDA_MODULE
-#define __IGNORE_PULSE_CURRENT_MODULE
-#define __IGNORE_PULSE_SYNC_MODULE
-#define __IGNORE_TCU
-
-
 typedef struct {
   unsigned high_energy_pulse:1;
   unsigned arc_this_pulse:1;
