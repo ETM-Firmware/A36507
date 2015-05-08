@@ -34,11 +34,6 @@ unsigned int etm_can_next_pulse_count;
 
 
 
-#define etm_can_status_register   etm_can_ethernet_board_data.status_data
-#define local_debug_data          etm_can_ethernet_board_data.debug_data
-#define local_can_errors          etm_can_ethernet_board_data.can_status
-#define etm_can_my_configuration  etm_can_ethernet_board_data.configuration
-
 // Public Debug and Status registers
 //ETMCanSystemDebugData local_debug_data;
 //ETMCanStatusRegister  etm_can_status_register;
@@ -82,21 +77,6 @@ ETMCanRamMirrorMagnetronCurrent  etm_can_magnetron_current_mirror;
 ETMCanRamMirrorPulseSync         etm_can_pulse_sync_mirror;
 ETMCanRamMirrorEthernetBoard     etm_can_ethernet_board_data;
 
-void ETMCanSetValueCalibrationUpload(ETMCanMessage* message_ptr) {
-  // Dparker impliment this
-}
-
-
-
-
-
-
-
-
-void ETMCanSetValueCalibrationUpload(ETMCanMessage* message_ptr);
-// DPARKER what does this do
-
-
 
 void ETMCanMasterTimedTransmit(void);
 /*
@@ -108,8 +88,6 @@ void ETMCanMasterTimedTransmit(void);
 void ETMCanMasterSenseSync();
 void ETMCanMasterHVLambdaUpdateOutput(void);
 void ETMCanMasterAFCUpdateHomeOffset(void);
-// DPARKER missing the other AFC commands - related to manual mode, auto zero ect
-// DPARKER missing the commands related to SF6 control
 void ETMCanMasterHtrMagnetUpdateOutput(void);
 void ETMCanMasterGunDriverUpdatePulseTop(void);
 void ETMCanMasterGunDriverUpdateHeaterCathode(void);
@@ -172,8 +150,6 @@ void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, uns
   CXINTEbits.TX0IE = 1; // Enable TXB0 interrupt
   CXINTEbits.ERRIE = 1; // Enable Error interrupt
 
-  // DPARKER - Zero all the counters in the error structure.
-  
   ETMCanBufferInitialize(&etm_can_rx_message_buffer);
   ETMCanBufferInitialize(&etm_can_tx_message_buffer);
   ETMCanBufferInitialize(&etm_can_rx_data_log_buffer);
@@ -193,12 +169,13 @@ void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, uns
     CXCFG1 = CXCFG1_10MHZ_FCY_VALUE;    
   } else {
     // If you got here we can't configure the can module
-    // DPARKER WHAT TO DO HERE
+    // Try to set to operate in 10MHZ mode.
+    // Can probably won't talk
+    CXCFG1 = CXCFG1_10MHZ_FCY_VALUE;    
   }
   
   CXCFG2 = CXCFG2_VALUE;
-  
-  
+    
   // Load Mask registers for RX0 and RX1
   CXRXM0SID = ETM_CAN_MASTER_RX0_MASK;
   CXRXM1SID = ETM_CAN_MASTER_RX1_MASK;
@@ -220,7 +197,6 @@ void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, uns
   CXTX1DLC = CXTXXDLC_VALUE;
   CXTX2DLC = CXTXXDLC_VALUE;
 
-  
   // Set Receiver Mode
   CXRX0CON = CXRXXCON_VALUE;
   CXRX1CON = CXRXXCON_VALUE;
@@ -229,18 +205,10 @@ void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, uns
   CXCTRL = CXCTRL_OPERATE_MODE_VALUE;
   while(CXCTRLbits.OPMODE != 0);
   
-  // Set up data structure for ethernet board
-  //etm_can_ethernet_board_data.can_status    = &local_can_errors;
-  //etm_can_ethernet_board_data.debug_data    = &local_debug_data;
-  //etm_can_ethernet_board_data.configuration = &etm_can_my_configuration;
-  //etm_can_ethernet_board_data.status_data   = &etm_can_status_register;
-
-
   etm_can_ethernet_board_data.status_received_register = 0x0000;
 
   // Enable Can interrupt
   _CXIE = 1;
-
 
   // Configure T4
   timer_period_value = fcy;
@@ -269,8 +237,6 @@ void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, uns
   _T5IF = 0;
   _T5IE = 0;
   T5CONbits.TON = 1;
-
-
 }
 
 
@@ -802,7 +768,7 @@ void ETMCanMasterProcessLogData(void) {
 	  break;
 
 	default:
-	  //DPARKER add in some error counter
+	  local_can_errors.address_error++;
 	  break;
 	  
 	}
@@ -820,8 +786,8 @@ void ETMCanMasterProcessLogData(void) {
 	case ETM_CAN_DATA_LOG_REGISTER_DEFAULT_ERROR_1:
 	  debug_data_ptr->reset_count                = next_message.word3;
 	  debug_data_ptr->self_test_results          = *(ETMCanSelfTestRegister*)&next_message.word2;
-	  debug_data_ptr->reserved_0                 = next_message.word1;
-	  //debug_data_ptr->reserved_1                 = next_message.word0;  // This is now overwritten by the ECB to indicate if there is a connection
+	  debug_data_ptr->reserved_0                 = next_message.word1;  // This is RCON as of today
+	  debug_data_ptr->reserved_1                 = next_message.word0;  // unused at this time
 	  break;
 
 	case ETM_CAN_DATA_LOG_REGISTER_DEFAULT_DEBUG_0:
@@ -1065,19 +1031,19 @@ void ETMCanMasterProcessLogData(void) {
 	  break;
 
 	case ETM_CAN_DATA_LOG_REGISTER_PULSE_SYNC_SLOW_TIMING_DATA_0:
-	  // DPARKER these are special because they need to be broken down into byte
+	  // DPARKER - WE have not defined anywhere to store this data
 	  break;
 
 	case ETM_CAN_DATA_LOG_REGISTER_PULSE_SYNC_SLOW_TIMING_DATA_1:
-	  // DPARKER these are special because they need to be broken down into byte
+	  // DPARKER - WE have not defined anywhere to store this data
 	  break;
 
 	case ETM_CAN_DATA_LOG_REGISTER_PULSE_SYNC_SLOW_TIMING_DATA_2:
-	  // DPARKER these are special because they need to be broken down into byte
+	  // DPARKER - WE have not defined anywhere to store this data
 	  break;
 
 	default:
-	  //DPARKER add some error
+	  local_can_errors.unknown_message_identifier++;
 	  break;
 	}
     }
@@ -1100,7 +1066,7 @@ void __attribute__((interrupt(__save__(CORCON,SR)), no_auto_psv)) _CXInterrupt(v
   
   pulse_time = global_data_A36507.millisecond_counter;
   pulse_time += ETMScaleFactor2((TMR5>>11),MACRO_DEC_TO_CAL_FACTOR_2(.8192),0);
-  if (_T5IF) {
+  if (_T2IF) {
     pulse_time += 10;
   }
 
@@ -1259,7 +1225,6 @@ void __attribute__((interrupt(__save__(CORCON,SR)), no_auto_psv)) _CXInterrupt(v
   
   if (CXINTFbits.ERRIF) {
     // There was some sort of CAN Error
-    // DPARKER - figure out which error and fix/reset
     local_can_errors.error_flag++;
     CXINTFbits.ERRIF = 0;
   } else {
@@ -1270,9 +1235,6 @@ void __attribute__((interrupt(__save__(CORCON,SR)), no_auto_psv)) _CXInterrupt(v
       ETMSetPin(can_params.led);
     }
   }
-
-  //local_can_errors.CXEC_reg = CXEC;
-
 
   // Record the max TX counter
   if ((CXEC & 0xFF00) > (local_can_errors.CXEC_reg & 0xFF00)) {

@@ -1,64 +1,223 @@
 #include "A36507.h"
 #include "FIRMWARE_VERSION.h"
+#include "A36507_CONFIG.h"
 
 #define FCY_CLK  20000000
 
-#define etm_can_status_register   etm_can_ethernet_board_data.status_data
-#define local_debug_data          etm_can_ethernet_board_data.debug_data
-#define local_can_errors          etm_can_ethernet_board_data.can_status
-#define etm_can_my_configuration  etm_can_ethernet_board_data.configuration
 
+// ------------------ PROCESSOR CONFIGURATION ------------------------//
+_FOSC(ECIO_PLL16 & CSW_FSCM_OFF);                                         // 5Mhz External Osc created 20Mhz FCY
+_FWDT(WDT_ON & WDTPSA_512 & WDTPSB_8);                                    // 8 Second watchdog timer 
+_FBORPOR(PWRT_64 & NONE & PBOR_OFF & MCLR_EN);                            // 64ms Power up timer, Low Voltage Reset disabled
+_FBS(WR_PROTECT_BOOT_OFF & NO_BOOT_CODE & NO_BOOT_EEPROM & NO_BOOT_RAM);  // 
+_FSS(WR_PROT_SEC_OFF & NO_SEC_CODE & NO_SEC_EEPROM & NO_SEC_RAM);         //
+_FGS(CODE_PROT_OFF);                                                      //
+_FICD(PGD);                                                               //
 
-unsigned int dan_temp_counter = 0;
 
 const unsigned int FilamentLookUpTable[64] = {FILAMENT_LOOK_UP_TABLE_VALUES_FOR_MG5193};
 
-void ZeroSystemPoweredTime(void);
-void LoadDefaultSystemCalibrationToEEProm(void);
-void ReadSystemConfigurationFromEEProm(unsigned int personality);
-void FlashLeds(void);
+const unsigned int eeprom_default_values_htr_mag_afc[16] = {DEFAULT_MAGNITRON_HEATER_CURRENT,
+							    DEFAULT_MAGNET_CURRENT_PER_1,
+							    DEFAULT_MAGNET_CURRENT_PER_2,
+							    DEFAULT_MAGNET_CURRENT_PER_3,
+							    DEFAULT_MAGNET_CURRENT_PER_4,
+							    DEFAULT_AFC_HOME_PER_1,
+							    DEFAULT_AFC_HOME_PER_2,
+							    DEFAULT_AFC_HOME_PER_3,
+							    DEFAULT_AFC_HOME_PER_4,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM};
 
-//unsigned int i2c_error_check = 0;  // DPARKER - ALL I2C functions should check for bus error so that we can reset if needed
+const unsigned int eeprom_default_values_hv_lambda[16]   = {DEFAULT_HV_LAMBDA_HIGH_PER_1,
+							    DEFAULT_HV_LAMBDA_LOW_PER_1,
+							    DEFAULT_HV_LAMBDA_HIGH_PER_2,
+							    DEFAULT_HV_LAMBDA_LOW_PER_2,
+							    DEFAULT_HV_LAMBDA_HIGH_PER_3,
+							    DEFAULT_HV_LAMBDA_LOW_PER_3,
+							    DEFAULT_HV_LAMBDA_HIGH_PER_4,
+							    DEFAULT_HV_LAMBDA_LOW_PER_4,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM};
 
-void UpdateHeaterScale(void);
-unsigned int CalculatePulseEnergyMilliJoules(unsigned int lambda_voltage);
+const unsigned int eeprom_default_values_gun_driver[16]  = {DEFAULT_GUN_DRV_HEATER_VOLT,
+							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_1,
+							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_1,
+							    DEFAULT_GUN_DRV_CATHODE_PER_1,
+							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_2,
+							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_2,
+							    DEFAULT_GUN_DRV_CATHODE_PER_2,
+							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_3,
+							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_3,
+							    DEFAULT_GUN_DRV_CATHODE_PER_3,
+							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_4,
+							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_4,
+							    DEFAULT_GUN_DRV_CATHODE_PER_4,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM};
+
+const unsigned int eeprom_default_values_p_sync_per_1[16]= {((DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_A),
+							    ((DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_C),
+							    ((DEFAULT_P_SYNC_HIGH_DOSE_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_HIGH_THYRATRON_DELAY_PER_1),
+							    ((DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_A),
+							    ((DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_C),
+							    ((DEFAULT_P_SYNC_HIGH_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_HIGH_AFC_SAMPLE_DELAY_PER_1),
+							    ((DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_A),
+							    ((DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_C),
+							    ((DEFAULT_P_SYNC_LOW_DOSE_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_LOW_THYRATRON_DELAY_PER_1),	
+							    ((DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_A),
+							    ((DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_C),
+							    ((DEFAULT_P_SYNC_LOW_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_LOW_AFC_SAMPLE_DELAY_PER_1),
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM};
 
 
-void ExecuteEthernetCommand(unsigned int personality);
 
-void DoA36507(void);
-
+// ---------------------- Control Functions ---------------------------- //
+void DoStateMachine(void);
 /*
-  Modules to be created
-
-  Ethernet Interface Module - Dongying
-  Higher Level communication based on Ethernet 
-  Real Time Clock 
-  
-  
-  
+  This runs the state machine.
+  Typical loop time is a couple hundred uS
+  This can be extended significantly by spi/i2c communication if waiting for those functions to complete
 */
-_FOSC(ECIO_PLL16 & CSW_FSCM_OFF); 
-//_FWDT(WDT_ON & WDTPSA_64 & WDTPSB_8);  // 1 Second watchdog timer 
-_FWDT(WDT_ON & WDTPSA_512 & WDTPSB_8);  // 8 Second watchdog timer 
-_FBORPOR(PWRT_64 & NONE & PBOR_OFF & MCLR_EN);
-_FBS(WR_PROTECT_BOOT_OFF & NO_BOOT_CODE & NO_BOOT_EEPROM & NO_BOOT_RAM);
-_FSS(WR_PROT_SEC_OFF & NO_SEC_CODE & NO_SEC_EEPROM & NO_SEC_RAM);
-_FGS(CODE_PROT_OFF);
-_FICD(PGD);
 
+unsigned int CheckHVOffFault(void); 
+/* 
+   This will return TRUE (NOT ZERO) if there is a condition that is considered a "fault" when HV is off
+   For example a Magnet Over Current would be a fault
+   A Lambda not powered would not be a fault (because the lambda is not supposed to be powered when HV is off)
+*/
 
-
-RTC_DS3231 U6_DS3231;
-A36507GlobalVars global_data_A36507;
+unsigned int CheckFault(void);
+/*
+  This will return TRUE (NOT ZERO) if there is any fault
+*/
 
 unsigned int CheckSystemFault(void);
-unsigned int CheckHVOffFault(void);
-unsigned int CheckFault(void);
+/*
+  This will return TRUE (NOT ZERO) if there is any fault that causes the system to shut itself down till power cycled
+  At this time there are no faults that meet this criteria so it always returns 0
+*/
+
 unsigned int CheckAllModulesConfigured(void);
-void CalculateHeaterWarmupTimers(void);
+/*
+  This checks if all modules are connected and configured
+  If any module is not connected or not configured it will return TRUE (NOT ZERO)
+  This is used to leave the initialization state at startup but is also checked
+  while running to look for a missing module
+*/
+
+void DoA36507(void);
+/*
+  This is called every time through the control loop.
+  Some tasks are executed every time this function is called
+  Some tasks are executed once every 10ms  - those tasks inside "if (_T2IF)"
+*/
+
+void ExecuteEthernetCommand(unsigned int personality); 
+/*
+  This looks to see if there any ethernet commands to execute
+  If a command is available this executes that command
+  The personality is the personality of the module
+  // DPARKER - should not need to include personality
+  // DPARKER - need to think about this a bit more. Personality should be stored in RAM
+  // DPARKER - what to do if no personality is set??? 
+*/
+
+unsigned int CalculatePulseEnergyMilliJoules(unsigned int lambda_voltage); 
+/*
+  This caluclates the energy per pulse based on a lambda voltage
+  This is just .5*C*V^2 (where C is the PFN capacitance)
+*/
+
+void UpdateHeaterScale(void);
+/*
+  This function grabs the highest lambda set point (from mode A or mode B) and calulates the energy per pulse from that voltage
+  Energy per pulse is multiplied by PRF (from Pulse Sync board)
+  The energy is used to look up the heater scale factor from the FilamentLookUpTable
+  The heater set poing scaled is then set by multipling the set point by the scale factor
+*/
+
+
+
+
+// -------------------- STARTUP Helper Functions ---------------------- //
 void InitializeA36507(void);
-void DoStateMachine(void);
+/*
+  This initialized the processor and all of it's internal/external hardware and software modules
+  It should only be called once
+*/
+
+void CalculateHeaterWarmupTimers(void);
+/*
+  This reads the last time a heater was warm from EEPROM and caluclates how long it needs to be warmed up for
+*/
+
+void ReadSystemConfigurationFromEEProm(unsigned int personality);
+/*
+  This loads the configuration for a given personality from the external EEPROM
+*/
+
+void FlashLeds(void);
+/*
+  LED Helper function
+  This is called while the ECB is initializing and causes the LED to flash in the "initializing" pattern
+*/
+
+
+
+
+// -------------------------------- Ethernet Interface helper Functions ---------------------------- //
+void ZeroSystemPoweredTime(void);
+/*
+  Sets the system powered, hv on, and xray on second counter to Zero.
+  DPARKER this needs to be added to the ethernet interface
+*/
+
+void LoadDefaultSystemCalibrationToEEProm(void);
+/*
+  Loads the default system calibration parmaeters from flash program memmory into the EEPROM
+  This is used to restore "factory defaults" if all goes to hell
+  DPARKER - need to add pulse sync personalities 2,3,4 
+  DPARKER - need to be added to the etherenet interface
+*/
+
+
+
+
+
+// ------------------- Global Variables ------------------------------ //
+A36507GlobalVars global_data_A36507;         
+/* 
+   This is the Data structure for the global variables
+   Every variable that is not a structure or on the stack should be within this structure
+   This places variables at a fixed place in memory relative to each other which we depend on in some cases
+   It also find that this makes it easier to work with debugger
+*/
+
+
+// -------------------- Local Structures ----------------------------- //
+RTC_DS3231 U6_DS3231;                        
+/* 
+   This is the Data structure for the Real Time Clock
+   See DS3231.h For more information
+*/
+
+
 
 
 int main(void) {
@@ -69,8 +228,6 @@ int main(void) {
     DoStateMachine();
   }
 }
-
-#define __SYSTEM_CONFIGURATION_2_5_MEV
 
 void DoStateMachine(void) {
   
@@ -175,7 +332,6 @@ void DoStateMachine(void) {
     break;
 
 
-#define DRIVE_UP_TIMEOUT            1000  // 10 Seconds
   case STATE_DRIVE_UP:
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
@@ -308,35 +464,6 @@ void DoStateMachine(void) {
 }
 
 
-void FlashLeds(void) {
-  switch (((global_data_A36507.startup_counter >> 4) & 0b11)) {
-    
-  case 0:
-    PIN_OUT_ETM_LED_OPERATIONAL_GREEN = !OLL_LED_ON;
-    PIN_OUT_ETM_LED_TEST_POINT_A_RED = !OLL_LED_ON;
-    PIN_OUT_ETM_LED_TEST_POINT_B_GREEN = !OLL_LED_ON;
-    break;
-    
-  case 1:
-    PIN_OUT_ETM_LED_OPERATIONAL_GREEN = OLL_LED_ON;
-    PIN_OUT_ETM_LED_TEST_POINT_A_RED = !OLL_LED_ON;
-    PIN_OUT_ETM_LED_TEST_POINT_B_GREEN = !OLL_LED_ON;
-    break;
-    
-  case 2:
-    PIN_OUT_ETM_LED_OPERATIONAL_GREEN = OLL_LED_ON;
-    PIN_OUT_ETM_LED_TEST_POINT_A_RED = OLL_LED_ON;
-    PIN_OUT_ETM_LED_TEST_POINT_B_GREEN = !OLL_LED_ON;
-    break;
-    
-  case 3:
-    PIN_OUT_ETM_LED_OPERATIONAL_GREEN = OLL_LED_ON;
-    PIN_OUT_ETM_LED_TEST_POINT_A_RED = OLL_LED_ON;
-    PIN_OUT_ETM_LED_TEST_POINT_B_GREEN = OLL_LED_ON;
-    break;
-  }
-}
-
 unsigned int CheckHVOffFault(void) {
   unsigned int fault = 0;
   
@@ -425,13 +552,13 @@ unsigned int CheckHVOffFault(void) {
   return fault;
 }
 
+
 unsigned int CheckFault(void) {
   unsigned int fault = 0;
   
   if (CheckHVOffFault()) {
     fault = 1;
   }
-
 
   // Update the fault status of each of the boards.
   if (_HV_LAMBDA_NOT_READY) {
@@ -520,51 +647,68 @@ unsigned int CheckFault(void) {
 
 
 unsigned int CheckSystemFault(void) {
+  // DPARKER SYSTEM FAULT NOT IMPLIMENTED
   return 0;
 }
 
 
-
-
-
-#define MAGNETRON_HEATER_WARM_UP_TIME        300   // 5 minutes
-#define THYRATRON_WARM_UP_TIME               900   // 15 minutes
-#define GUN_DRIVER_HEATER_WARM_UP_TIME       300   // 5 minutes
-
-
-
-void CalculateHeaterWarmupTimers(void) {
-  unsigned long difference;
-  // Read the warmup timers stored in EEPROM
-  ETMEEPromReadPage(EEPROM_PAGE_HEATER_TIMERS, 6, (unsigned int*)&global_data_A36507.magnetron_heater_last_warm_seconds);
-  ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
-  global_data_A36507.time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
-
-  // Calculate new magnetron heater warm up time remaining
-  difference = global_data_A36507.time_seconds_now - global_data_A36507.magnetron_heater_last_warm_seconds;
-  if (difference > (MAGNETRON_HEATER_WARM_UP_TIME >> 1)) {
-    global_data_A36507.magnetron_heater_warmup_counter_seconds = MAGNETRON_HEATER_WARM_UP_TIME;    
-  } else {
-    global_data_A36507.magnetron_heater_warmup_counter_seconds = (difference << 1);
-  }
-
-  // Calculate new thyratron warm up time remaining
-  difference = global_data_A36507.time_seconds_now - global_data_A36507.thyratron_heater_last_warm_seconds;
-  if (difference > (THYRATRON_WARM_UP_TIME >> 1)) {
-    global_data_A36507.thyratron_warmup_counter_seconds = THYRATRON_WARM_UP_TIME;    
-  } else {
-    global_data_A36507.thyratron_warmup_counter_seconds = (difference << 1);
-  }
+unsigned int CheckAllModulesConfigured(void) {
+  unsigned int system_configured;
   
-  // Calculate new gun driver heater warm up time remaining
-  difference = global_data_A36507.time_seconds_now - global_data_A36507.gun_driver_heater_last_warm_seconds;
-  if (difference > (GUN_DRIVER_HEATER_WARM_UP_TIME >> 1)) {
-    global_data_A36507.gun_driver_heater_warmup_counter_seconds = GUN_DRIVER_HEATER_WARM_UP_TIME;
-  } else {
-    global_data_A36507.gun_driver_heater_warmup_counter_seconds = (difference << 1);
+  system_configured = 1;
+
+#ifndef __IGNORE_HV_LAMBDA_MODULE
+  if ((_HV_LAMBDA_NOT_CONNECTED) || (_HV_LAMBDA_NOT_CONFIGURED)) {
+    system_configured = 0;
   }
+#endif
+
+#ifndef __IGNORE_ION_PUMP_MODULE
+  if ((_ION_PUMP_NOT_CONNECTED) || (_ION_PUMP_NOT_CONFIGURED)) {
+    system_configured = 0;
+  }
+#endif
+
+#ifndef __IGNORE_AFC_MODULE
+  if ((_AFC_NOT_CONNECTED) || (_AFC_NOT_CONFIGURED)) {
+    system_configured = 0;
+  }
+#endif  
+
+#ifndef __IGNORE_COOLING_INTERFACE_MODULE
+  if ((_COOLING_NOT_CONNECTED) || (_COOLING_NOT_CONFIGURED)) {
+    system_configured = 0;
+  }
+#endif  
+
+#ifndef __IGNORE_HEATER_MAGNET_MODULE
+  if ((_HEATER_MAGNET_NOT_CONNECTED) || (_HEATER_MAGNET_NOT_CONFIGURED)) {
+    system_configured = 0;
+  }
+#endif
+
+#ifndef __IGNORE_GUN_DRIVER_MODULE
+  if ((_GUN_DRIVER_NOT_CONNECTED) || (_GUN_DRIVER_NOT_CONFIGURED)) {
+    system_configured = 0;
+  }
+#endif
+
+#ifndef __IGNORE_PULSE_CURRENT_MODULE
+  if ((_PULSE_CURRENT_NOT_CONNECTED) || (_PULSE_CURRENT_NOT_CONFIGURED)) {
+    system_configured = 0;
+  }
+#endif
+
+#ifndef __IGNORE_PULSE_SYNC_MODULE
+  if ((_PULSE_SYNC_NOT_CONNECTED) || (_PULSE_SYNC_NOT_CONFIGURED)) {
+    system_configured = 0;
+  }
+#endif
+
+  return system_configured;
 
 }
+
 
 #define SEND_BUFFER_A            1
 #define SEND_BUFFER_B            0
@@ -644,68 +788,59 @@ void DoA36507(void) {
 #ifndef __IGNORE_TCU
     if (ETMmodbus_timer_10ms < 60000) ETMmodbus_timer_10ms++;
     
-    #ifdef DEBUG_ETMMODBUS
-    	if (global_data_A36507.millisecond_counter == 500)
-        {
-        	switch (etmmodbus_index)
-            {
-        	case 0:
-            	ETMModbusReadCoilsSmall(0x177d, 3, &etmmodbus_test[etmmodbus_index]);  // T14-T16
-            	break;
-        	case 1:
-            	ETMModbusReadCoilsSmall(0x17e0, 10, &etmmodbus_test[etmmodbus_index]);	// T113-T122
-            	break;
-        	case 2:
-            	ETMModbusReadHoldingRegistersSmall(0xfa6, 1, &etmmodbus_test[etmmodbus_index]);	// R1007, temp read
-            	break;
-        	case 3:
-            	ETMModbusWriteSingleCoil(0x177d + etmmodbus_relay_set_index, etmmodbus_relay_toggle, &etmmodbus_test[etmmodbus_index]);
-                etmmodbus_relay_toggle = etmmodbus_relay_toggle? 0: 1;
-                if (etmmodbus_relay_toggle == 0)
-                {
-                	etmmodbus_relay_set_index += 1;
-                    if (etmmodbus_relay_set_index > 2) etmmodbus_relay_set_index = 0;
-                }
-            	break;
-        	default:
-            	break;
-            }
-        	etmmodbus_index	+= 1;
-            if (etmmodbus_index >= 4) etmmodbus_index = 0;
-            
-            // check readbacks 
-           	if (etmmodbus_test[0].done)
-            {
-            	if (etmmodbus_test[0].done == ETMMODBUS_RESPONSE_OK)
-                
-                local_debug_data.debug_E &= 0xfff0;
-                local_debug_data.debug_E |= etmmodbus_test[0].data & 0x0f;
-            	etmmodbus_test[0].done = 0;
-                
-            }
-           	if (etmmodbus_test[1].done)
-            {
-            	if (etmmodbus_test[1].done == ETMMODBUS_RESPONSE_OK)
-                
-                local_debug_data.debug_E &= 0x000f;
-                local_debug_data.debug_E |= (etmmodbus_test[1].data << 4) & 0xfff0;
-            	etmmodbus_test[1].done = 0;
-                
-            }
-           	if (etmmodbus_test[2].done)
-            {
-            	if (etmmodbus_test[2].done == ETMMODBUS_RESPONSE_OK)
-                	local_debug_data.debug_F = etmmodbus_test[2].data;
-            	etmmodbus_test[2].done = 0;
-                
-            }
-            
-        }
-    #endif    
+#ifdef DEBUG_ETMMODBUS
+    if (global_data_A36507.millisecond_counter == 500) {
+      switch (etmmodbus_index) 
+	{
+	case 0:
+	  ETMModbusReadCoilsSmall(0x177d, 3, &etmmodbus_test[etmmodbus_index]);  // T14-T16
+	  break;
+	case 1:
+	  ETMModbusReadCoilsSmall(0x17e0, 10, &etmmodbus_test[etmmodbus_index]);	// T113-T122
+	  break;
+	case 2:
+	  ETMModbusReadHoldingRegistersSmall(0xfa6, 1, &etmmodbus_test[etmmodbus_index]);	// R1007, temp read
+	  break;
+	case 3:
+	  ETMModbusWriteSingleCoil(0x177d + etmmodbus_relay_set_index, etmmodbus_relay_toggle, &etmmodbus_test[etmmodbus_index]);
+	  etmmodbus_relay_toggle = etmmodbus_relay_toggle? 0: 1;
+	  if (etmmodbus_relay_toggle == 0) {
+	    etmmodbus_relay_set_index += 1;
+	    if (etmmodbus_relay_set_index > 2) etmmodbus_relay_set_index = 0;
+	  }
+	  break;
+	  default:
+	    break;
+	}
+      etmmodbus_index	+= 1;
+      if (etmmodbus_index >= 4) etmmodbus_index = 0;
+      
+      // check readbacks 
+      if (etmmodbus_test[0].done) {
+	if (etmmodbus_test[0].done == ETMMODBUS_RESPONSE_OK) {
+	  local_debug_data.debug_E &= 0xfff0;
+	}
+	local_debug_data.debug_E |= etmmodbus_test[0].data & 0x0f;
+	etmmodbus_test[0].done = 0;
+      }
+      if (etmmodbus_test[1].done) {
+	if (etmmodbus_test[1].done == ETMMODBUS_RESPONSE_OK) {
+	  local_debug_data.debug_E &= 0x000f;
+	}
+	local_debug_data.debug_E |= (etmmodbus_test[1].data << 4) & 0xfff0;
+	etmmodbus_test[1].done = 0;
+      }
+      if (etmmodbus_test[2].done) {
+	if (etmmodbus_test[2].done == ETMMODBUS_RESPONSE_OK) {
+	  local_debug_data.debug_F = etmmodbus_test[2].data;
+	}
+	etmmodbus_test[2].done = 0;
+      }
+    }
+#endif    
 #endif
     
     // Copy data from global variable strucutre to strucutre that gets sent to GUI
-    // DPARKER do something better here
     etm_can_ethernet_board_data.mirror_control_state = global_data_A36507.control_state;
     etm_can_ethernet_board_data.mirror_system_powered_seconds = global_data_A36507.system_powered_seconds;
     etm_can_ethernet_board_data.mirror_system_hv_on_seconds = global_data_A36507.system_hv_on_seconds;
@@ -726,57 +861,20 @@ void DoA36507(void) {
 
     // DPARKER Check for cooling fault, and set the sync bit message as appropriate
 
+    
+    // Update the heater current based on Output Power
+    UpdateHeaterScale();
+
+
+
+    /*
+      The following tasks require use of the i2c bus which can hold the processor for a lot of time
+      Need to schedule them at different point of a 1 second period
+    */
 
     // Run at 1 second interval
     if (global_data_A36507.millisecond_counter >= 1000) {
       global_data_A36507.millisecond_counter = 0;
-      
-    
-      /*
-      // DPARKER TESTING LOG FUNCTION
-      high_speed_data_buffer_a[0].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[1].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[2].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[3].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[4].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[5].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[6].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[7].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[8].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[9].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[10].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[11].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[12].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[13].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[14].pulse_count = dan_temp_counter++;
-      high_speed_data_buffer_a[15].pulse_count = dan_temp_counter++;
-
-
-      high_speed_data_buffer_a[0].x_ray_on_seconds_lsw = global_data_A36507.time_seconds_now;
-      high_speed_data_buffer_a[0].x_ray_on_milliseconds = global_data_A36507.millisecond_counter;
-      high_speed_data_buffer_a[0].x_ray_on_milliseconds += TMR2>>10;  // Need to divide by 1250 to get milliseconds
-      high_speed_data_buffer_a[0].hvlambda_readback_high_energy_lambda_program_voltage = 0;
-      high_speed_data_buffer_a[0].hvlambda_readback_low_energy_lambda_program_voltage = 1;
-      high_speed_data_buffer_a[0].hvlambda_readback_peak_lambda_voltage = 2;
-      high_speed_data_buffer_a[0].afc_readback_current_position = 3;
-      high_speed_data_buffer_a[0].afc_readback_target_position = 4;
-      high_speed_data_buffer_a[0].afc_readback_a_input = 5;
-      high_speed_data_buffer_a[0].afc_readback_b_input = 6;
-      high_speed_data_buffer_a[0].afc_readback_filtered_error_reading = 7;
-      high_speed_data_buffer_a[0].ionpump_readback_high_energy_target_current_reading = 8;
-      high_speed_data_buffer_a[0].ionpump_readback_low_energy_target_current_reading = 9;
-      high_speed_data_buffer_a[0].magmon_readback_magnetron_high_energy_current = 10;
-      high_speed_data_buffer_a[0].magmon_readback_magnetron_low_energy_current = 11;
-      high_speed_data_buffer_a[0].psync_readback_trigger_width_and_filtered_trigger_width = 12;
-      high_speed_data_buffer_a[0].psync_readback_high_energy_grid_width_and_delay = 13;
-      high_speed_data_buffer_a[0].psync_readback_low_energy_grid_width_and_delay = 14;
-      
-
-
-      
-      SendPulseData(1);
-      */
-    
     }
 
     // Run once a second at 0 milliseconds
@@ -834,21 +932,20 @@ void DoA36507(void) {
       } else {
 	global_data_A36507.warmup_done = 1;
       }
-
-
-    } //     if (global_data_A36507.millisecond_counter == 0) {
+    } // End of tasks that happen when millisecond = 0
+    
 
     // Run once a second at 250 milliseconds
     if (global_data_A36507.millisecond_counter == 250) {
       // Write Warmup Done Timers to EEPROM
       ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 6, (unsigned int*)&global_data_A36507.magnetron_heater_last_warm_seconds);
-    }
-
+    } // End of tasks that happen when millisecond = 250
+    
 
     // Run once a second at 500 milliseconds
     if (global_data_A36507.millisecond_counter == 500) {
       // Write Seconds on Counters to EEPROM
-      global_data_A36507.system_powered_seconds += 1;
+      global_data_A36507.system_powered_seconds++;
       
       if (global_data_A36507.control_state == STATE_READY) {
 	global_data_A36507.system_hv_on_seconds++;
@@ -859,11 +956,9 @@ void DoA36507(void) {
 	global_data_A36507.system_xray_on_seconds++;
       }
       ETMEEPromWritePage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&global_data_A36507.system_powered_seconds);
-    }
-    
-    // Update the heater current based on Output Power
-    UpdateHeaterScale();
-  }
+    } // End of tasks that happen when millisecond = 500
+  
+  } // End of 10ms Tasks
 }
 
 
@@ -911,7 +1006,6 @@ void UpdateHeaterScale() {
 
   // Load the energy per pulse into temp32
   // Use the higher of High/Low Energy set point
-  // DPARKER  - WHAT TO DO ON THE 2.5???
   if (etm_can_hv_lambda_mirror.ecb_high_set_point > etm_can_hv_lambda_mirror.ecb_low_set_point) {
     temp32 = CalculatePulseEnergyMilliJoules(etm_can_hv_lambda_mirror.ecb_low_set_point);
   } else {
@@ -940,67 +1034,8 @@ void UpdateHeaterScale() {
   etm_can_heater_magnet_mirror.htrmag_heater_current_set_point_scaled = ETMScaleFactor16(etm_can_heater_magnet_mirror.htrmag_heater_current_set_point,
 											 FilamentLookUpTable[temp16],
 											 0);
-
 }
 
-unsigned int CheckAllModulesConfigured(void) {
-  unsigned int system_configured;
-  
-  system_configured = 1;
-
-#ifndef __IGNORE_HV_LAMBDA_MODULE
-  if ((_HV_LAMBDA_NOT_CONNECTED) || (_HV_LAMBDA_NOT_CONFIGURED)) {
-    system_configured = 0;
-  }
-#endif
-
-#ifndef __IGNORE_ION_PUMP_MODULE
-  if ((_ION_PUMP_NOT_CONNECTED) || (_ION_PUMP_NOT_CONFIGURED)) {
-    system_configured = 0;
-  }
-#endif
-
-#ifndef __IGNORE_AFC_MODULE
-  if ((_AFC_NOT_CONNECTED) || (_AFC_NOT_CONFIGURED)) {
-    system_configured = 0;
-  }
-#endif  
-
-#ifndef __IGNORE_COOLING_INTERFACE_MODULE
-  if ((_COOLING_NOT_CONNECTED) || (_COOLING_NOT_CONFIGURED)) {
-    system_configured = 0;
-  }
-#endif  
-
-#ifndef __IGNORE_HEATER_MAGNET_MODULE
-  if ((_HEATER_MAGNET_NOT_CONNECTED) || (_HEATER_MAGNET_NOT_CONFIGURED)) {
-    system_configured = 0;
-  }
-#endif
-
-#ifndef __IGNORE_GUN_DRIVER_MODULE
-  if ((_GUN_DRIVER_NOT_CONNECTED) || (_GUN_DRIVER_NOT_CONFIGURED)) {
-    system_configured = 0;
-  }
-#endif
-
-#ifndef __IGNORE_PULSE_CURRENT_MODULE
-  if ((_PULSE_CURRENT_NOT_CONNECTED) || (_PULSE_CURRENT_NOT_CONFIGURED)) {
-    system_configured = 0;
-  }
-#endif
-
-#ifndef __IGNORE_PULSE_SYNC_MODULE
-  if ((_PULSE_SYNC_NOT_CONNECTED) || (_PULSE_SYNC_NOT_CONFIGURED)) {
-    system_configured = 0;
-  }
-#endif
-
-  return system_configured;
-
-}
-
-unsigned int dan_test[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,1000};
 
 void InitializeA36507(void) {
   unsigned int loop_counter;
@@ -1052,7 +1087,7 @@ void InitializeA36507(void) {
     __delay32(25);
   }
 
-  ETMEEPromConfigureExternalDevice(EEPROM_SIZE_8K_BYTES, FCY_CLK, 400000, EEPROM_I2C_ADDRESS_0, 1);
+  ETMEEPromConfigureExternalDevice(EEPROM_SIZE_8K_BYTES, FCY_CLK, ETM_I2C_400K_BAUD, EEPROM_I2C_ADDRESS_0, 1);
   ConfigureDS3231(&U6_DS3231, I2C_PORT, RTC_DEFAULT_CONFIG, FCY_CLK, ETM_I2C_400K_BAUD);
 
   // Initialize the Can module
@@ -1099,168 +1134,38 @@ void InitializeA36507(void) {
   ETMEEPromReadPage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&global_data_A36507.system_powered_seconds);
 }
 
-#define DEFAULT_UNUSED_EEPROM                     0
 
+void CalculateHeaterWarmupTimers(void) {
+  unsigned long difference;
+  // Read the warmup timers stored in EEPROM
+  ETMEEPromReadPage(EEPROM_PAGE_HEATER_TIMERS, 6, (unsigned int*)&global_data_A36507.magnetron_heater_last_warm_seconds);
+  ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
+  global_data_A36507.time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
 
-#define DEFAULT_MAGNITRON_HEATER_CURRENT       9000
-#define DEFAULT_MAGNET_CURRENT_PER_1          16000
-#define DEFAULT_MAGNET_CURRENT_PER_2          16000
-#define DEFAULT_MAGNET_CURRENT_PER_3          16000
-#define DEFAULT_MAGNET_CURRENT_PER_4          16000
-#define DEFAULT_AFC_HOME_PER_1                19200
-#define DEFAULT_AFC_HOME_PER_2                19200
-#define DEFAULT_AFC_HOME_PER_3                19200
-#define DEFAULT_AFC_HOME_PER_4                19200
+  // Calculate new magnetron heater warm up time remaining
+  difference = global_data_A36507.time_seconds_now - global_data_A36507.magnetron_heater_last_warm_seconds;
+  if (difference > (MAGNETRON_HEATER_WARM_UP_TIME >> 1)) {
+    global_data_A36507.magnetron_heater_warmup_counter_seconds = MAGNETRON_HEATER_WARM_UP_TIME;    
+  } else {
+    global_data_A36507.magnetron_heater_warmup_counter_seconds = (difference << 1);
+  }
 
-
-#define DEFAULT_HV_LAMBDA_HIGH_PER_1          15000
-#define DEFAULT_HV_LAMBDA_LOW_PER_1           15000
-#define DEFAULT_HV_LAMBDA_HIGH_PER_2          15000
-#define DEFAULT_HV_LAMBDA_LOW_PER_2           15000
-#define DEFAULT_HV_LAMBDA_HIGH_PER_3          15000
-#define DEFAULT_HV_LAMBDA_LOW_PER_3           15000
-#define DEFAULT_HV_LAMBDA_HIGH_PER_4          15000
-#define DEFAULT_HV_LAMBDA_LOW_PER_4           15000
-
-
-#define DEFAULT_GUN_DRV_HEATER_VOLT            6300
-#define DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_1   1800
-#define DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_1    1800
-#define DEFAULT_GUN_DRV_CATHODE_PER_1         20000
-#define DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_2   1800
-#define DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_2    1800
-#define DEFAULT_GUN_DRV_CATHODE_PER_2         20000
-#define DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_3   1800
-#define DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_3    1800
-#define DEFAULT_GUN_DRV_CATHODE_PER_3         20000
-#define DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_4   1800
-#define DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_4    1800
-#define DEFAULT_GUN_DRV_CATHODE_PER_4         20000
-
-
-#define DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_A      0x06
-#define DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_B      0x05
-#define DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_C      0x04
-#define DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_D      0x03
-#define DEFAULT_P_SYNC_HIGH_THYRATRON_DELAY_PER_1        0x02
-#define DEFAULT_P_SYNC_HIGH_DOSE_SAMPLE_DELAY_PER_1               0x01
-
-
-#define DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_A      0x16
-#define DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_B      0x15
-#define DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_C      0x14
-#define DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_D      0x13
-#define DEFAULT_P_SYNC_HIGH_AFC_SAMPLE_DELAY_PER_1       0x12
-#define DEFAULT_P_SYNC_HIGH_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1            0x11
-
-
-#define DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_A       0x26
-#define DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_B       0x25
-#define DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_C       0x24
-#define DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_D       0x23
-#define DEFAULT_P_SYNC_LOW_THYRATRON_DELAY_PER_1         0x22
-#define DEFAULT_P_SYNC_LOW_DOSE_SAMPLE_DELAY_PER_1                0x21
-
-#define DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_A       0x36
-#define DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_B       0x35
-#define DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_C       0x34
-#define DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_D       0x33
-#define DEFAULT_P_SYNC_LOW_AFC_SAMPLE_DELAY_PER_1        0x32
-#define DEFAULT_P_SYNC_LOW_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1             0x31
-
-
-
-
-const unsigned int eeprom_default_values_htr_mag_afc[16] = {DEFAULT_MAGNITRON_HEATER_CURRENT,
-							    DEFAULT_MAGNET_CURRENT_PER_1,
-							    DEFAULT_MAGNET_CURRENT_PER_2,
-							    DEFAULT_MAGNET_CURRENT_PER_3,
-							    DEFAULT_MAGNET_CURRENT_PER_4,
-							    DEFAULT_AFC_HOME_PER_1,
-							    DEFAULT_AFC_HOME_PER_2,
-							    DEFAULT_AFC_HOME_PER_3,
-							    DEFAULT_AFC_HOME_PER_4,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM};
-
-const unsigned int eeprom_default_values_hv_lambda[16]   = {DEFAULT_HV_LAMBDA_HIGH_PER_1,
-							    DEFAULT_HV_LAMBDA_LOW_PER_1,
-							    DEFAULT_HV_LAMBDA_HIGH_PER_2,
-							    DEFAULT_HV_LAMBDA_LOW_PER_2,
-							    DEFAULT_HV_LAMBDA_HIGH_PER_3,
-							    DEFAULT_HV_LAMBDA_LOW_PER_3,
-							    DEFAULT_HV_LAMBDA_HIGH_PER_4,
-							    DEFAULT_HV_LAMBDA_LOW_PER_4,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM};
-
-
-
-const unsigned int eeprom_default_values_gun_driver[16]  = {DEFAULT_GUN_DRV_HEATER_VOLT,
-							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_1,
-							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_1,
-							    DEFAULT_GUN_DRV_CATHODE_PER_1,
-							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_2,
-							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_2,
-							    DEFAULT_GUN_DRV_CATHODE_PER_2,
-							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_3,
-							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_3,
-							    DEFAULT_GUN_DRV_CATHODE_PER_3,
-							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_4,
-							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_4,
-							    DEFAULT_GUN_DRV_CATHODE_PER_4,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM};
-
-
-
-const unsigned int eeprom_default_values_p_sync_per_1[16]= {((DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_A),
-							    ((DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_C),
-							    ((DEFAULT_P_SYNC_HIGH_DOSE_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_HIGH_THYRATRON_DELAY_PER_1),
-							    ((DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_A),
-							    ((DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_C),
-							    ((DEFAULT_P_SYNC_HIGH_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_HIGH_AFC_SAMPLE_DELAY_PER_1),
-							    ((DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_A),
-							    ((DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_C),
-							    ((DEFAULT_P_SYNC_LOW_DOSE_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_LOW_THYRATRON_DELAY_PER_1),	
-							    ((DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_A),
-							    ((DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_C),
-							    ((DEFAULT_P_SYNC_LOW_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_LOW_AFC_SAMPLE_DELAY_PER_1),
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM};
-
-
-
-#define EEPROM_REGISTER_HTR_MAG_HEATER_CURRENT                      0x0000
-#define EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT                      0x0001
-#define EEPROM_REGISTER_AFC_HOME_POSITION                           0x0005
-#define EEPROM_REGISTER_AFC_OFFSET                                  0x0009
-#define EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE                     0x000A
-
-#define EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT                0x0010
-#define EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT                 0x0011
-
-#define EEPROM_REGISTER_GUN_DRV_HTR_VOLTAGE                         0x0020
-#define EEPROM_REGISTER_GUN_DRV_HIGH_PULSE_TOP                      0x0021
-#define EEPROM_REGISTER_GUN_DRV_LOW_PULSE_TOP                       0x0022
-#define EEPROM_REGISTER_GUN_DRV_CATHODE                             0x0023
-
-
-
+  // Calculate new thyratron warm up time remaining
+  difference = global_data_A36507.time_seconds_now - global_data_A36507.thyratron_heater_last_warm_seconds;
+  if (difference > (THYRATRON_WARM_UP_TIME >> 1)) {
+    global_data_A36507.thyratron_warmup_counter_seconds = THYRATRON_WARM_UP_TIME;    
+  } else {
+    global_data_A36507.thyratron_warmup_counter_seconds = (difference << 1);
+  }
+  
+  // Calculate new gun driver heater warm up time remaining
+  difference = global_data_A36507.time_seconds_now - global_data_A36507.gun_driver_heater_last_warm_seconds;
+  if (difference > (GUN_DRIVER_HEATER_WARM_UP_TIME >> 1)) {
+    global_data_A36507.gun_driver_heater_warmup_counter_seconds = GUN_DRIVER_HEATER_WARM_UP_TIME;
+  } else {
+    global_data_A36507.gun_driver_heater_warmup_counter_seconds = (difference << 1);
+  }
+}
 
 
 void ReadSystemConfigurationFromEEProm(unsigned int personality) {
@@ -1292,6 +1197,36 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
 
   // Load data for Pulse Sync
   ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 12, (unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3);
+}
+
+
+void FlashLeds(void) {
+  switch (((global_data_A36507.startup_counter >> 4) & 0b11)) {
+    
+  case 0:
+    PIN_OUT_ETM_LED_OPERATIONAL_GREEN = !OLL_LED_ON;
+    PIN_OUT_ETM_LED_TEST_POINT_A_RED = !OLL_LED_ON;
+    PIN_OUT_ETM_LED_TEST_POINT_B_GREEN = !OLL_LED_ON;
+    break;
+    
+  case 1:
+    PIN_OUT_ETM_LED_OPERATIONAL_GREEN = OLL_LED_ON;
+    PIN_OUT_ETM_LED_TEST_POINT_A_RED = !OLL_LED_ON;
+    PIN_OUT_ETM_LED_TEST_POINT_B_GREEN = !OLL_LED_ON;
+    break;
+    
+  case 2:
+    PIN_OUT_ETM_LED_OPERATIONAL_GREEN = OLL_LED_ON;
+    PIN_OUT_ETM_LED_TEST_POINT_A_RED = OLL_LED_ON;
+    PIN_OUT_ETM_LED_TEST_POINT_B_GREEN = !OLL_LED_ON;
+    break;
+    
+  case 3:
+    PIN_OUT_ETM_LED_OPERATIONAL_GREEN = OLL_LED_ON;
+    PIN_OUT_ETM_LED_TEST_POINT_A_RED = OLL_LED_ON;
+    PIN_OUT_ETM_LED_TEST_POINT_B_GREEN = OLL_LED_ON;
+    break;
+  }
 }
 
 
@@ -1469,10 +1404,6 @@ void ExecuteEthernetCommand(unsigned int personality) {
       etm_can_gun_driver_mirror.gun_cathode_voltage_set_point = next_message.data_2;
       eeprom_register = next_message.index + personality * 3;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
-      
-
-
-
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_A_B:
       *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3 = next_message.data_2;
@@ -1546,9 +1477,6 @@ void ExecuteEthernetCommand(unsigned int personality) {
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
-      
-
-
     case REGISTER_CMD_AFC_MANUAL_TARGET_POSITION:
       can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 3));
       can_message.word3 = ETM_CAN_REGISTER_AFC_CMD_SELECT_MANUAL_MODE;
@@ -1565,7 +1493,6 @@ void ExecuteEthernetCommand(unsigned int personality) {
       can_message.word0 = next_message.data_2;
       ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
       MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
-
       break;
 
     case REGISTER_CMD_COOLANT_INTERFACE_ALLOW_25_MORE_SF6_PULSES:
@@ -1621,7 +1548,6 @@ void ExecuteEthernetCommand(unsigned int personality) {
     case REGISTER_SPECIAL_ECB_RESET_SLAVE:
       SendSlaveReset(next_message.data_2);
       break;
-      
 
     /*
     case REGISTER_SPECIAL_SEND_ALL_CAL_DATA_TO_GUI:
@@ -1688,8 +1614,6 @@ void ExecuteEthernetCommand(unsigned int personality) {
 
     }
   }
-  
-  
 }
 
 

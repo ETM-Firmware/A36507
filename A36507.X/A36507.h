@@ -271,4 +271,23 @@ extern A36507GlobalVars global_data_A36507;
 
 
 
+
+#define EEPROM_REGISTER_HTR_MAG_HEATER_CURRENT                      0x0000
+#define EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT                      0x0001
+#define EEPROM_REGISTER_AFC_HOME_POSITION                           0x0005
+#define EEPROM_REGISTER_AFC_OFFSET                                  0x0009
+#define EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE                     0x000A
+
+#define EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT                0x0010
+#define EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT                 0x0011
+
+#define EEPROM_REGISTER_GUN_DRV_HTR_VOLTAGE                         0x0020
+#define EEPROM_REGISTER_GUN_DRV_HIGH_PULSE_TOP                      0x0021
+#define EEPROM_REGISTER_GUN_DRV_LOW_PULSE_TOP                       0x0022
+#define EEPROM_REGISTER_GUN_DRV_CATHODE                             0x0023
+
+
+
+
+
 #endif

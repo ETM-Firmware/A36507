@@ -518,6 +518,15 @@ typedef struct {
 
 extern TYPE_EVENT_LOG event_log;
 
+/* 
+   The ethernet control board keeps a record of standard data from all the slave boards
+   This includes status, low level errors, configuration, and debug information
+   This is a hack to allow the data on the master to be accessed the same way as it is on the slave boards
+*/
+#define etm_can_status_register   etm_can_ethernet_board_data.status_data
+#define local_debug_data          etm_can_ethernet_board_data.debug_data
+#define local_can_errors          etm_can_ethernet_board_data.can_status
+#define etm_can_my_configuration  etm_can_ethernet_board_data.configuration
 
 
 
