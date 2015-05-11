@@ -229,6 +229,8 @@ int main(void) {
   }
 }
 
+// DPARKER - We need to check the external reset detect at startup and if it is a real power cycle, we need to set the _SYNC_CONTROL_CLEAR_DEBUG_DATA durring startup process
+
 void DoStateMachine(void) {
   
   switch (global_data_A36507.control_state) {

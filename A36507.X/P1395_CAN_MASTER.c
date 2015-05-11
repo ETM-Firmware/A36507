@@ -84,17 +84,21 @@ void ETMCanMasterTimedTransmit(void);
   
 */
 
-// These are commands that the ECB sends to sub boards
-void ETMCanMasterSenseSync();
-void ETMCanMasterHVLambdaUpdateOutput(void);
-void ETMCanMasterAFCUpdateHomeOffset(void);
-void ETMCanMasterHtrMagnetUpdateOutput(void);
-void ETMCanMasterGunDriverUpdatePulseTop(void);
-void ETMCanMasterGunDriverUpdateHeaterCathode(void);
-void ETMCanMasterPulseSyncUpdateHighRegZero(void);
-void ETMCanMasterPulseSyncUpdateHighRegOne(void);
-void ETMCanMasterPulseSyncUpdateLowRegZero(void);
-void ETMCanMasterPulseSyncUpdateLowRegOne(void);
+
+
+
+// These are the regularly scheduled commands that the ECB sends to sub boards
+void ETMCanMasterSendSync();                         // This gets sent out 1 time every 50ms
+void ETMCanMasterHVLambdaUpdateOutput(void);          // This gets sent out 1 time every 200ms
+void ETMCanMasterHtrMagnetUpdateOutput(void);         // This gets sent out 1 time every 200ms 
+void ETMCanMasterGunDriverUpdatePulseTop(void);       // This gets sent out 1 time every 200ms
+void ETMCanMasterAFCUpdateHomeOffset(void);           // This gets sent out at 200ms / 6 = 1.2 Seconds
+void ETMCanMasterGunDriverUpdateHeaterCathode(void);  // This gets sent out at 200ms / 6 = 1.2 Seconds
+void ETMCanMasterPulseSyncUpdateHighRegZero(void);    // This gets sent out at 200ms / 6 = 1.2 Seconds
+void ETMCanMasterPulseSyncUpdateHighRegOne(void);     // This gets sent out at 200ms / 6 = 1.2 Seconds
+void ETMCanMasterPulseSyncUpdateLowRegZero(void);     // This gets sent out at 200ms / 6 = 1.2 Seconds
+void ETMCanMasterPulseSyncUpdateLowRegOne(void);      // This gets sent out at 200ms / 6 = 1.2 Seconds
+
 // DPARKER how are the LEDs set on Pulse Sync Board?? Missing that command
 
 void ETMCanMasterSet2FromSlave(ETMCanMessage* message_ptr);
@@ -118,6 +122,12 @@ void ETMCanMasterProcessLogData(void);
 
 
 void ETMCanMasterClearDebug(void);
+/*
+  This sets all the debug data to zero.
+  This is usefull when debugging
+  It is also required on power cycle because persistent variables will be set to random value
+*/
+
 
 void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, unsigned long can_operation_led, unsigned int can_interrupt_priority) {
   unsigned long timer_period_value;
@@ -322,7 +332,7 @@ void ETMCanMasterTimedTransmit(void) {
 
   if ((_STATUS_X_RAY_DISABLED == 0) && (_SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY)) {
     // We need to immediately send out a sync message
-    ETMCanMasterSenseSync();
+    ETMCanMasterSendSync();
   }
 
 
@@ -333,7 +343,7 @@ void ETMCanMasterTimedTransmit(void) {
 
     if (!_STATUS_PERSONALITY_LOADED) {
       // Just send out a sync message
-      ETMCanMasterSenseSync();
+      ETMCanMasterSendSync();
     } else {
       master_high_speed_update_index++;
       master_high_speed_update_index &= 0x7;
@@ -343,7 +353,7 @@ void ETMCanMasterTimedTransmit(void) {
 	{
 	case 0x0:
 	  // Send Sync Command (this is on TX1) - This also includes Pulse Sync Enable/Disable
-	  ETMCanMasterSenseSync();
+	  ETMCanMasterSendSync();
 	  break;
 	  
 	case 0x1:
@@ -353,7 +363,7 @@ void ETMCanMasterTimedTransmit(void) {
 	  
 	case 0x2:
 	  // Send Sync Command (this is on TX1) - This also includes Pulse Sync Enable/Disable
-	  ETMCanMasterSenseSync();
+	  ETMCanMasterSendSync();
 	  break;
 	  
 	case 0x3:
@@ -363,7 +373,7 @@ void ETMCanMasterTimedTransmit(void) {
 	  
 	case 0x4:
 	  // Send Sync Command (this is on TX1) - This also includes Pulse Sync Enable/Disable
-	  ETMCanMasterSenseSync();
+	  ETMCanMasterSendSync();
 	  break;
 	  
 	case 0x5:
@@ -373,7 +383,7 @@ void ETMCanMasterTimedTransmit(void) {
 	  
 	case 0x6:
 	  // Send Sync Command (this is on TX1) - This also includes Pulse Sync Enable/Disable
-	  ETMCanMasterSenseSync();
+	  ETMCanMasterSendSync();
 	  break;
 	  
 	case 0x7:
@@ -393,18 +403,23 @@ void ETMCanMasterTimedTransmit(void) {
 	  if (master_low_speed_update_index == 0) {
 	    ETMCanMasterGunDriverUpdateHeaterCathode();  
 	  }
+
 	  if (master_low_speed_update_index == 1) {
 	    ETMCanMasterAFCUpdateHomeOffset();	   
 	  }
+
 	  if (master_low_speed_update_index == 2) {
 	    ETMCanMasterPulseSyncUpdateHighRegZero();	   
 	  }
+
 	  if (master_low_speed_update_index == 3) {
 	    ETMCanMasterPulseSyncUpdateHighRegOne();	   
 	  }
+
 	  if (master_low_speed_update_index == 4) {
 	    ETMCanMasterPulseSyncUpdateLowRegZero();	   
 	  }
+
 	  if (master_low_speed_update_index == 5) {
 	    ETMCanMasterPulseSyncUpdateLowRegOne();	   
 	  }
@@ -417,7 +432,7 @@ void ETMCanMasterTimedTransmit(void) {
 
 
 
-void ETMCanMasterSenseSync(void) {
+void ETMCanMasterSendSync(void) {
   ETMCanMessage sync_message;
   sync_message.identifier = ETM_CAN_MSG_SYNC_TX;
   sync_message.word0 = _SYNC_CONTROL_WORD;
