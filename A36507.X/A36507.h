@@ -23,7 +23,7 @@
 //#define __IGNORE_HEATER_MAGNET_MODULE
 //#define __IGNORE_HV_LAMBDA_MODULE
 //#define __IGNORE_PULSE_CURRENT_MODULE
-//#define __IGNORE_PULSE_SYNC_MODULE
+#define __IGNORE_PULSE_SYNC_MODULE
 //#define __IGNORE_TCU
 
 
@@ -112,6 +112,8 @@
 #define OLL_UART_TX_DRIVER_ENABLE             1
 
 #define PIN_IN_ETM_RESET_DETECT               _RG14
+#define PIN_OUT_ETM_RESET_DETECT              _LATG14
+#define TRIS_PIN_ETM_RESET_RETECT             _TRISG14
 
 #define PIN_OUT_ETM_LED_OPERATIONAL_GREEN     _LATA7
 #define PIN_OUT_ETM_LED_TEST_POINT_A_RED      _LATG12
@@ -213,6 +215,7 @@ extern A36507GlobalVars global_data_A36507;
 
 #define _STATUS_X_RAY_DISABLED                          _STATUS_0
 #define _STATUS_PERSONALITY_LOADED                      _STATUS_1
+#define _STATUS_LAST_RESET_WAS_POWER_CYCLE              _STATUS_2
 
 #define _FAULT_DRIVE_UP_TIMEOUT                         _FAULT_0
 #define _FAULT_COOLING_NOT_CONNECTED                    _FAULT_1

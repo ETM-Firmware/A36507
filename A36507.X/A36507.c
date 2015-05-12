@@ -8,7 +8,7 @@
 // ------------------ PROCESSOR CONFIGURATION ------------------------//
 _FOSC(ECIO_PLL16 & CSW_FSCM_OFF);                                         // 5Mhz External Osc created 20Mhz FCY
 _FWDT(WDT_ON & WDTPSA_512 & WDTPSB_8);                                    // 8 Second watchdog timer 
-_FBORPOR(PWRT_64 & NONE & PBOR_OFF & MCLR_EN);                            // 64ms Power up timer, Low Voltage Reset disabled
+_FBORPOR(PWRT_4 & NONE & PBOR_OFF & MCLR_EN);                             // 4ms Power up timer, Low Voltage Reset disabled
 _FBS(WR_PROTECT_BOOT_OFF & NO_BOOT_CODE & NO_BOOT_EEPROM & NO_BOOT_RAM);  // 
 _FSS(WR_PROT_SEC_OFF & NO_SEC_CODE & NO_SEC_EEPROM & NO_SEC_RAM);         //
 _FGS(CODE_PROT_OFF);                                                      //
@@ -660,49 +660,49 @@ unsigned int CheckAllModulesConfigured(void) {
   system_configured = 1;
 
 #ifndef __IGNORE_HV_LAMBDA_MODULE
-  if ((_HV_LAMBDA_NOT_CONNECTED) || (_HV_LAMBDA_NOT_CONFIGURED)) {
+  if ((board_com_fault.hv_lambda_board) || (_HV_LAMBDA_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
 
 #ifndef __IGNORE_ION_PUMP_MODULE
-  if ((_ION_PUMP_NOT_CONNECTED) || (_ION_PUMP_NOT_CONFIGURED)) {
+  if ((board_com_fault.ion_pump_board) || (_ION_PUMP_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
 
 #ifndef __IGNORE_AFC_MODULE
-  if ((_AFC_NOT_CONNECTED) || (_AFC_NOT_CONFIGURED)) {
+  if ((board_com_fault.afc_board) || (_AFC_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif  
 
 #ifndef __IGNORE_COOLING_INTERFACE_MODULE
-  if ((_COOLING_NOT_CONNECTED) || (_COOLING_NOT_CONFIGURED)) {
+  if ((board_com_fault.cooling_interface_board) || (_COOLING_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif  
 
 #ifndef __IGNORE_HEATER_MAGNET_MODULE
-  if ((_HEATER_MAGNET_NOT_CONNECTED) || (_HEATER_MAGNET_NOT_CONFIGURED)) {
+  if ((board_com_fault.heater_magnet_board) || (_HEATER_MAGNET_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
 
 #ifndef __IGNORE_GUN_DRIVER_MODULE
-  if ((_GUN_DRIVER_NOT_CONNECTED) || (_GUN_DRIVER_NOT_CONFIGURED)) {
+  if ((board_com_fault.gun_driver_board) || (_GUN_DRIVER_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
 
 #ifndef __IGNORE_PULSE_CURRENT_MODULE
-  if ((_PULSE_CURRENT_NOT_CONNECTED) || (_PULSE_CURRENT_NOT_CONFIGURED)) {
+  if ((board_com_fault.magnetron_current_board) || (_PULSE_CURRENT_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
 
 #ifndef __IGNORE_PULSE_SYNC_MODULE
-  if ((_PULSE_SYNC_NOT_CONNECTED) || (_PULSE_SYNC_NOT_CONFIGURED)) {
+  if ((board_com_fault.pulse_sync_board) || (_PULSE_SYNC_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
@@ -750,7 +750,7 @@ void DoA36507(void) {
   // Check to see if cooling is present
   _SYNC_CONTROL_COOLING_FAULT = 0;
 #ifndef __IGNORE_COOLING_INTERFACE_MODULE
-  if (_COOLING_NOT_CONNECTED) {
+  if (board_com_fault.cooling_interface_board) {
     _SYNC_CONTROL_COOLING_FAULT = 1;
     _FAULT_COOLING_NOT_CONNECTED = 1;
   }
@@ -852,6 +852,7 @@ void DoA36507(void) {
     etm_can_ethernet_board_data.mirror_thyratron_warmup_counter_seconds = global_data_A36507.thyratron_warmup_counter_seconds;
     etm_can_ethernet_board_data.mirror_magnetron_heater_warmup_counter_seconds = global_data_A36507.magnetron_heater_warmup_counter_seconds;
     etm_can_ethernet_board_data.mirror_gun_driver_heater_warmup_counter_seconds = global_data_A36507.gun_driver_heater_warmup_counter_seconds;
+    etm_can_ethernet_board_data.mirror_board_com_fault = *(unsigned int*)&board_com_fault;
 
     if (global_data_A36507.control_state == STATE_DRIVE_UP) {
       global_data_A36507.drive_up_timer++;
@@ -892,7 +893,7 @@ void DoA36507(void) {
 	global_data_A36507.thyratron_heater_last_warm_seconds = global_data_A36507.time_seconds_now;
       }
       
-      if ((!_HEATER_MAGNET_NOT_CONNECTED) && (!_HEATER_MAGNET_OFF)) {
+      if ((!board_com_fault.heater_magnet_board) && (!_HEATER_MAGNET_OFF)) {
 	// The Magnetron heater is on
 	if (global_data_A36507.magnetron_heater_warmup_counter_seconds > 0) {
 	  global_data_A36507.magnetron_heater_warmup_counter_seconds--;
@@ -906,7 +907,7 @@ void DoA36507(void) {
 	}
       }
 	
-      if (!_GUN_DRIVER_NOT_CONNECTED && !_GUN_HEATER_OFF) {
+      if (!board_com_fault.gun_driver_board && !_GUN_HEATER_OFF) {
 	// The gun heater is on
 	if (global_data_A36507.gun_driver_heater_warmup_counter_seconds > 0) {
 	  global_data_A36507.gun_driver_heater_warmup_counter_seconds--;
@@ -1042,6 +1043,9 @@ void UpdateHeaterScale() {
 void InitializeA36507(void) {
   unsigned int loop_counter;
 
+
+
+
   _FAULT_REGISTER = 0;
   _CONTROL_REGISTER = 0;
 
@@ -1054,14 +1058,32 @@ void InitializeA36507(void) {
 
 
   // Set the not connected bits for all boards
-  _HV_LAMBDA_NOT_CONNECTED     = 1;
-  _ION_PUMP_NOT_CONNECTED      = 1;
-  _AFC_NOT_CONNECTED           = 1;
-  _COOLING_NOT_CONNECTED       = 1;
-  _HEATER_MAGNET_NOT_CONNECTED = 1;
-  _GUN_DRIVER_NOT_CONNECTED    = 1;
-  _PULSE_CURRENT_NOT_CONNECTED = 1;
-  _PULSE_SYNC_NOT_CONNECTED    = 1;
+  board_com_fault.hv_lambda_board         = 1;
+  board_com_fault.ion_pump_board          = 1;
+  board_com_fault.afc_board               = 1;
+  board_com_fault.cooling_interface_board = 1;
+  board_com_fault.heater_magnet_board     = 1;
+  board_com_fault.gun_driver_board        = 1;
+  board_com_fault.magnetron_current_board = 1;
+  board_com_fault.pulse_sync_board        = 1;
+  //_HV_LAMBDA_NOT_CONNECTED     = 1;
+  //_ION_PUMP_NOT_CONNECTED      = 1;
+  //_AFC_NOT_CONNECTED           = 1;
+  //_COOLING_NOT_CONNECTED       = 1;
+  //_HEATER_MAGNET_NOT_CONNECTED = 1;
+  //_GUN_DRIVER_NOT_CONNECTED    = 1;
+  //_PULSE_CURRENT_NOT_CONNECTED = 1;
+  //_PULSE_SYNC_NOT_CONNECTED    = 1;
+
+
+    
+  // Check it reset was a result of full power cycle
+  _STATUS_LAST_RESET_WAS_POWER_CYCLE = 0;
+  if (PIN_IN_ETM_RESET_DETECT) {
+    // The power was off for more than a couple hundered milliseconds
+    // All values in RAM are random.
+    _STATUS_LAST_RESET_WAS_POWER_CYCLE = 1;
+  }
 
 
   // Initialize all I/O Registers
@@ -1071,6 +1093,11 @@ void InitializeA36507(void) {
   TRISD = A36507_TRISD_VALUE;
   TRISF = A36507_TRISF_VALUE;
   TRISG = A36507_TRISG_VALUE;
+
+
+  // Initialize the reset detect circuit
+  TRIS_PIN_ETM_RESET_RETECT = 0;  // Pin is an output
+  PIN_OUT_ETM_RESET_DETECT = 0;   // Pin is low so that reset detect capacitor is charged 
 
   // Initialize TMR2
   PR2   = PR2_VALUE_10_MILLISECONDS;

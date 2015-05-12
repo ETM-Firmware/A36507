@@ -18,55 +18,37 @@ typedef struct {
   unsigned long led;
 } TYPE_CAN_PARAMETERS;
 
-TYPE_CAN_PARAMETERS can_params;
-
-TYPE_EVENT_LOG event_log;
 
 
-// Global Variables
-ETMCanMessageBuffer etm_can_rx_message_buffer;
-ETMCanMessageBuffer etm_can_tx_message_buffer;
-ETMCanMessageBuffer etm_can_rx_data_log_buffer;
 
-// Public Variables
+// --------- Global Buffers --------------- //
+TYPE_EVENT_LOG              event_log;
+ETMCanHighSpeedData         high_speed_data_buffer_a[HIGH_SPEED_DATA_BUFFER_SIZE];
+ETMCanHighSpeedData         high_speed_data_buffer_b[HIGH_SPEED_DATA_BUFFER_SIZE];
+
+
+// --------- Local Buffers ---------------- // 
+ETMCanMessageBuffer         etm_can_rx_data_log_buffer;
+ETMCanMessageBuffer         etm_can_rx_message_buffer;
+ETMCanMessageBuffer         etm_can_tx_message_buffer;
+
+
+// ------------- Global Variables ------------ //
 unsigned int etm_can_next_pulse_level;
 unsigned int etm_can_next_pulse_count;
 
 
-
-// Public Debug and Status registers
-//ETMCanSystemDebugData local_debug_data;
-//ETMCanStatusRegister  etm_can_status_register;
-//ETMCanAgileConfig     etm_can_my_configuration;
-//ETMCanCanStatus       local_can_errors;
-ETMCanSyncMessage     etm_can_sync_message;
-
-
-
-
-
+// --------------------- Local Variables -------------------------- //
 unsigned int master_high_speed_update_index;
 unsigned int master_low_speed_update_index;
-
 P1395BoardBits board_status_received;
-
-typedef struct {
-  unsigned int reset_count;
-  unsigned int can_timeout_count;
-} PersistentData;
-volatile PersistentData etm_can_persistent_data __attribute__ ((persistent));
-
-
-void ETMCanMasterProcessMessage(void);
-
-void ETMCanMasterCheckForTimeOut(void);
-
-
-ETMCanHighSpeedData high_speed_data_buffer_a[HIGH_SPEED_DATA_BUFFER_SIZE];
-ETMCanHighSpeedData high_speed_data_buffer_b[HIGH_SPEED_DATA_BUFFER_SIZE];
+P1395BoardBits board_com_fault;
+TYPE_CAN_PARAMETERS can_params;
 
 
 
+// --------- Ram Structures that store the module status ---------- //
+ETMCanRamMirrorEthernetBoard     etm_can_ethernet_board_data;
 ETMCanRamMirrorHVLambda          etm_can_hv_lambda_mirror;
 ETMCanRamMirrorIonPump           etm_can_ion_pump_mirror;
 ETMCanRamMirrorAFC               etm_can_afc_mirror;
@@ -75,7 +57,30 @@ ETMCanRamMirrorHeaterMagnet      etm_can_heater_magnet_mirror;
 ETMCanRamMirrorGunDriver         etm_can_gun_driver_mirror;
 ETMCanRamMirrorMagnetronCurrent  etm_can_magnetron_current_mirror;
 ETMCanRamMirrorPulseSync         etm_can_pulse_sync_mirror;
-ETMCanRamMirrorEthernetBoard     etm_can_ethernet_board_data;
+
+
+ETMCanSyncMessage                etm_can_sync_message;                // This is the sync message that the ECB sends out, only word zero is used at this time
+
+
+
+
+typedef struct {
+  unsigned int reset_count;
+  unsigned int can_timeout_count;
+} PersistentData;
+
+volatile PersistentData etm_can_persistent_data __attribute__ ((persistent));
+
+
+void ETMCanMasterProcessMessage(void);
+
+void ETMCanMasterCheckForTimeOut(void);
+
+
+
+
+
+
 
 
 void ETMCanMasterTimedTransmit(void);
@@ -142,9 +147,9 @@ void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, uns
   etm_can_persistent_data.reset_count++;
   
   _SYNC_CONTROL_WORD = 0;
-  etm_can_sync_message.sync_1 = 1;
-  etm_can_sync_message.sync_2 = 2;
-  etm_can_sync_message.sync_3 = 3;
+  etm_can_sync_message.sync_1 = 0;
+  etm_can_sync_message.sync_2 = 0;
+  etm_can_sync_message.sync_3 = 0;
   
   local_debug_data.reset_count = etm_can_persistent_data.reset_count;
   local_can_errors.timeout = etm_can_persistent_data.can_timeout_count;
@@ -215,7 +220,7 @@ void ETMCanMasterInitialize(unsigned long fcy, unsigned int etm_can_address, uns
   CXCTRL = CXCTRL_OPERATE_MODE_VALUE;
   while(CXCTRLbits.OPMODE != 0);
   
-  etm_can_ethernet_board_data.status_received_register = 0x0000;
+  //etm_can_ethernet_board_data.status_received_register = 0x0000;
 
   // Enable Can interrupt
   _CXIE = 1;
@@ -1268,59 +1273,172 @@ void __attribute__((interrupt(__save__(CORCON,SR)), no_auto_psv)) _CXInterrupt(v
 
 
 void ETMCanMasterCheckForTimeOut(void) {
+  
+  // Ion Pump Board
+  if (board_status_received.ion_pump_board) {                           // The slave board is connected
+    if (board_com_fault.ion_pump_board) {                                      // The slave board has regained communication
+      SendToEventLog(LOG_ID_CONNECTED_ION_PUMP_BOARD, 0);
+    }
+    board_com_fault.ion_pump_board = 0;
+    //_ION_PUMP_NOT_CONNECTED = 0;
+  }
+  
+  // Pulse Current Monitor Board
+  if (board_status_received.magnetron_current_board) {                  // The slave board is connected
+    if (board_com_fault.magnetron_current_board) {                                 // The slave board has regained communication
+      SendToEventLog(LOG_ID_CONNECTED_MAGNETRON_CURRENT_BOARD, 0);
+    }
+    board_com_fault.magnetron_current_board = 0;
+    //_PULSE_CURRENT_NOT_CONNECTED = 0;
+  }
+  
+  // Pulse Sync Board
+  if (board_status_received.pulse_sync_board) {                         // The slave board is connected
+    if (board_com_fault.pulse_sync_board) {                                    // The slave board has regained communication
+      SendToEventLog(LOG_ID_CONNECTED_PULSE_SYNC_BOARD, 0);
+    }
+    board_com_fault.pulse_sync_board = 0;
+    //_PULSE_SYNC_NOT_CONNECTED = 0;
+  }
+  
+  // HV Lambda Board
+  if (board_status_received.hv_lambda_board) {                          // The slave board is connected
+    if (board_com_fault.hv_lambda_board) {                                     // The slave board has regained communication
+      SendToEventLog(LOG_ID_CONNECTED_HV_LAMBDA_BOARD, 0);
+    }
+    board_com_fault.hv_lambda_board = 0;
+    //_HV_LAMBDA_NOT_CONNECTED = 0;
+  }
+  
+  // AFC Board
+  if (board_status_received.afc_board) {                                // The slave board is connected
+    if (board_com_fault.afc_board) {                                           // The slave board has regained communication
+      SendToEventLog(LOG_ID_CONNECTED_AFC_BOARD, 0);
+    }
+    board_com_fault.afc_board = 0;
+    //_AFC_NOT_CONNECTED = 0;
+  }
+  
+  // Cooling Interface
+  if (board_status_received.cooling_interface_board) {                  // The slave board is connected
+    if (board_com_fault.cooling_interface_board) {                                       // The slave board has regained communication
+      SendToEventLog(LOG_ID_CONNECTED_COOLING_BOARD, 0);
+    }
+    board_com_fault.cooling_interface_board = 0;
+    //_COOLING_NOT_CONNECTED = 0;
+  }
+  
+  // Heater Magnet Supply
+  if (board_status_received.heater_magnet_board) {                      // The slave board is connected
+    if (board_com_fault.heater_magnet_board) {                                 // The slave board has regained communication
+      SendToEventLog(LOG_ID_CONNECTED_HEATER_MAGNET_BOARD, 0);
+    }
+    board_com_fault.heater_magnet_board = 0;
+    //_HEATER_MAGNET_NOT_CONNECTED = 0;
+  }
+  
+  // Gun Driver
+  if (board_status_received.gun_driver_board) {                         // The slave board is not connected
+    if (board_com_fault.gun_driver_board) {                                    // The slave board has regained communication
+      SendToEventLog(LOG_ID_CONNECTED_GUN_DRIVER_BOARD, 0);
+    }
+    board_com_fault.gun_driver_board = 0;
+    //_GUN_DRIVER_NOT_CONNECTED = 0;
+  }
+  
   if (_T5IF) {
+    // At least one board failed to communicate durring the T5 period
     _T5IF = 0;
     local_can_errors.timeout++;
     etm_can_persistent_data.can_timeout_count = local_can_errors.timeout;
     _CONTROL_CAN_COM_LOSS = 1;
-    
 
-    // Indicate which board(s) are not connected
-    _ION_PUMP_NOT_CONNECTED        = !board_status_received.ion_pump_board;
-    _PULSE_CURRENT_NOT_CONNECTED   = !board_status_received.magnetron_current_board;
-    _PULSE_SYNC_NOT_CONNECTED      = !board_status_received.pulse_sync_board;
-    _HV_LAMBDA_NOT_CONNECTED       = !board_status_received.hv_lambda_board;
-    _AFC_NOT_CONNECTED             = !board_status_received.afc_board;
-    _COOLING_NOT_CONNECTED         = !board_status_received.cooling_interface_board;
-    _HEATER_MAGNET_NOT_CONNECTED   = !board_status_received.heater_magnet_board;
-    _GUN_DRIVER_NOT_CONNECTED      = !board_status_received.gun_driver_board;
 
-    if (!board_status_received.ion_pump_board) {
+    // ---------------- Set the state _*_NOT_CONNECTED bit and log when the board disconnects and reconnects -------------- //
+
+    // Ion Pump Board
+    if (!board_status_received.ion_pump_board) {                          // The slave board is not connected
       global_data_A36507.no_connect_count_ion_pump_board++;
-      SendToEventLog(LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD, 0);
+      if (!board_com_fault.ion_pump_board) {                              // The slave board has lost communication
+	SendToEventLog(LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD, 0);
+      }
+      board_com_fault.ion_pump_board = 1;
+      //_ION_PUMP_NOT_CONNECTED = 1;
     }
-    if (!board_status_received.magnetron_current_board) {
+    
+    // Pulse Current Monitor Board
+    if (!board_status_received.magnetron_current_board) {                 // The slave board is not connected
       global_data_A36507.no_connect_count_magnetron_current_board++;
-      SendToEventLog(LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD, 0);
+      if (!board_com_fault.magnetron_current_board) {                                // The slave board has lost communication
+	SendToEventLog(LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD, 0);
+      }
+      board_com_fault.magnetron_current_board = 1;
+      //_PULSE_CURRENT_NOT_CONNECTED = 1;
     }
-    if (!board_status_received.pulse_sync_board) {
-      global_data_A36507.no_connect_count_pulse_sync_board++;
-      SendToEventLog(LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD, 0);
-    }
-    if (!board_status_received.hv_lambda_board) {
-      global_data_A36507.no_connect_count_hv_lambda_board++;
-      SendToEventLog(LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD, 0);
-    }
-    if (!board_status_received.afc_board) {
-      global_data_A36507.no_connect_count_afc_board++;
-      SendToEventLog(LOG_ID_NOT_CONNECTED_AFC_BOARD, 0);
-    }
-    if (!board_status_received.cooling_interface_board) {
-      global_data_A36507.no_connect_count_cooling_interface_board++;
-      SendToEventLog(LOG_ID_NOT_CONNECTED_COOLING_INTERFACE_BOARD, 0);
-    }
-    if (!board_status_received.heater_magnet_board) {
-      global_data_A36507.no_connect_count_heater_magnet_board++;
-      SendToEventLog(LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD, 0);
-    }
-    if (!board_status_received.gun_driver_board) {
-      global_data_A36507.no_connect_count_gun_driver_board++;
-      SendToEventLog(LOG_ID_NOT_CONNECTED_GUN_DRIVER, 0);
-    }
-    
 
-    etm_can_ethernet_board_data.status_received_register = 0x0000;
-    
+    // Pulse Sync Board
+    if (!board_status_received.pulse_sync_board) {                        // The slave board is not connected
+      global_data_A36507.no_connect_count_pulse_sync_board++;
+      if (!board_com_fault.pulse_sync_board) {                                   // The slave board has lost communication
+	SendToEventLog(LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD, 0);
+      }
+      board_com_fault.pulse_sync_board = 1;
+      //_PULSE_SYNC_NOT_CONNECTED = 1;
+    }
+
+    // HV Lambda Board
+    if (!board_status_received.hv_lambda_board) {                         // The slave board is not connected
+      global_data_A36507.no_connect_count_hv_lambda_board++;
+      if (!board_com_fault.hv_lambda_board) {                                    // The slave board has lost communication
+	SendToEventLog(LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD, 0);
+      }
+      board_com_fault.hv_lambda_board = 1;
+      //_HV_LAMBDA_NOT_CONNECTED = 1;
+    }
+
+    // AFC Board
+    if (!board_status_received.afc_board) {                               // The slave board is not connected
+      global_data_A36507.no_connect_count_afc_board++;
+      if (!board_com_fault.afc_board) {                                   // The slave board has lost communication
+	SendToEventLog(LOG_ID_NOT_CONNECTED_AFC_BOARD, 0);
+      }
+      board_com_fault.afc_board = 1;
+      //_AFC_NOT_CONNECTED = 1;
+    }    
+
+    // Cooling Interface
+    if (!board_status_received.cooling_interface_board) {                 // The slave board is not connected
+      global_data_A36507.no_connect_count_cooling_interface_board++;
+      if (!board_com_fault.cooling_interface_board) {                                      // The slave board has lost communication
+	SendToEventLog(LOG_ID_NOT_CONNECTED_COOLING_BOARD, 0);
+      }
+      board_com_fault.cooling_interface_board = 1;
+      //_COOLING_NOT_CONNECTED = 1;
+    }
+
+    // Heater Magnet Supply
+    if (!board_status_received.heater_magnet_board) {                     // The slave board is not connected
+      global_data_A36507.no_connect_count_heater_magnet_board++;
+      if (!board_com_fault.heater_magnet_board) {                                // The slave board has lost communication
+	SendToEventLog(LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD, 0);
+      }
+      board_com_fault.heater_magnet_board = 1;
+      //_HEATER_MAGNET_NOT_CONNECTED = 1;
+    }
+
+    // Gun Driver
+    if (!board_status_received.gun_driver_board) {                        // The slave board is not connected
+      global_data_A36507.no_connect_count_gun_driver_board++;
+      if (!board_com_fault.gun_driver_board) {                                   // The slave board has lost communication
+	SendToEventLog(LOG_ID_NOT_CONNECTED_GUN_DRIVER_BOARD, 0);
+      }
+      board_com_fault.gun_driver_board = 1;
+      //_GUN_DRIVER_NOT_CONNECTED = 1;
+    }
+
+    // Clear the status received register
+    *(unsigned int*)&board_status_received = 0x0000;
+
   }
 }
 
@@ -1479,4 +1597,5 @@ void SendToEventLog(unsigned int log_id, unsigned int data) {
   event_log.write_index++;
   event_log.write_index &= 0x7F;
   global_data_A36507.event_log_counter++;
+  // DPARKER need to check the EEPROM and TCP locations and advance them as nesseasry so that we don't pass them when advancing the write_index
 }
