@@ -5,6 +5,13 @@
 #define FCY_CLK  20000000
 
 
+volatile unsigned int intcon1_mirror __attribute__ ((persistent));
+volatile unsigned int intcon2_mirror __attribute__ ((persistent));
+volatile unsigned int ifs0_mirror __attribute__ ((persistent));
+volatile unsigned int ifs1_mirror __attribute__ ((persistent));
+volatile unsigned int ifs2_mirror __attribute__ ((persistent));
+
+
 // ------------------ PROCESSOR CONFIGURATION ------------------------//
 _FOSC(ECIO_PLL16 & CSW_FSCM_OFF);                                         // 5Mhz External Osc created 20Mhz FCY
 _FWDT(WDT_ON & WDTPSA_512 & WDTPSB_8);                                    // 8 Second watchdog timer 
@@ -200,6 +207,10 @@ void LoadDefaultSystemCalibrationToEEProm(void);
 
 
 
+void LogModuleFault(unsigned int board_address);
+P1395BoardBits board_not_configured_latch;
+
+
 // ------------------- Global Variables ------------------------------ //
 A36507GlobalVars global_data_A36507;         
 /* 
@@ -239,7 +250,7 @@ void DoStateMachine(void) {
   case STATE_STARTUP:
     InitializeA36507();
     global_data_A36507.control_state = STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC;
-    SendToEventLog(LOG_ID_ENTERED_STATE_STARTUP, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_STARTUP);
     break;
 
   case STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC:
@@ -247,7 +258,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     _STATUS_PERSONALITY_LOADED = 0;
-    SendToEventLog(LOG_ID_ENTERED_STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC);
     while (global_data_A36507.control_state == STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC) {
       DoA36507();
       FlashLeds();
@@ -258,19 +269,19 @@ void DoStateMachine(void) {
       if (etm_can_pulse_sync_mirror.status_data.data_word_B != 0) {
 	// a personality has been received from pulse sync board
 	global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
-	SendToEventLog(LOG_ID_PERSONALITY_RECEIVED, 0);
+	SendToEventLog(LOG_ID_PERSONALITY_RECEIVED);
 
 #ifndef __SYSTEM_CONFIGURATION_2_5_MEV
 	if (etm_can_pulse_sync_mirror.status_data.data_word_B >= 5) {
 	  global_data_A36507.control_state = STATE_FAULT_SYSTEM;
-	  SendToEventLog(LOG_ID_PERSONALITY_ERROR_6_4, 0);
+	  SendToEventLog(LOG_ID_PERSONALITY_ERROR_6_4);
 	}
 #endif
 	
 #ifndef __SYSTEM_CONFIGURATION_6_4_MEV
 	if (etm_can_pulse_sync_mirror.status_data.data_word_B != 255) {
 	  global_data_A36507.control_state = STATE_FAULT_SYSTEM;
-	  SendToEventLog(LOG_ID_PERSONALITY_ERROR_2_5, 0);
+	  SendToEventLog(LOG_ID_PERSONALITY_ERROR_2_5);
 	}
 #endif
       }
@@ -284,13 +295,13 @@ void DoStateMachine(void) {
     ReadSystemConfigurationFromEEProm(etm_can_pulse_sync_mirror.status_data.data_word_B);
     // Calculate all of the warmup counters based on previous warmup completed
     CalculateHeaterWarmupTimers();
-    SendToEventLog(LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION);
     while (global_data_A36507.control_state == STATE_WAITING_FOR_INITIALIZATION) {
       DoA36507();
       FlashLeds();
       if (CheckAllModulesConfigured() && (global_data_A36507.startup_counter >= 300)) {
       	global_data_A36507.control_state = STATE_WARMUP;
-	SendToEventLog(LOG_ID_ALL_MODULES_CONFIGURED, 0);
+	SendToEventLog(LOG_ID_ALL_MODULES_CONFIGURED);
       }
     }
     break;
@@ -302,12 +313,12 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     _FAULT_REGISTER = 0;
-    SendToEventLog(LOG_ID_ENTERED_STATE_WARMUP, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_WARMUP);
     while (global_data_A36507.control_state == STATE_WARMUP) {
       DoA36507();
       if (global_data_A36507.warmup_done) {
 	global_data_A36507.control_state = STATE_STANDBY;
-	SendToEventLog(LOG_ID_WARMUP_DONE, 0);
+	SendToEventLog(LOG_ID_WARMUP_DONE);
       }
       if (CheckSystemFault()) {
 	global_data_A36507.control_state = STATE_FAULT_SYSTEM;
@@ -320,12 +331,12 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_RESET_ENABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    SendToEventLog(LOG_ID_ENTERED_STATE_STANDBY, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_STANDBY);
      while (global_data_A36507.control_state == STATE_STANDBY) {
       DoA36507();
       if (!_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_DRIVE_UP;
-	SendToEventLog(LOG_ID_CUSTOMER_HV_ON, 0);
+	SendToEventLog(LOG_ID_CUSTOMER_HV_ON);
       }
       if (CheckHVOffFault()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
@@ -339,7 +350,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     global_data_A36507.drive_up_timer = 0;
-    SendToEventLog(LOG_ID_ENTERED_STATE_DRIVE_UP, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_DRIVE_UP);
     while (global_data_A36507.control_state == STATE_DRIVE_UP) {
       DoA36507();
       // Check to see if the HV Lambda is ready, if it is check all faults and move to ready or fault hold
@@ -348,17 +359,17 @@ void DoStateMachine(void) {
 	  global_data_A36507.control_state = STATE_FAULT_HOLD;
 	} else {
 	  global_data_A36507.control_state = STATE_READY;
-	  SendToEventLog(LOG_ID_DRIVEUP_COMPLETE, 0);
+	  SendToEventLog(LOG_ID_DRIVEUP_COMPLETE);
 	}
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
-	SendToEventLog(LOG_ID_CUSTOMER_HV_OFF, 0);
+	SendToEventLog(LOG_ID_CUSTOMER_HV_OFF);
       }
       if (global_data_A36507.drive_up_timer >= DRIVE_UP_TIMEOUT) {
 	_FAULT_DRIVE_UP_TIMEOUT = 1;
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
-	SendToEventLog(LOG_ID_DRIVE_UP_TIMEOUT, 0);
+	SendToEventLog(LOG_ID_DRIVE_UP_TIMEOUT);
       }
       if (CheckHVOffFault()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
@@ -372,16 +383,16 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 0;
-    SendToEventLog(LOG_ID_ENTERED_STATE_READY, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_READY);
     while (global_data_A36507.control_state == STATE_READY) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF == 0) {
 	global_data_A36507.control_state = STATE_XRAY_ON;
-	SendToEventLog(LOG_ID_CUSTOMER_XRAY_ON, 0);
+	SendToEventLog(LOG_ID_CUSTOMER_XRAY_ON);
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
-	SendToEventLog(LOG_ID_CUSTOMER_HV_OFF, 0);
+	SendToEventLog(LOG_ID_CUSTOMER_HV_OFF);
       }
       if (CheckFault()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
@@ -394,16 +405,16 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 0;    
-    SendToEventLog(LOG_ID_ENTERED_STATE_XRAY_ON, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_XRAY_ON);
     while (global_data_A36507.control_state == STATE_XRAY_ON) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
 	global_data_A36507.control_state = STATE_READY;
-	SendToEventLog(LOG_ID_CUSTOMER_XRAY_OFF, 0);
+	SendToEventLog(LOG_ID_CUSTOMER_XRAY_OFF);
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
-	SendToEventLog(LOG_ID_CUSTOMER_HV_OFF, 0);
+	SendToEventLog(LOG_ID_CUSTOMER_HV_OFF);
       }
       if (CheckFault()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
@@ -416,12 +427,12 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_HOLD, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_HOLD);
     while (global_data_A36507.control_state == STATE_FAULT_HOLD) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_FAULT_RESET;
-	SendToEventLog(LOG_ID_CUSTOMER_XRAY_OFF, 0);
+	SendToEventLog(LOG_ID_CUSTOMER_XRAY_OFF);
       }
     }
     break;
@@ -431,7 +442,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_RESET_ENABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_RESET, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_RESET);
     while (global_data_A36507.control_state == STATE_FAULT_RESET) {
       DoA36507();
       _FAULT_REGISTER = 0; // DPARKER IS THIS RIGHT????
@@ -439,7 +450,7 @@ void DoStateMachine(void) {
 
       if (CheckHVOffFault() == 0) {
 	global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
-	SendToEventLog(LOG_ID_HV_OFF_FAULTS_CLEAR, 0);
+	SendToEventLog(LOG_ID_HV_OFF_FAULTS_CLEAR);
       }
       if (CheckSystemFault()) {
 	global_data_A36507.control_state = STATE_FAULT_SYSTEM;
@@ -452,7 +463,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_SYSTEM, 0);
+    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_SYSTEM);
     while (1) {
       DoA36507();
     }
@@ -465,91 +476,62 @@ void DoStateMachine(void) {
   }
 }
 
+/*
+  Logging Data
+
+  * State Changes                - State changes are logged in the state machine
+  * Board Connection Status      - Boards disconnecting and reconnecting is logged by the Can Master Module
+  * Board Ready/Not Ready Status - This logged as part of Do10msTicToc
+  * Board Faults                 - If a board is faulted ()
+
+
+
+*/
+
+
 
 unsigned int CheckHVOffFault(void) {
   unsigned int fault = 0;
   
   if (!CheckAllModulesConfigured()) {
     fault = 1;
-    SendToEventLog(LOG_ID_FAULT_MODULE_NOT_CONFIGURED, 0);
-    if ((global_data_A36507.control_state == STATE_XRAY_ON) || (global_data_A36507.control_state == STATE_READY) || (global_data_A36507.control_state == STATE_DRIVE_UP) || (global_data_A36507.control_state == STATE_STANDBY)) {
-   
-    }
   }
-
-  if (_HEATER_MAGNET_OFF) {
+  
+  if (_HEATER_MAGNET_NOT_READY) {
     if (!_FAULT_HTR_MAG_NOT_OPERATE) {
-      // There is a new Heater Magnet fault
-
-      SendToEventLog(LOG_ID_FAULT_HTR_MAG_BOARD,0);
-
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_0) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_HEATER_OVER_CURRENT_ABSOLUTE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_1) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_CURRENT_ABSOLUTE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_2) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_HEATER_OVER_CURRENT_RELATIVE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_3) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_CURRENT_RELATIVE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_4) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_HEATER_OVER_VOLTAGE_ABSOLUTE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_5) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_VOTLAGE_RELATIVE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_6) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_MAGNET_OVER_CURRENT_ABSOLUTE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_7) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_MAGNET_UNDER_CURRENT_ABSOLUTE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_8) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_MAGNET_OVER_CURRENT_RELATIVE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_9) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_MAGNET_UNDER_CURRENT_RELATIVE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_A) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_MAGNET_OVER_VOLTAGE_ABSOLUTE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_B) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_MAGNET_UNDER_VOTLAGE_RELATIVE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_C) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_HW_HEATER_OVER_VOLTAGE,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_D) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_HW_TEMPERATURE_SWITCH,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_E) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_COOLANT_FAULT,0);
-      }
-      if (etm_can_heater_magnet_mirror.status_data.fault_bits.fault_F) {
-	SendToEventLog(LOG_ID_FAULT_HTR_MAG_CAN_COMMUNICATION_LATCHED,0);
-      }
+      // There is a new Heater Magnet not ready event
+      SendToEventLog(LOG_ID_NOT_READY_HEATER_MAGNET);
+      LogModuleFault(ETM_CAN_ADDR_HEATER_MAGNET_BOARD);
     }
+    _FAULT_HTR_MAG_NOT_OPERATE = 1;
 #ifndef __IGNORE_HEATER_MAGNET_MODULE
     fault = 1;
 #endif
+  } else {
+    if (_FAULT_HTR_MAG_NOT_OPERATE) {
+      // The heater magnet is reporting that it is ready
+      SendToEventLog(LOG_ID_READY_HEATER_MAGNET);
+    }
+    _FAULT_HTR_MAG_NOT_OPERATE = 0;
   }
-  _FAULT_HTR_MAG_NOT_OPERATE = _HEATER_MAGNET_OFF;
   
 
   if (_GUN_HEATER_OFF) {
     if (!_FAULT_GUN_HEATER_OFF) {
       // The gun heater has just turned off
-      _FAULT_GUN_HEATER_OFF = 1;
-      SendToEventLog(LOG_ID_FAULT_GUN_DRIVER_BOARD_HV_OFF,0);
+      SendToEventLog(LOG_ID_GUN_DRIVER_BOARD_HEATER_OFF);
     }
+    _FAULT_GUN_HEATER_OFF = 1;
 #ifndef __IGNORE_GUN_DRIVER_MODULE
     fault = 1;
 #endif
+  } else {
+    if (_FAULT_GUN_HEATER_OFF) {
+      // The gun has just turned back on 
+      SendToEventLog(LOG_ID_GUN_DRIVER_BOARD_HEATER_ON);
+    }
+    _FAULT_GUN_HEATER_OFF = 0;
   }
-  _FAULT_GUN_HEATER_OFF = _GUN_HEATER_OFF;
 
   return fault;
 }
@@ -563,86 +545,131 @@ unsigned int CheckFault(void) {
   }
 
   // Update the fault status of each of the boards.
+
   if (_HV_LAMBDA_NOT_READY) {
     if (!_FAULT_HV_LAMBDA_NOT_OPERATE) {
       // There is a NEW Lambda fault.
-      SendToEventLog(LOG_ID_FAULT_HV_LAMBDA_BOARD,0);
-    } 
+      SendToEventLog(LOG_ID_NOT_READY_HV_LAMBDA_BOARD);
+      LogModuleFault(ETM_CAN_ADDR_HV_LAMBDA_BOARD);
+    }
+    _FAULT_HV_LAMBDA_NOT_OPERATE = 1;
 #ifndef __IGNORE_HV_LAMBDA_MODULE
     fault = 1;
 #endif
+  } else {
+    if (_FAULT_HV_LAMBDA_NOT_OPERATE) {
+      SendToEventLog(LOG_ID_READY_HV_LAMBDA_BOARD);
+    }
+    _FAULT_HV_LAMBDA_NOT_OPERATE = 0;
   }
-  _FAULT_HV_LAMBDA_NOT_OPERATE = _HV_LAMBDA_NOT_READY;
   
   
   if (_ION_PUMP_NOT_READY) {
-    if (!_FAULT_ION_PUMP_NOT_OEPRATE) {
+    if (!_FAULT_ION_PUMP_NOT_OPERATE) {
       // There is a NEW Ion Pump Fault
-      SendToEventLog(LOG_ID_FAULT_ION_PUMP_BOARD,0);
+      SendToEventLog(LOG_ID_NOT_READY_ION_PUMP_BOARD);
+      LogModuleFault(ETM_CAN_ADDR_ION_PUMP_BOARD);
     }
+    _FAULT_ION_PUMP_NOT_OPERATE = 1;
 #ifndef __IGNORE_ION_PUMP_MODULE
     fault = 1;
 #endif
-  }
-  _FAULT_ION_PUMP_NOT_OEPRATE = _ION_PUMP_NOT_READY;
+  } else {
+    if (_FAULT_ION_PUMP_NOT_OPERATE) {
+      SendToEventLog(LOG_ID_READY_ION_PUMP_BOARD);
+    }
+    _FAULT_ION_PUMP_NOT_OPERATE = 0;
+  }  
 
-  
+
   if (_AFC_NOT_READY) {
     if (!_FAULT_AFC_NOT_OPERATE) {
       // There is a NEW AFC Fault
-      SendToEventLog(LOG_ID_FAULT_AFC_BOARD,0);
+      SendToEventLog(LOG_ID_NOT_READY_AFC_BOARD);
+      LogModuleFault(ETM_CAN_ADDR_AFC_CONTROL_BOARD);
     }
+    _FAULT_AFC_NOT_OPERATE = 1;
 #ifndef __IGNORE_AFC_MODULE
     fault = 1;
 #endif
-  }
-  _FAULT_AFC_NOT_OPERATE = _AFC_NOT_READY;
+  } else {
+    if (_FAULT_AFC_NOT_OPERATE) {
+      SendToEventLog(LOG_ID_READY_AFC_BOARD);
+    }
+    _FAULT_AFC_NOT_OPERATE = 0;
+  }  
 
 
   if (_COOLING_NOT_READY) {
     if (!_FAULT_COOLING_NOT_OPERATE) {
-      // There is a NEW Cooling Fault
-      SendToEventLog(LOG_ID_FAULT_COOING_INTERFACE_BOARD,0);
+      // There is a NEW COOLING Fault
+      SendToEventLog(LOG_ID_NOT_READY_COOLING_INTERFACE_BOARD);
+      LogModuleFault(ETM_CAN_ADDR_COOLING_INTERFACE_BOARD);
     }
-#ifndef __IGNORE_COOLING_INTERFACE_MODULE
+    _FAULT_COOLING_NOT_OPERATE = 1;
+#ifndef __IGNORE_COOLING_MODULE
     fault = 1;
-#endif  
-  }
-  _FAULT_COOLING_NOT_OPERATE = _COOLING_NOT_READY;
-  
+#endif
+  } else {
+    if (_FAULT_COOLING_NOT_OPERATE) {
+      SendToEventLog(LOG_ID_READY_COOLING_INTERFACE_BOARD);
+    }
+    _FAULT_COOLING_NOT_OPERATE = 0;
+  }  
+
 
   if (_GUN_DRIVER_NOT_READY) {
-    if ((!_FAULT_GUN_DVR_NOT_OPERATE) && (!_FAULT_GUN_HEATER_OFF)) {
-      // There is a NEW Gun Driver Fault (if it was the gun heater turning off, it gets logged in CheckHVOffFault()
-      SendToEventLog(LOG_ID_FAULT_GUN_DRIVER_BOARD_GENERAL,0);
+    if (!_FAULT_GUN_DVR_NOT_OPERATE) {
+      // There is a NEW COOLING Fault
+      SendToEventLog(LOG_ID_NOT_READY_GUN_DRIVER_BOARD);
+      LogModuleFault(ETM_CAN_ADDR_GUN_DRIVER_BOARD);
     }
+    _FAULT_GUN_DVR_NOT_OPERATE = 1;
 #ifndef __IGNORE_GUN_DRIVER_MODULE
     fault = 1;
 #endif
-  }
-  _FAULT_GUN_DVR_NOT_OPERATE = _GUN_DRIVER_NOT_READY;
-  
-  if (_PULSE_CURRENT_NOT_READY) {
-    if (!_FAULT_PULSE_CURRENT_MON_NOT_OPERATE) {
-      // There is a new pulse current monitor fault
-      SendToEventLog(LOG_ID_FAULT_PULSE_MONITOR_BOARD,0);
+  } else {
+    if (_FAULT_GUN_DVR_NOT_OPERATE) {
+      SendToEventLog(LOG_ID_READY_GUN_DRIVER_BOARD);
     }
-#ifndef __IGNORE_PULSE_CURRENT_MODULE
-    fault = 1;
-#endif
-  }
-  _FAULT_PULSE_CURRENT_MON_NOT_OPERATE = _PULSE_CURRENT_NOT_READY;
-  
-  if (_PULSE_SYNC_NOT_READY) {    
+    _FAULT_GUN_DVR_NOT_OPERATE = 0;
+  }  
+
+
+  if (_PULSE_SYNC_NOT_READY) {
     if (!_FAULT_PULSE_SYNC_NOT_OPERATE) {
-      // There is a new pulse sync fault
-      SendToEventLog(LOG_ID_FAULT_PULSE_SYNC_BOARD,0);
+      // There is a NEW COOLING Fault
+      SendToEventLog(LOG_ID_NOT_READY_PULSE_SYNC_BOARD);
+      LogModuleFault(ETM_CAN_ADDR_PULSE_SYNC_BOARD);
     }
+    _FAULT_PULSE_SYNC_NOT_OPERATE = 1;
 #ifndef __IGNORE_PULSE_SYNC_MODULE
     fault = 1;
 #endif
-  }
-  _FAULT_PULSE_SYNC_NOT_OPERATE = _PULSE_SYNC_NOT_READY;
+  } else {
+    if (_FAULT_PULSE_SYNC_NOT_OPERATE) {
+      SendToEventLog(LOG_ID_READY_PULSE_SYNC_BOARD);
+    }
+    _FAULT_PULSE_SYNC_NOT_OPERATE = 0;
+  }  
+
+
+  if (_PULSE_CURRENT_NOT_READY) {
+    if (!_FAULT_PULSE_CURRENT_MON_NOT_OPERATE) {
+      // There is a NEW COOLING Fault
+      SendToEventLog(LOG_ID_NOT_READY_PULSE_MONITOR_BOARD);
+      LogModuleFault(ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD);
+    }
+    _FAULT_PULSE_CURRENT_MON_NOT_OPERATE = 1;
+#ifndef __IGNORE_PULSE_CURRENT_MODULE
+    fault = 1;
+#endif
+  } else {
+    if (_FAULT_PULSE_CURRENT_MON_NOT_OPERATE) {
+      SendToEventLog(LOG_ID_READY_PULSE_MONITOR_BOARD);
+    }
+    _FAULT_PULSE_CURRENT_MON_NOT_OPERATE = 0;
+  }  
   
   return fault;
 }
@@ -659,23 +686,73 @@ unsigned int CheckAllModulesConfigured(void) {
   
   system_configured = 1;
 
+  if (board_com_fault.hv_lambda_board) {
 #ifndef __IGNORE_HV_LAMBDA_MODULE
-  if ((board_com_fault.hv_lambda_board) || (_HV_LAMBDA_NOT_CONFIGURED)) {
     system_configured = 0;
-  }
 #endif
-
+  }
+  
+  if (_HV_LAMBDA_NOT_CONFIGURED) {
+#ifndef __IGNORE_HV_LAMBDA_MODULE
+    system_configured = 0;
+#endif
+    if (!board_not_configured_latch.hv_lambda_board) {
+      SendToEventLog(LOG_ID_NOT_CONFIGURED_HV_LAMBDA_BOARD);
+    }
+    board_not_configured_latch.hv_lambda_board = 1;
+  } else {
+    if (board_not_configured_latch.hv_lambda_board) {
+      SendToEventLog(LOG_ID_CONFIGURED_HV_LAMBDA_BOARD);
+    }
+    board_not_configured_latch.hv_lambda_board = 0;
+  } 
+  
+  
+  if (board_com_fault.ion_pump_board) {
 #ifndef __IGNORE_ION_PUMP_MODULE
-  if ((board_com_fault.ion_pump_board) || (_ION_PUMP_NOT_CONFIGURED)) {
     system_configured = 0;
-  }
 #endif
-
-#ifndef __IGNORE_AFC_MODULE
-  if ((board_com_fault.afc_board) || (_AFC_NOT_CONFIGURED)) {
-    system_configured = 0;
   }
+  
+  if (_ION_PUMP_NOT_CONFIGURED) {
+#ifndef __IGNORE_ION_PUMP_MODULE
+    system_configured = 0;
+#endif
+    if (!board_not_configured_latch.ion_pump_board) {
+      SendToEventLog(LOG_ID_NOT_CONFIGURED_ION_PUMP_BOARD);
+    }
+    board_not_configured_latch.ion_pump_board = 1;
+  } else {
+    if (board_not_configured_latch.ion_pump_board) {
+      SendToEventLog(LOG_ID_CONFIGURED_ION_PUMP_BOARD);
+    }
+    board_not_configured_latch.ion_pump_board = 0;
+  }
+
+
+  if (board_com_fault.afc_board) {
+#ifndef __IGNORE_AFC_MODULE
+    system_configured = 0;
 #endif  
+  }
+    
+  if (_AFC_NOT_CONFIGURED) {
+#ifndef __IGNORE_AFC_MODULE
+    system_configured = 0;
+#endif  
+    if (!board_not_configured_latch.afc_board) {
+      SendToEventLog(LOG_ID_NOT_CONFIGURED_AFC_BOARD);
+    }
+    board_not_configured_latch.afc_board = 1;
+  } else {
+    if (board_not_configured_latch.afc_board) {
+      SendToEventLog(LOG_ID_CONFIGURED_AFC_BOARD);
+    }
+    board_not_configured_latch.afc_board = 0;
+  }
+
+
+
 
 #ifndef __IGNORE_COOLING_INTERFACE_MODULE
   if ((board_com_fault.cooling_interface_board) || (_COOLING_NOT_CONFIGURED)) {
@@ -766,12 +843,17 @@ void DoA36507(void) {
   local_debug_data.debug_3 = (unsigned int)(global_data_A36507.time_seconds_now & 0x0000FFFF);
   
 
+  local_debug_data.debug_4 = intcon1_mirror;
+  local_debug_data.debug_5 = intcon2_mirror;
+  local_debug_data.debug_6 = ifs0_mirror;
+  local_debug_data.debug_7 = ifs1_mirror;
+  local_debug_data.debug_8 = ifs2_mirror;
 
-  local_debug_data.debug_4 = global_data_A36507.no_connect_count_ion_pump_board;
-  local_debug_data.debug_5 = global_data_A36507.no_connect_count_magnetron_current_board;
-  local_debug_data.debug_6 = global_data_A36507.no_connect_count_pulse_sync_board;
-  local_debug_data.debug_7 = global_data_A36507.no_connect_count_hv_lambda_board;
-  local_debug_data.debug_8 = global_data_A36507.no_connect_count_afc_board;
+  //local_debug_data.debug_4 = global_data_A36507.no_connect_count_ion_pump_board;
+  //local_debug_data.debug_5 = global_data_A36507.no_connect_count_magnetron_current_board;
+  //local_debug_data.debug_6 = global_data_A36507.no_connect_count_pulse_sync_board;
+  //local_debug_data.debug_7 = global_data_A36507.no_connect_count_hv_lambda_board;
+  //local_debug_data.debug_8 = global_data_A36507.no_connect_count_afc_board;
   local_debug_data.debug_9 = global_data_A36507.no_connect_count_cooling_interface_board;
   local_debug_data.debug_A = global_data_A36507.no_connect_count_heater_magnet_board;
   local_debug_data.debug_B = global_data_A36507.no_connect_count_gun_driver_board;
@@ -893,7 +975,7 @@ void DoA36507(void) {
 	global_data_A36507.thyratron_heater_last_warm_seconds = global_data_A36507.time_seconds_now;
       }
       
-      if ((!board_com_fault.heater_magnet_board) && (!_HEATER_MAGNET_OFF)) {
+      if ((!board_com_fault.heater_magnet_board) && (!_HEATER_MAGNET_NOT_READY)) {
 	// The Magnetron heater is on
 	if (global_data_A36507.magnetron_heater_warmup_counter_seconds > 0) {
 	  global_data_A36507.magnetron_heater_warmup_counter_seconds--;
@@ -1646,10 +1728,128 @@ void ExecuteEthernetCommand(unsigned int personality) {
 }
 
 
+void LogBoardReadyStatus(void) {
+
+
+}
+
+
+
+
+
+void LogModuleFault(unsigned int board_address) {
+  ETMCanStatusRegisterFaultBits fault_bits;
+  /* 
+     Faults are numbered as = 0x10bf
+     b = Board Address as defined in P1395_CAN_CORE.h
+     f = Fault bit that is set (0 -> F)
+  */
+  switch (board_address) 
+    {
+    case ETM_CAN_ADDR_ION_PUMP_BOARD:
+      fault_bits = etm_can_ion_pump_mirror.status_data.fault_bits;
+      break;
+
+    case ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD:
+      fault_bits = etm_can_magnetron_current_mirror.status_data.fault_bits;
+      break;
+
+    case ETM_CAN_ADDR_PULSE_SYNC_BOARD:
+      fault_bits = etm_can_pulse_sync_mirror.status_data.fault_bits;
+      break;
+
+    case ETM_CAN_ADDR_HV_LAMBDA_BOARD:
+      fault_bits = etm_can_hv_lambda_mirror.status_data.fault_bits;
+      break;
+
+    case ETM_CAN_ADDR_AFC_CONTROL_BOARD:
+      fault_bits = etm_can_afc_mirror.status_data.fault_bits;
+      break;
+
+    case ETM_CAN_ADDR_COOLING_INTERFACE_BOARD:
+      fault_bits = etm_can_afc_mirror.status_data.fault_bits;
+      break;
+
+    case ETM_CAN_ADDR_HEATER_MAGNET_BOARD:
+      fault_bits = etm_can_heater_magnet_mirror.status_data.fault_bits;
+      break;
+
+    case ETM_CAN_ADDR_GUN_DRIVER_BOARD:
+      fault_bits = etm_can_gun_driver_mirror.status_data.fault_bits;
+      break;
+      
+    default:
+      break;
+    }
+  
+
+  //SendToEventLog(0x1100 + (board_address << 4));
+
+  if (fault_bits.fault_0) {
+    SendToEventLog(0x1000 + (board_address << 4) + 0);
+  }
+  if (fault_bits.fault_1) {
+    SendToEventLog(0x1000 + (board_address << 4) + 1);
+  }
+  if (fault_bits.fault_2) {
+    SendToEventLog(0x1000 + (board_address << 4) + 2);
+  }
+  if (fault_bits.fault_3) {
+    SendToEventLog(0x1000 + (board_address << 4) + 3);
+  }
+  if (fault_bits.fault_4) {
+    SendToEventLog(0x1000 + (board_address << 4) + 4);
+  }
+  if (fault_bits.fault_5) {
+    SendToEventLog(0x1000 + (board_address << 4) + 5);
+  }
+  if (fault_bits.fault_6) {
+    SendToEventLog(0x1000 + (board_address << 4) + 6);
+  }
+  if (fault_bits.fault_7) {
+    SendToEventLog(0x1000 + (board_address << 4) + 7);
+  }
+  if (fault_bits.fault_8) {
+    SendToEventLog(0x1000 + (board_address << 4) + 8);
+  }
+  if (fault_bits.fault_9) {
+    SendToEventLog(0x1000 + (board_address << 4) + 9);
+  }
+  if (fault_bits.fault_A) {
+    SendToEventLog(0x1000 + (board_address << 4) + 10);
+  }
+  if (fault_bits.fault_B) {
+    SendToEventLog(0x1000 + (board_address << 4) + 11);
+  }
+  if (fault_bits.fault_C) {
+    SendToEventLog(0x1000 + (board_address << 4) + 12);
+  }
+  if (fault_bits.fault_D) {
+    SendToEventLog(0x1000 + (board_address << 4) + 13);
+  }
+  if (fault_bits.fault_E) {
+    SendToEventLog(0x1000 + (board_address << 4) + 14);
+  }
+  if (fault_bits.fault_F) {
+    SendToEventLog(0x1000 + (board_address << 4) + 15);
+  }
+  
+}
+
+
 void __attribute__((interrupt, no_auto_psv)) _DefaultInterrupt(void) {
   // Clearly should not get here without a major problem occuring
   // DPARKER do something to save the state into a RAM location that is not re-initialized and then reset
+  intcon1_mirror = INTCON1;
+  intcon2_mirror = INTCON2;
+  ifs0_mirror    = IFS0;
+  ifs1_mirror    = IFS1;
+  ifs2_mirror    = IFS2;
+  
   Nop();
   Nop();
   __asm__ ("Reset");
 }
+
+
+

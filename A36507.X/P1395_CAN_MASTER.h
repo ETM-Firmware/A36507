@@ -253,7 +253,7 @@ typedef struct {
 extern ETMCanRamMirrorHeaterMagnet      etm_can_heater_magnet_mirror;
 
 
-#define _HEATER_MAGNET_OFF                  etm_can_heater_magnet_mirror.status_data.status_bits.control_0_not_ready
+#define _HEATER_MAGNET_NOT_READY                  etm_can_heater_magnet_mirror.status_data.status_bits.control_0_not_ready
 #define _HEATER_MAGNET_NOT_CONFIGURED       etm_can_heater_magnet_mirror.status_data.status_bits.control_2_not_configured
 //#define _HEATER_MAGNET_NOT_CONNECTED        etm_can_heater_magnet_mirror.status_data.status_bits.control_7_ecb_can_not_active
 
@@ -422,7 +422,7 @@ void SendSlaveLoadDefaultEEpromData(unsigned int board_id);
 
 void SendSlaveReset(unsigned int board_id);
 
-void SendToEventLog(unsigned int log_id, unsigned int data);
+void SendToEventLog(unsigned int log_id);
 
 
 
@@ -452,50 +452,104 @@ void SendToEventLog(unsigned int log_id, unsigned int data);
 #define LOG_ID_ENTERED_STATE_FAULT_RESET                                      0x0027
 #define LOG_ID_HV_OFF_FAULTS_CLEAR                                            0x0028
 #define LOG_ID_ENTERED_STATE_FAULT_SYSTEM                                     0x0029
-#define LOG_ID_FAULT_HTR_MAG_BOARD                                            0x002A
-#define LOG_ID_FAULT_HTR_MAG_HEATER_OVER_CURRENT_ABSOLUTE                     0x002B
-#define LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_CURRENT_ABSOLUTE                    0x002C
-#define LOG_ID_FAULT_HTR_MAG_HEATER_OVER_CURRENT_RELATIVE                     0x002D
-#define LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_CURRENT_RELATIVE                    0x002E
-#define LOG_ID_FAULT_HTR_MAG_HEATER_OVER_VOLTAGE_ABSOLUTE                     0x002F
-#define LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_VOTLAGE_RELATIVE                    0x0030
-#define LOG_ID_FAULT_HTR_MAG_MAGNET_OVER_CURRENT_ABSOLUTE                     0x0031
-#define LOG_ID_FAULT_HTR_MAG_MAGNET_UNDER_CURRENT_ABSOLUTE                    0x0032
-#define LOG_ID_FAULT_HTR_MAG_MAGNET_OVER_CURRENT_RELATIVE                     0x0033
-#define LOG_ID_FAULT_HTR_MAG_MAGNET_UNDER_CURRENT_RELATIVE                    0x0034
-#define LOG_ID_FAULT_HTR_MAG_MAGNET_OVER_VOLTAGE_ABSOLUTE                     0x0035
-#define LOG_ID_FAULT_HTR_MAG_MAGNET_UNDER_VOTLAGE_RELATIVE                    0x0036
-#define LOG_ID_FAULT_HTR_MAG_HW_HEATER_OVER_VOLTAGE                           0x0037
-#define LOG_ID_FAULT_HTR_MAG_HW_TEMPERATURE_SWITCH                            0x0038
-#define LOG_ID_FAULT_HTR_MAG_COOLANT_FAULT                                    0x0039
-#define LOG_ID_FAULT_HTR_MAG_CAN_COMMUNICATION_LATCHED                        0x003A
-#define LOG_ID_FAULT_GUN_DRIVER_BOARD_HV_OFF                                  0x003B
-#define LOG_ID_FAULT_HV_LAMBDA_BOARD                                          0x003C
-#define LOG_ID_FAULT_ION_PUMP_BOARD                                           0x003D
-#define LOG_ID_FAULT_AFC_BOARD                                                0x003E
-#define LOG_ID_FAULT_COOING_INTERFACE_BOARD                                   0x003F
-#define LOG_ID_FAULT_GUN_DRIVER_BOARD_GENERAL                                 0x0040
-#define LOG_ID_FAULT_PULSE_MONITOR_BOARD                                      0x0041
-#define LOG_ID_FAULT_PULSE_SYNC_BOARD                                         0x0042
 
-#define LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD                                   0x0043
-#define LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD                          0x0044
-#define LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD                                 0x0045
-#define LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD                                  0x0046
-#define LOG_ID_NOT_CONNECTED_AFC_BOARD                                        0x0047
-#define LOG_ID_NOT_CONNECTED_COOLING_BOARD                                    0x0048
-#define LOG_ID_NOT_CONNECTED_GUN_DRIVER_BOARD                                 0x0049
-#define LOG_ID_FAULT_MODULE_NOT_CONFIGURED                                    0x004A
-#define LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD                              0x004B
 
-#define LOG_ID_CONNECTED_ION_PUMP_BOARD                                       0x004C
-#define LOG_ID_CONNECTED_MAGNETRON_CURRENT_BOARD                              0x004D
-#define LOG_ID_CONNECTED_PULSE_SYNC_BOARD                                     0x004E
-#define LOG_ID_CONNECTED_HV_LAMBDA_BOARD                                      0x004F
-#define LOG_ID_CONNECTED_AFC_BOARD                                            0x0050
-#define LOG_ID_CONNECTED_COOLING_BOARD                                        0x0051
-#define LOG_ID_CONNECTED_GUN_DRIVER_BOARD                                     0x0052
-#define LOG_ID_CONNECTED_HEATER_MAGNET_BOARD                                  0x0053
+
+
+
+
+
+#define LOG_ID_NOT_READY_ION_PUMP_BOARD                                       0x1110
+#define LOG_ID_READY_ION_PUMP_BOARD                                           0x1111
+#define LOG_ID_NOT_CONFIGURED_ION_PUMP_BOARD                                  0x1112
+#define LOG_ID_CONFIGURED_ION_PUMP_BOARD                                      0x1113
+#define LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD                                   0x1114
+#define LOG_ID_CONNECTED_ION_PUMP_BOARD                                       0x1115
+
+
+#define LOG_ID_NOT_READY_PULSE_MONITOR_BOARD                                  0x1120
+#define LOG_ID_READY_PULSE_MONITOR_BOARD                                      0x1121
+#define LOG_ID_NOT_CONFIGURED_PULSE_MONITOR_BOARD                             0x1122
+#define LOG_ID_CONFIGURED_PULSE_MONITOR_BOARD                                 0x1123
+#define LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD                          0x1124
+#define LOG_ID_CONNECTED_MAGNETRON_CURRENT_BOARD                              0x1125
+
+
+#define LOG_ID_NOT_READY_PULSE_SYNC_BOARD                                     0x1130
+#define LOG_ID_READY_PULSE_SYNC_BOARD                                         0x1131
+#define LOG_ID_NOT_CONFIGURED_PULSE_SYNC_BOARD                                0x1132
+#define LOG_ID_CONFIGURED_PULSE_SYNC_BOARD                                    0x1133
+#define LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD                                 0x1134
+#define LOG_ID_CONNECTED_PULSE_SYNC_BOARD                                     0x1135
+
+
+
+#define LOG_ID_NOT_READY_HV_LAMBDA_BOARD                                      0x1140
+#define LOG_ID_READY_HV_LAMBDA_BOARD                                          0x1141
+#define LOG_ID_NOT_CONFIGURED_HV_LAMBDA_BOARD                                 0x1142
+#define LOG_ID_CONFIGURED_HV_LAMBDA_BOARD                                     0x1143
+#define LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD                                  0x1144
+#define LOG_ID_CONNECTED_HV_LAMBDA_BOARD                                      0x1145
+
+
+#define LOG_ID_NOT_READY_AFC_BOARD                                            0x1150
+#define LOG_ID_READY_AFC_BOARD                                                0x1151
+#define LOG_ID_NOT_CONFIGURED_AFC_BOARD                                       0x1152
+#define LOG_ID_CONFIGURED_AFC_BOARD                                           0x1153
+#define LOG_ID_NOT_CONNECTED_AFC_BOARD                                        0x1154
+#define LOG_ID_CONNECTED_AFC_BOARD                                            0x1155
+
+
+#define LOG_ID_NOT_READY_COOLING_INTERFACE_BOARD                              0x1160
+#define LOG_ID_READY_COOLING_INTERFACE_BOARD                                  0x1161
+#define LOG_ID_NOT_CONFIGURED_COOLING_INTERFACE_BOARD                         0x1162
+#define LOG_ID_CONFIGURED_COOLING_INTERFACE_BOARD                             0x1163
+#define LOG_ID_NOT_CONNECTED_COOLING_BOARD                                    0x1164
+#define LOG_ID_CONNECTED_COOLING_BOARD                                        0x1165
+
+
+#define LOG_ID_NOT_READY_HEATER_MAGNET                                        0x1170
+#define LOG_ID_READY_HEATER_MAGNET                                            0x1171
+#define LOG_ID_NOT_CONFIGURED_HEATER_MAGNET                                   0x1172
+#define LOG_ID_CONFIGURED_HEATER_MAGNET                                       0x1173
+#define LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD                              0x1174
+#define LOG_ID_CONNECTED_HEATER_MAGNET_BOARD                                  0x1175
+
+#define LOG_ID_FAULT_HTR_MAG_HEATER_OVER_CURRENT_ABSOLUTE                     0x1070
+#define LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_CURRENT_ABSOLUTE                    0x1071
+#define LOG_ID_FAULT_HTR_MAG_HEATER_OVER_CURRENT_RELATIVE                     0x1072
+#define LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_CURRENT_RELATIVE                    0x1073
+#define LOG_ID_FAULT_HTR_MAG_HEATER_OVER_VOLTAGE_ABSOLUTE                     0x1074
+#define LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_VOTLAGE_RELATIVE                    0x1075
+#define LOG_ID_FAULT_HTR_MAG_MAGNET_OVER_CURRENT_ABSOLUTE                     0x1076
+#define LOG_ID_FAULT_HTR_MAG_MAGNET_UNDER_CURRENT_ABSOLUTE                    0x1077
+#define LOG_ID_FAULT_HTR_MAG_MAGNET_OVER_CURRENT_RELATIVE                     0x1078
+#define LOG_ID_FAULT_HTR_MAG_MAGNET_UNDER_CURRENT_RELATIVE                    0x1079
+#define LOG_ID_FAULT_HTR_MAG_MAGNET_OVER_VOLTAGE_ABSOLUTE                     0x107A
+#define LOG_ID_FAULT_HTR_MAG_MAGNET_UNDER_VOTLAGE_RELATIVE                    0x107B
+#define LOG_ID_FAULT_HTR_MAG_HW_HEATER_OVER_VOLTAGE                           0x107C
+#define LOG_ID_FAULT_HTR_MAG_HW_TEMPERATURE_SWITCH                            0x107D
+#define LOG_ID_FAULT_HTR_MAG_COOLANT_FAULT                                    0x107E
+#define LOG_ID_FAULT_HTR_CAN_FAULT_LATCHED                                    0x107F
+
+
+#define LOG_ID_NOT_READY_GUN_DRIVER_BOARD                                     0x1180
+#define LOG_ID_READY_GUN_DRIVER_BOARD                                         0x1181
+#define LOG_ID_NOT_CONFIGURED_GUN_DRIVER_BOARD                                0x1182
+#define LOG_ID_CONFIGURED_GUN_DRIVER_BOARD                                    0x1183
+#define LOG_ID_NOT_CONNECTED_GUN_DRIVER_BOARD                                 0x1184
+#define LOG_ID_CONNECTED_GUN_DRIVER_BOARD                                     0x1185
+#define LOG_ID_GUN_DRIVER_BOARD_HEATER_OFF                                    0x1186
+#define LOG_ID_GUN_DRIVER_BOARD_HEATER_ON                                     0x1187
+
+
+
+//#define LOG_ID_FAULT_HTR_MAG_CAN_COMMUNICATION_LATCHED                        0x003A
+//#define LOG_ID_FAULT_GUN_DRIVER_BOARD_HV_OFF                                  0x003B
+//#define LOG_ID_FAULT_MODULE_NOT_CONFIGURED                                    0x004A
+
+
+
 
 
 

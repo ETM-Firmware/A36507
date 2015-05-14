@@ -1277,7 +1277,7 @@ void ETMCanMasterCheckForTimeOut(void) {
   // Ion Pump Board
   if (board_status_received.ion_pump_board) {                           // The slave board is connected
     if (board_com_fault.ion_pump_board) {                                      // The slave board has regained communication
-      SendToEventLog(LOG_ID_CONNECTED_ION_PUMP_BOARD, 0);
+      SendToEventLog(LOG_ID_CONNECTED_ION_PUMP_BOARD);
     }
     board_com_fault.ion_pump_board = 0;
     //_ION_PUMP_NOT_CONNECTED = 0;
@@ -1286,7 +1286,7 @@ void ETMCanMasterCheckForTimeOut(void) {
   // Pulse Current Monitor Board
   if (board_status_received.magnetron_current_board) {                  // The slave board is connected
     if (board_com_fault.magnetron_current_board) {                                 // The slave board has regained communication
-      SendToEventLog(LOG_ID_CONNECTED_MAGNETRON_CURRENT_BOARD, 0);
+      SendToEventLog(LOG_ID_CONNECTED_MAGNETRON_CURRENT_BOARD);
     }
     board_com_fault.magnetron_current_board = 0;
     //_PULSE_CURRENT_NOT_CONNECTED = 0;
@@ -1295,7 +1295,7 @@ void ETMCanMasterCheckForTimeOut(void) {
   // Pulse Sync Board
   if (board_status_received.pulse_sync_board) {                         // The slave board is connected
     if (board_com_fault.pulse_sync_board) {                                    // The slave board has regained communication
-      SendToEventLog(LOG_ID_CONNECTED_PULSE_SYNC_BOARD, 0);
+      SendToEventLog(LOG_ID_CONNECTED_PULSE_SYNC_BOARD);
     }
     board_com_fault.pulse_sync_board = 0;
     //_PULSE_SYNC_NOT_CONNECTED = 0;
@@ -1304,7 +1304,7 @@ void ETMCanMasterCheckForTimeOut(void) {
   // HV Lambda Board
   if (board_status_received.hv_lambda_board) {                          // The slave board is connected
     if (board_com_fault.hv_lambda_board) {                                     // The slave board has regained communication
-      SendToEventLog(LOG_ID_CONNECTED_HV_LAMBDA_BOARD, 0);
+      SendToEventLog(LOG_ID_CONNECTED_HV_LAMBDA_BOARD);
     }
     board_com_fault.hv_lambda_board = 0;
     //_HV_LAMBDA_NOT_CONNECTED = 0;
@@ -1313,7 +1313,7 @@ void ETMCanMasterCheckForTimeOut(void) {
   // AFC Board
   if (board_status_received.afc_board) {                                // The slave board is connected
     if (board_com_fault.afc_board) {                                           // The slave board has regained communication
-      SendToEventLog(LOG_ID_CONNECTED_AFC_BOARD, 0);
+      SendToEventLog(LOG_ID_CONNECTED_AFC_BOARD);
     }
     board_com_fault.afc_board = 0;
     //_AFC_NOT_CONNECTED = 0;
@@ -1322,7 +1322,7 @@ void ETMCanMasterCheckForTimeOut(void) {
   // Cooling Interface
   if (board_status_received.cooling_interface_board) {                  // The slave board is connected
     if (board_com_fault.cooling_interface_board) {                                       // The slave board has regained communication
-      SendToEventLog(LOG_ID_CONNECTED_COOLING_BOARD, 0);
+      SendToEventLog(LOG_ID_CONNECTED_COOLING_BOARD);
     }
     board_com_fault.cooling_interface_board = 0;
     //_COOLING_NOT_CONNECTED = 0;
@@ -1331,7 +1331,7 @@ void ETMCanMasterCheckForTimeOut(void) {
   // Heater Magnet Supply
   if (board_status_received.heater_magnet_board) {                      // The slave board is connected
     if (board_com_fault.heater_magnet_board) {                                 // The slave board has regained communication
-      SendToEventLog(LOG_ID_CONNECTED_HEATER_MAGNET_BOARD, 0);
+      SendToEventLog(LOG_ID_CONNECTED_HEATER_MAGNET_BOARD);
     }
     board_com_fault.heater_magnet_board = 0;
     //_HEATER_MAGNET_NOT_CONNECTED = 0;
@@ -1340,7 +1340,7 @@ void ETMCanMasterCheckForTimeOut(void) {
   // Gun Driver
   if (board_status_received.gun_driver_board) {                         // The slave board is not connected
     if (board_com_fault.gun_driver_board) {                                    // The slave board has regained communication
-      SendToEventLog(LOG_ID_CONNECTED_GUN_DRIVER_BOARD, 0);
+      SendToEventLog(LOG_ID_CONNECTED_GUN_DRIVER_BOARD);
     }
     board_com_fault.gun_driver_board = 0;
     //_GUN_DRIVER_NOT_CONNECTED = 0;
@@ -1360,7 +1360,7 @@ void ETMCanMasterCheckForTimeOut(void) {
     if (!board_status_received.ion_pump_board) {                          // The slave board is not connected
       global_data_A36507.no_connect_count_ion_pump_board++;
       if (!board_com_fault.ion_pump_board) {                              // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD, 0);
+	SendToEventLog(LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD);
       }
       board_com_fault.ion_pump_board = 1;
       //_ION_PUMP_NOT_CONNECTED = 1;
@@ -1370,7 +1370,7 @@ void ETMCanMasterCheckForTimeOut(void) {
     if (!board_status_received.magnetron_current_board) {                 // The slave board is not connected
       global_data_A36507.no_connect_count_magnetron_current_board++;
       if (!board_com_fault.magnetron_current_board) {                                // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD, 0);
+	SendToEventLog(LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD);
       }
       board_com_fault.magnetron_current_board = 1;
       //_PULSE_CURRENT_NOT_CONNECTED = 1;
@@ -1380,7 +1380,7 @@ void ETMCanMasterCheckForTimeOut(void) {
     if (!board_status_received.pulse_sync_board) {                        // The slave board is not connected
       global_data_A36507.no_connect_count_pulse_sync_board++;
       if (!board_com_fault.pulse_sync_board) {                                   // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD, 0);
+	SendToEventLog(LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD);
       }
       board_com_fault.pulse_sync_board = 1;
       //_PULSE_SYNC_NOT_CONNECTED = 1;
@@ -1390,7 +1390,7 @@ void ETMCanMasterCheckForTimeOut(void) {
     if (!board_status_received.hv_lambda_board) {                         // The slave board is not connected
       global_data_A36507.no_connect_count_hv_lambda_board++;
       if (!board_com_fault.hv_lambda_board) {                                    // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD, 0);
+	SendToEventLog(LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD);
       }
       board_com_fault.hv_lambda_board = 1;
       //_HV_LAMBDA_NOT_CONNECTED = 1;
@@ -1400,7 +1400,7 @@ void ETMCanMasterCheckForTimeOut(void) {
     if (!board_status_received.afc_board) {                               // The slave board is not connected
       global_data_A36507.no_connect_count_afc_board++;
       if (!board_com_fault.afc_board) {                                   // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_AFC_BOARD, 0);
+	SendToEventLog(LOG_ID_NOT_CONNECTED_AFC_BOARD);
       }
       board_com_fault.afc_board = 1;
       //_AFC_NOT_CONNECTED = 1;
@@ -1410,7 +1410,7 @@ void ETMCanMasterCheckForTimeOut(void) {
     if (!board_status_received.cooling_interface_board) {                 // The slave board is not connected
       global_data_A36507.no_connect_count_cooling_interface_board++;
       if (!board_com_fault.cooling_interface_board) {                                      // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_COOLING_BOARD, 0);
+	SendToEventLog(LOG_ID_NOT_CONNECTED_COOLING_BOARD);
       }
       board_com_fault.cooling_interface_board = 1;
       //_COOLING_NOT_CONNECTED = 1;
@@ -1420,7 +1420,7 @@ void ETMCanMasterCheckForTimeOut(void) {
     if (!board_status_received.heater_magnet_board) {                     // The slave board is not connected
       global_data_A36507.no_connect_count_heater_magnet_board++;
       if (!board_com_fault.heater_magnet_board) {                                // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD, 0);
+	SendToEventLog(LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD);
       }
       board_com_fault.heater_magnet_board = 1;
       //_HEATER_MAGNET_NOT_CONNECTED = 1;
@@ -1430,7 +1430,7 @@ void ETMCanMasterCheckForTimeOut(void) {
     if (!board_status_received.gun_driver_board) {                        // The slave board is not connected
       global_data_A36507.no_connect_count_gun_driver_board++;
       if (!board_com_fault.gun_driver_board) {                                   // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_GUN_DRIVER_BOARD, 0);
+	SendToEventLog(LOG_ID_NOT_CONNECTED_GUN_DRIVER_BOARD);
       }
       board_com_fault.gun_driver_board = 1;
       //_GUN_DRIVER_NOT_CONNECTED = 1;
@@ -1586,11 +1586,19 @@ void ETMCanMasterClearDebug(void) {
   _BOR = 0;
   _POR = 0;
   _SWR = 0;
+
+
+  intcon1_mirror = 0;
+  intcon2_mirror = 0;
+  ifs0_mirror    = 0;
+  ifs1_mirror    = 0;
+  ifs2_mirror    = 0;
+
 }
 
 
 
-void SendToEventLog(unsigned int log_id, unsigned int data) {
+void SendToEventLog(unsigned int log_id) {
   event_log.event_data[event_log.write_index].event_number = global_data_A36507.event_log_counter;
   event_log.event_data[event_log.write_index].event_time   = global_data_A36507.time_seconds_now;
   event_log.event_data[event_log.write_index].event_id     = log_id;

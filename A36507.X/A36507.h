@@ -223,7 +223,7 @@ extern A36507GlobalVars global_data_A36507;
 
 #define _FAULT_GUN_HEATER_OFF                           _FAULT_7
 #define _FAULT_HV_LAMBDA_NOT_OPERATE                    _FAULT_8
-#define _FAULT_ION_PUMP_NOT_OEPRATE                     _FAULT_9
+#define _FAULT_ION_PUMP_NOT_OPERATE                     _FAULT_9
 #define _FAULT_AFC_NOT_OPERATE                          _FAULT_A
 #define _FAULT_COOLING_NOT_OPERATE                      _FAULT_B
 #define _FAULT_HTR_MAG_NOT_OPERATE                      _FAULT_C
@@ -290,6 +290,12 @@ extern A36507GlobalVars global_data_A36507;
 #define EEPROM_REGISTER_GUN_DRV_CATHODE                             0x0023
 
 
+
+extern volatile unsigned int intcon1_mirror __attribute__ ((persistent));
+extern volatile unsigned int intcon2_mirror __attribute__ ((persistent));
+extern volatile unsigned int ifs0_mirror __attribute__ ((persistent));
+extern volatile unsigned int ifs1_mirror __attribute__ ((persistent));
+extern volatile unsigned int ifs2_mirror __attribute__ ((persistent));
 
 
 
