@@ -217,7 +217,9 @@ void MACInit(void)
     #elif defined(__PIC24F__) || defined(__PIC24FK__)
         ENC_SPICON1 = 0x1B;     // 1:1 primary prescale, 2:1 secondary prescale (8MHz  @ 16MIPS)
     #else   // dsPIC30F
-        ENC_SPICON1 = 0x1F;     // sec 2:1(10M), should be 0x1f or 1:1 sec, 1:1 primary prescale, 1:1 secondary prescale (20MHz)
+	//ENC_SPICON1 = 0x1F;     // sec 2:1(10M), should be 0x1f or 1:1 sec, 1:1 primary prescale, 1:1 secondary prescale (20MHz)
+	// DPARKER EDIT HERE
+	ENC_SPICON1 = 0b11011;
     #endif
     ENC_SPICON2 = 0;
     ENC_SPICON1bits.CKE = 1;

@@ -290,13 +290,4 @@ extern A36507GlobalVars global_data_A36507;
 #define EEPROM_REGISTER_GUN_DRV_CATHODE                             0x0023
 
 
-
-extern volatile unsigned int intcon1_mirror __attribute__ ((persistent));
-extern volatile unsigned int intcon2_mirror __attribute__ ((persistent));
-extern volatile unsigned int ifs0_mirror __attribute__ ((persistent));
-extern volatile unsigned int ifs1_mirror __attribute__ ((persistent));
-extern volatile unsigned int ifs2_mirror __attribute__ ((persistent));
-
-
-
 #endif

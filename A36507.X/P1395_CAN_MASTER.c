@@ -1587,13 +1587,6 @@ void ETMCanMasterClearDebug(void) {
   _POR = 0;
   _SWR = 0;
 
-
-  intcon1_mirror = 0;
-  intcon2_mirror = 0;
-  ifs0_mirror    = 0;
-  ifs1_mirror    = 0;
-  ifs2_mirror    = 0;
-
 }
 
 
