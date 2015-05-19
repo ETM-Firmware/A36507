@@ -1411,10 +1411,19 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 
 #define REGISTER_SPECIAL_SET_TIME                                                          0xEF08
 
+#define REGISTER_SPECIAL_2_5_SET_GRID_START                                                0xEF40
+#define REGISTER_SPECIAL_2_5_SET_GRID_STOP                                                 0xEF41
+#define REGISTER_SPECIAL_2_5_SET_PFN_DELAY                                                 0xEF42
+#define REGISTER_SPECIAL_2_5_SET_DOSE_SAMPLE_DELAY                                         0xEF43  // Unused for the 2.5 - NOT IMPLIMENTED
+#define REGISTER_SPECIAL_2_5_SET_AFC_SAMPLE_DELAY                                          0xEF44
+#define REGISTER_SPECIAL_2_5_SET_MAGNETRON_CURRENT_SAMPLE_DELAY                            0xEF45
+
 
 void ExecuteEthernetCommand(unsigned int personality) {
   ETMEthernetMessageFromGUI next_message;
   unsigned int eeprom_register;
+  unsigned int temp;
+  unsigned int temp_array[12];
 
   ETMCanMessage can_message;
   unsigned long temp_long;
@@ -1476,6 +1485,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
       etm_can_afc_mirror.aft_control_voltage = next_message.data_2;
       eeprom_register = next_message.index;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      break;
 
     case REGISTER_HIGH_ENERGY_SET_POINT:
       etm_can_hv_lambda_mirror.ecb_high_set_point = next_message.data_2;
@@ -1671,6 +1681,86 @@ void ExecuteEthernetCommand(unsigned int personality) {
       } else {
 	_SYNC_CONTROL_RESET_ENABLE = 1;
       }
+      break;
+
+    case REGISTER_SPECIAL_2_5_SET_GRID_START:
+      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      temp =  next_message.data_2;
+      if (temp > 255) {
+	temp = 255;
+      }
+      temp = (temp << 8) + temp;
+      temp_array[0] = temp;
+      temp_array[1] = temp;
+      temp_array[6] = temp;
+      temp_array[7] = temp;
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_1 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_3 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_1 = temp;
+      break;
+
+    case REGISTER_SPECIAL_2_5_SET_GRID_STOP:
+      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      temp =  next_message.data_2;
+      if (temp > 255) {
+	temp = 255;
+      }
+      temp = (temp << 8) + temp;
+      temp_array[3] = temp;
+      temp_array[4] = temp;
+      temp_array[9] = temp;
+      temp_array[10] = temp;
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_3 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_1 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_3 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_1 = temp;
+      break;
+
+    case REGISTER_SPECIAL_2_5_SET_PFN_DELAY:
+      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      temp =  next_message.data_2;
+      if (temp > 255) {
+	temp = 255;
+      }
+      temp <<= 8;
+      temp += (temp_array[2] & 0x00FF);
+      temp_array[2] = temp;
+      temp_array[8] = temp;
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_pfn_delay_high = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_pfn_delay_low = temp;
+      break;
+
+    case REGISTER_SPECIAL_2_5_SET_AFC_SAMPLE_DELAY:
+      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      temp =  next_message.data_2;
+      if (temp > 255) {
+	temp = 255;
+      }
+      temp <<= 8;
+      temp += (temp_array[5] & 0x00FF);
+      temp_array[5] = temp;
+      temp_array[11] = temp;
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_high = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_low = temp;
+      break;
+
+    case REGISTER_SPECIAL_2_5_SET_MAGNETRON_CURRENT_SAMPLE_DELAY:
+      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      temp =  next_message.data_2;
+      if (temp > 255) {
+	temp = 255;
+      }
+      temp += (temp_array[5] & 0xFF00);
+      temp_array[5] = temp;
+      temp_array[11] = temp;
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_high = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_low = temp;
       break;
 
     case REGISTER_DEBUG_ENABLE_HIGH_SPEED_LOGGING:
