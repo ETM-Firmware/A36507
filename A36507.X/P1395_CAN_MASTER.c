@@ -926,18 +926,26 @@ void ETMCanMasterProcessLogData(void) {
 	case ETM_CAN_DATA_LOG_REGISTER_AFC_FAST_POSITION:
 	  ptr_high_speed_data->afc_readback_current_position = next_message.word2;
 	  ptr_high_speed_data->afc_readback_target_position = next_message.word1;
+	  // unused word 0
+
+	  etm_can_afc_mirror.afc_readback_current_position = next_message.word2;
+	  etm_can_afc_mirror.afc_readback_target_position = next_message.word1;
 	  break;
 
 	case ETM_CAN_DATA_LOG_REGISTER_AFC_FAST_READINGS:
 	  ptr_high_speed_data->afc_readback_a_input = next_message.word2;
 	  ptr_high_speed_data->afc_readback_b_input = next_message.word1;
 	  ptr_high_speed_data->afc_readback_filtered_error_reading = next_message.word0;
+
+	  etm_can_afc_mirror.afc_readback_afc_a_input_reading = next_message.word2;
+	  etm_can_afc_mirror.afc_readback_afc_b_input_reading = next_message.word1;
+	  etm_can_afc_mirror.afc_readback_filtered_error_reading = next_message.word0;
 	  break;
 
 	case ETM_CAN_DATA_LOG_REGISTER_AFC_SLOW_SETTINGS:
 	  etm_can_afc_mirror.afc_readback_home_position = next_message.word3;
-	  etm_can_afc_mirror.afc_readback_offset = next_message.word2;
-	  etm_can_afc_mirror.afc_readback_current_position = next_message.word1;
+	  // unused word2
+	  // unused word1
 	  etm_can_afc_mirror.readback_aft_control_voltage = next_message.word0;
 	  break;
 
