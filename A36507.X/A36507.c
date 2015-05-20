@@ -1596,7 +1596,9 @@ void ExecuteEthernetCommand(unsigned int personality) {
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
-    case REGISTER_CMD_AFC_MANUAL_TARGET_POSITION:
+    case REGISTER_CMD_AFC_SELECT_AFC_MODE:
+      break;
+    case REGISTER_CMD_AFC_SELECT_MANUAL_MODE:
       can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 3));
       can_message.word3 = ETM_CAN_REGISTER_AFC_CMD_SELECT_MANUAL_MODE;
       can_message.word2 = 0;
@@ -1604,7 +1606,9 @@ void ExecuteEthernetCommand(unsigned int personality) {
       can_message.word0 = 0;
       ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
       MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+      break;
 
+    case REGISTER_CMD_AFC_MANUAL_TARGET_POSITION:
       can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 3));
       can_message.word3 = ETM_CAN_REGISTER_AFC_CMD_SET_MANUAL_TARGET_POSITION;
       can_message.word2 = 0;
