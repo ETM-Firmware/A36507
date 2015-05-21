@@ -255,6 +255,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     _STATUS_PERSONALITY_LOADED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     SendToEventLog(LOG_ID_ENTERED_STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC);
     while (global_data_A36507.control_state == STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC) {
       DoA36507();
@@ -289,6 +293,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     _STATUS_PERSONALITY_LOADED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     ReadSystemConfigurationFromEEProm(etm_can_pulse_sync_mirror.status_data.data_word_B);
     // Calculate all of the warmup counters based on previous warmup completed
     CalculateHeaterWarmupTimers();
@@ -311,6 +319,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     _FAULT_REGISTER = 0;
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     SendToEventLog(LOG_ID_ENTERED_STATE_WARMUP);
     while (global_data_A36507.control_state == STATE_WARMUP) {
       DoA36507();
@@ -330,6 +342,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     SendToEventLog(LOG_ID_ENTERED_STATE_STANDBY);
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
      while (global_data_A36507.control_state == STATE_STANDBY) {
       DoA36507();
       if (!_PULSE_SYNC_CUSTOMER_HV_OFF) {
@@ -349,6 +365,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     global_data_A36507.drive_up_timer = 0;
     SendToEventLog(LOG_ID_ENTERED_STATE_DRIVE_UP);
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     while (global_data_A36507.control_state == STATE_DRIVE_UP) {
       DoA36507();
       // Check to see if the HV Lambda is ready, if it is check all faults and move to ready or fault hold
@@ -382,6 +402,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 0;
     SendToEventLog(LOG_ID_ENTERED_STATE_READY);
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 1;
     while (global_data_A36507.control_state == STATE_READY) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF == 0) {
@@ -404,6 +428,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 0;    
     SendToEventLog(LOG_ID_ENTERED_STATE_XRAY_ON);
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     while (global_data_A36507.control_state == STATE_XRAY_ON) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
@@ -426,6 +454,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_HOLD);
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     while (global_data_A36507.control_state == STATE_FAULT_HOLD) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
@@ -441,6 +473,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_RESET);
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     while (global_data_A36507.control_state == STATE_FAULT_RESET) {
       DoA36507();
       _FAULT_REGISTER = 0; // DPARKER IS THIS RIGHT????
@@ -462,6 +498,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
     SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_SYSTEM);
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     while (1) {
       DoA36507();
     }
@@ -1097,6 +1137,9 @@ void UpdateHeaterScale() {
   
   // Multiply the Energy per Pulse times the PRF (in deci-Hz)
   temp32 *= etm_can_pulse_sync_mirror.status_data.data_word_A; // This is the pulse frequency
+  if (global_data_A36507.control_state != STATE_XRAY_ON) {
+    // Set the power to zero if we are not in the X-RAY ON state
+
   temp32 >>= 6;
   temp32 *= 13;
   temp32 >>= 11;  // Temp32 is now Magnetron Power (in Watts)
@@ -1597,7 +1640,15 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
 
     case REGISTER_CMD_AFC_SELECT_AFC_MODE:
+      can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 3));
+      can_message.word3 = ETM_CAN_REGISTER_AFC_CMD_SELECT_AFC_MODE;
+      can_message.word2 = 0;
+      can_message.word1 = 0;
+      can_message.word0 = 0;
+      ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
+      MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
       break;
+
     case REGISTER_CMD_AFC_SELECT_MANUAL_MODE:
       can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 3));
       can_message.word3 = ETM_CAN_REGISTER_AFC_CMD_SELECT_MANUAL_MODE;
