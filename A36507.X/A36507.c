@@ -1139,6 +1139,8 @@ void UpdateHeaterScale() {
   temp32 *= etm_can_pulse_sync_mirror.status_data.data_word_A; // This is the pulse frequency
   if (global_data_A36507.control_state != STATE_XRAY_ON) {
     // Set the power to zero if we are not in the X-RAY ON state
+    temp32 = 0;
+  }
 
   temp32 >>= 6;
   temp32 *= 13;
