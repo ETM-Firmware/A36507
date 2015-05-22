@@ -207,8 +207,9 @@ typedef struct {
   unsigned int cool_readback_sf6_pressure;
   unsigned int cool_readback_cabinet_temperature;
   unsigned int cool_readback_linac_temperature;
-  unsigned int cool_readback_spare_word_0;
-  unsigned int cool_readback_spare_word_1;
+  unsigned int cool_readback_bottle_count;
+  unsigned int cool_readback_pulses_available;
+  unsigned int cool_readback_low_pressure_override_available;
   //unsigned int           unused_array[20];  
 
 } ETMCanRamMirrorCooling;

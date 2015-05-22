@@ -994,8 +994,9 @@ void ETMCanMasterProcessLogData(void) {
 	  break;
 
 	case ETM_CAN_DATA_LOG_REGISTER_COOLING_SLOW_FLOW_1:
-	  etm_can_cooling_mirror.cool_readback_spare_word_1 = next_message.word3;
-	  etm_can_cooling_mirror.cool_readback_spare_word_0 = next_message.word2;
+	  etm_can_cooling_mirror.cool_readback_bottle_count = next_message.word3;
+	  etm_can_cooling_mirror.cool_readback_pulses_available = ((next_message.word2 & 0xFF00) >> 8);
+	  etm_can_cooling_mirror.cool_readback_low_pressure_override_available = (next_message.word2 & 0x00FF);
 	  etm_can_cooling_mirror.cool_readback_hx_coolant_flow = next_message.word1;
 	  etm_can_cooling_mirror.cool_readback_spare_coolant_flow = next_message.word0;
 	  break;
