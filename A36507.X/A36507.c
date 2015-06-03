@@ -1462,6 +1462,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_SPECIAL_2_5_SET_DOSE_SAMPLE_DELAY                                         0xEF43  // Unused for the 2.5 - NOT IMPLIMENTED
 #define REGISTER_SPECIAL_2_5_SET_AFC_SAMPLE_DELAY                                          0xEF44
 #define REGISTER_SPECIAL_2_5_SET_MAGNETRON_CURRENT_SAMPLE_DELAY                            0xEF45
+#define REGISTER_SPECIAL_2_5_SET_HV_LAMBDA_VOLTAGE                                         0xEF46
 
 
 void ExecuteEthernetCommand(unsigned int personality) {
@@ -1819,6 +1820,18 @@ void ExecuteEthernetCommand(unsigned int personality) {
       *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_high = temp;
       *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_low = temp;
       break;
+
+    case REGISTER_SPECIAL_2_5_SET_HV_LAMBDA_VOLTAGE:
+      etm_can_hv_lambda_mirror.ecb_high_set_point = next_message.data_2;     
+      etm_can_hv_lambda_mirror.ecb_low_set_point = next_message.data_2;
+
+      eeprom_register = REGISTER_HIGH_ENERGY_SET_POINT + 2 * personality;
+      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+ 
+      eeprom_register = REGISTER_LOW_ENERGY_SET_POINT + 2 * personality;
+      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      break;
+
 
     case REGISTER_DEBUG_ENABLE_HIGH_SPEED_LOGGING:
       _SYNC_CONTROL_HIGH_SPEED_LOGGING = 1;
