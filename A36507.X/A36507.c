@@ -185,7 +185,6 @@ void FlashLeds(void);
 void ZeroSystemPoweredTime(void);
 /*
   Sets the system powered, hv on, and xray on second counter to Zero.
-  DPARKER this needs to be added to the ethernet interface
 */
 
 void LoadDefaultSystemCalibrationToEEProm(void);
@@ -195,8 +194,6 @@ void LoadDefaultSystemCalibrationToEEProm(void);
   DPARKER - need to add pulse sync personalities 2,3,4 
   DPARKER - need to be added to the etherenet interface
 */
-
-
 
 
 
@@ -1385,6 +1382,7 @@ void FlashLeds(void) {
 
 
 void ZeroSystemPoweredTime(void) {
+  // These values will be written to EEPROM sometime in the next second.
   global_data_A36507.system_powered_seconds = 0;
   global_data_A36507.system_hv_on_seconds = 0;
   global_data_A36507.system_xray_on_seconds = 0;
@@ -1442,8 +1440,10 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_SPECIAL_ECB_LOAD_DEFAULT_SETTINGS_TO_EEPROM_AND_REBOOT                    0xE080
 #define REGISTER_SPECIAL_ECB_RESET_ARC_AND_PULSE_COUNT                                     0xE081
 #define REGISTER_SPECIAL_ECB_RESET_SECONDS_POWERED_HV_ON_XRAY_ON                           0xE082
-
 #define REGISTER_SPECIAL_ECB_RESET_SLAVE                                                   0xE083
+#define REGISTER_SPECIAL_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS                        0xE084
+
+
 
 #define REGISTER_DEBUG_TOGGLE_RESET                                                        0xEF00
 #define REGISTER_DEBUG_TOGGLE_HIGH_SPEED_LOGGING                                           0xEF01
@@ -1711,13 +1711,22 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
 
     case REGISTER_SPECIAL_ECB_RESET_ARC_AND_PULSE_COUNT:
+      // DPARKER the command to do this is not yet part of the CAN library
+      // This will require an extension of the can library to impliment
       break;
 
     case REGISTER_SPECIAL_ECB_RESET_SECONDS_POWERED_HV_ON_XRAY_ON:
-      // Sets all to the value in data_1:data_0
+      ZeroSystemPoweredTime();      
       break;
 
     case REGISTER_SPECIAL_ECB_LOAD_DEFAULT_SETTINGS_TO_EEPROM_AND_REBOOT:
+      // DPARKER only allow when customer has not commanded high voltage on
+      LoadDefaultSystemCalibrationToEEProm();
+      __delay32(1000000);
+      __asm__ ("Reset");
+      break;
+
+    case REGISTER_SPECIAL_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS:
       // DPARKER only allow when customer has not commanded high voltage on
       SendSlaveLoadDefaultEEpromData(next_message.data_2);
       break;
