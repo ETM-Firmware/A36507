@@ -195,6 +195,7 @@ void LoadDefaultSystemCalibrationToEEProm(void);
   DPARKER - need to be added to the etherenet interface
 */
 
+void CalculatePulseSyncParams(unsigned char start, unsigned char stop);
 
 
 void LogModuleFault(unsigned int board_address);
@@ -1463,6 +1464,9 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_SPECIAL_2_5_SET_AFC_SAMPLE_DELAY                                          0xEF44
 #define REGISTER_SPECIAL_2_5_SET_MAGNETRON_CURRENT_SAMPLE_DELAY                            0xEF45
 #define REGISTER_SPECIAL_2_5_SET_HV_LAMBDA_VOLTAGE                                         0xEF46
+#define REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START                                        0xEF47
+#define REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_STOP                                         0xEF48
+
 
 
 void ExecuteEthernetCommand(unsigned int personality) {
@@ -1786,6 +1790,15 @@ void ExecuteEthernetCommand(unsigned int personality) {
       *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_1 = temp;
       break;
 
+    case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START:
+      CalculatePulseSyncParams(next_message.data_2, etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_3);
+      break;
+
+    case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_STOP:
+      CalculatePulseSyncParams(etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3, next_message.data_2);
+      break;
+
+
     case REGISTER_SPECIAL_2_5_SET_PFN_DELAY:
       ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
       temp =  next_message.data_2;
@@ -1892,6 +1905,66 @@ void ExecuteEthernetCommand(unsigned int personality) {
 
     }
   }
+}
+
+#define HALF_TMIN   3   // 60nS 
+
+void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
+  unsigned char start_max;
+  unsigned char start_med;
+  unsigned char start_small;
+  unsigned char start_min;
+
+
+  unsigned char stop_max;
+  unsigned char stop_med;
+  unsigned char stop_small;
+  unsigned char stop_min;
+
+  unsigned int temp;
+
+  if (stop > (start + 2*HALF_TMIN)) { 
+    start_max = start;
+    stop_max  = stop;
+    
+    temp      = start;
+    temp     += stop;
+    temp    >>= 1;    // temp is now equal to the mid point
+    
+    start_min = temp - HALF_TMIN;
+    stop_min  = temp + HALF_TMIN;
+    
+    temp = (start_min - start_max)/3;  // temp is now the medium offset
+    start_med = start_max + temp;
+    stop_med  = stop_max - temp;
+    
+    temp *= 2;  // temp is now the small offset
+    start_small = start_max + temp;
+    stop_small  = stop_max - temp;
+    
+    etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3 = start_max;
+    etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2 = start_med;
+    etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_1 = start_small;
+    etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_0 = start_min;
+    
+    etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_3 = start_max;
+    etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_2 = start_med;
+    etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_1 = start_small;
+    etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_0 = start_min;
+    
+    etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_3 = stop_max;      
+    etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_2 = stop_med;      
+    etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_1 = stop_small;      
+    etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_0 = stop_min;      
+    
+    etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_3 = stop_max;      
+    etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_2 = stop_med;      
+    etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_1 = stop_small;      
+    etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_0 = stop_min;      
+  }
+  
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 12, (unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3);
+  // DPARKER need to update for multiple personalities
 }
 
 

@@ -952,8 +952,8 @@ void ETMCanMasterProcessLogData(void) {
 
 	case ETM_CAN_DATA_LOG_REGISTER_MAGNETRON_MON_FAST_PREVIOUS_PULSE:
 	  // Update the high speed data table
-	  ptr_high_speed_data->magmon_readback_magnetron_low_energy_current = next_message.word2;
-	  ptr_high_speed_data->magmon_readback_magnetron_high_energy_current = next_message.word1;
+	  ptr_high_speed_data->magmon_readback_magnetron_low_energy_current = next_message.word2;  // This is the previous internal DAC Reading
+	  ptr_high_speed_data->magmon_readback_magnetron_high_energy_current = next_message.word1; // This is the previous external DAC Reading
 	  if (next_message.word0) {
 	    ptr_high_speed_data->status_bits.arc_this_pulse = 1;
 	  }
