@@ -1348,7 +1348,7 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   etm_can_gun_driver_mirror.gun_cathode_voltage_set_point = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_CATHODE + (3*personality)));
 
   // Load data for Pulse Sync
-  ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 12, (unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3);
+  ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 12, (unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2);
 }
 
 
@@ -1575,13 +1575,13 @@ void ExecuteEthernetCommand(unsigned int personality) {
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_A_B:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3 = next_message.data_2;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_C_D:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_1 = next_message.data_2;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
@@ -1611,13 +1611,13 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_A_B:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_3 = next_message.data_2;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_C_D:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_1 = next_message.data_2;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
@@ -1766,10 +1766,10 @@ void ExecuteEthernetCommand(unsigned int personality) {
       temp_array[6] = temp;
       temp_array[7] = temp;
       ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3 = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_1 = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_3 = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_1 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_0 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_2 = temp;
+      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_0 = temp;
       break;
 
     case REGISTER_SPECIAL_2_5_SET_GRID_STOP:
@@ -1963,7 +1963,7 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
     etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_0 = stop_min;      
   }
   
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 12, (unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3);
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 12, (unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2);
   // DPARKER need to update for multiple personalities
 }
 

@@ -512,8 +512,8 @@ void ETMCanMasterPulseSyncUpdateHighRegZero(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 3));
   can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_HIGH_ENERGY_TIMING_REG_0;
-  can_message.word2 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3;
-  can_message.word1 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_1;
+  can_message.word2 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2;
+  can_message.word1 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_0;
   can_message.word0 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_pfn_delay_high;
   ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
@@ -523,8 +523,8 @@ void ETMCanMasterPulseSyncUpdateHighRegOne(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 3));
   can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_HIGH_ENERGY_TIMING_REG_1;
-  can_message.word2 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_3;
-  can_message.word1 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_1;
+  can_message.word2 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_2;
+  can_message.word1 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_0;
   can_message.word0 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_high;
   ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
@@ -534,8 +534,8 @@ void ETMCanMasterPulseSyncUpdateLowRegZero(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 3));
   can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_LOW_ENERGY_TIMING_REG_0;
-  can_message.word2 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_3;
-  can_message.word1 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_1;
+  can_message.word2 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_2;
+  can_message.word1 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_0;
   can_message.word0 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_pfn_delay_low;
 
   ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
@@ -546,8 +546,8 @@ void ETMCanMasterPulseSyncUpdateLowRegOne(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 3));
   can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_LOW_ENERGY_TIMING_REG_1;
-  can_message.word2 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_3;
-  can_message.word1 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_1;
+  can_message.word2 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_2;
+  can_message.word1 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_0;
   can_message.word0 = *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_low;
   ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
