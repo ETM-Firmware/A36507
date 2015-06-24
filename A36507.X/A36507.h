@@ -15,7 +15,6 @@
 
 #include "ETM.h"
 
-
 //#define __IGNORE_ION_PUMP_MODULE
 //#define __IGNORE_AFC_MODULE
 //#define __IGNORE_GUN_DRIVER_MODULE
@@ -23,7 +22,7 @@
 //#define __IGNORE_HEATER_MAGNET_MODULE
 //#define __IGNORE_HV_LAMBDA_MODULE
 //#define __IGNORE_PULSE_CURRENT_MODULE
-#define __IGNORE_PULSE_SYNC_MODULE
+//#define __IGNORE_PULSE_SYNC_MODULE
 //#define __IGNORE_TCU
 
 
