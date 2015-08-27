@@ -838,31 +838,31 @@ WORD BuildModbusOutput(void)
 		          switch (modbus_send_index)
 		          {
 				  case MODBUS_WR_HVLAMBDA:
-		          	tx_ptr = (unsigned char *)&etm_can_hv_lambda_mirror;
+		          	tx_ptr = (unsigned char *)&mirror_hv_lambda;
 		          	break;
 				  case MODBUS_WR_ION_PUMP:
-		          	tx_ptr = (unsigned char *)&etm_can_ion_pump_mirror;
+		          	tx_ptr = (unsigned char *)&mirror_ion_pump;
 		          	break;
 				  case MODBUS_WR_AFC:
-		          	tx_ptr = (unsigned char *)&etm_can_afc_mirror;
+		          	tx_ptr = (unsigned char *)&mirror_afc;
 		          	break;
 				  case MODBUS_WR_COOLING:
-		          	tx_ptr = (unsigned char *)&etm_can_cooling_mirror;
+		          	tx_ptr = (unsigned char *)&mirror_cooling;
 		          	break;
 				  case MODBUS_WR_HTR_MAGNET:
-		          	tx_ptr = (unsigned char *)&etm_can_heater_magnet_mirror;
+		          	tx_ptr = (unsigned char *)&mirror_htr_mag;
 		          	break;
 				  case MODBUS_WR_GUN_DRIVER:
-		          	tx_ptr = (unsigned char *)&etm_can_gun_driver_mirror;
+		          	tx_ptr = (unsigned char *)&mirror_gun_drv;
 		          	break;
 				  case MODBUS_WR_MAGNETRON_CURRENT:
-		          	tx_ptr = (unsigned char *)&etm_can_magnetron_current_mirror;
+				    tx_ptr = (unsigned char *)&mirror_pulse_mon;
 		          	break;
 				  case MODBUS_WR_PULSE_SYNC:
-		          	tx_ptr = (unsigned char *)&etm_can_pulse_sync_mirror;
+		          	tx_ptr = (unsigned char *)&mirror_pulse_sync;
 		          	break;
 				  case MODBUS_WR_ETHERNET:
-		         	tx_ptr = (unsigned char *)&etm_can_ethernet_board_data;
+		         	tx_ptr = (unsigned char *)&local_data_ecb;
 		          	break;
 				  default: // move to the next for now, ignore some boards
 		          	break;

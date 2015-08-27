@@ -84,8 +84,8 @@
       <compileType>
         <linkerTool>
           <linkerLibItems>
-            <linkerLibFileItem>../../ETM_LIBRARY/lib/ETM_EEPROM_EXTERNAL.X.a</linkerLibFileItem>
-            <linkerLibFileItem>../../ETM_LIBRARY/lib/ETM_LIBRARY.X.a</linkerLibFileItem>
+            <linkerLibFileItem>../../ETM_LIBRARY_OLD/lib/ETM_EEPROM_EXTERNAL.X.a</linkerLibFileItem>
+            <linkerLibFileItem>../../ETM_LIBRARY_OLD/lib/ETM_LIBRARY.X.a</linkerLibFileItem>
           </linkerLibItems>
         </linkerTool>
         <archiverTool>
@@ -213,7 +213,7 @@
       </C30-LD>
       <C30Global>
         <property key="common-include-directories"
-                  value="TCPmodbus;..\..\ETM_LIBRARY\inc;..\A36507.X"/>
+                  value="TCPmodbus;..\..\ETM_LIBRARY_OLD\inc;..\A36507.X"/>
         <property key="dual-boot-partition" value="0"/>
         <property key="fast-math" value="false"/>
         <property key="generic-16-bit" value="false"/>

@@ -232,8 +232,6 @@ int main(void) {
   }
 }
 
-// DPARKER - We need to check the external reset detect at startup and if it is a real power cycle, we need to set the _SYNC_CONTROL_CLEAR_DEBUG_DATA durring startup process
-
 void DoStateMachine(void) {
   
   switch (global_data_A36507.control_state) {
@@ -262,23 +260,25 @@ void DoStateMachine(void) {
       DoA36507();
       FlashLeds();
 
+      // DPARKER HOW IS MODULE TYPE BEING RECEIVED FROM PULSE SYNC
+      // I SUGGEST 4 bits of the NOT LOGGED REGISTER
 #ifdef __IGNORE_PULSE_SYNC_MODULE
-      etm_can_pulse_sync_mirror.status_data.data_word_B = 255;
+      global_data_A36507.personality_select_from_pulse_sync = 255;
 #endif
-      if (etm_can_pulse_sync_mirror.status_data.data_word_B != 0) {
+      if (global_data_A36507.personality_select_from_pulse_sync != 0) {
 	// a personality has been received from pulse sync board
 	global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
 	SendToEventLog(LOG_ID_PERSONALITY_RECEIVED);
 
 #ifndef __SYSTEM_CONFIGURATION_2_5_MEV
-	if (etm_can_pulse_sync_mirror.status_data.data_word_B >= 5) {
+	if (global_data_A36507.personality_select_from_pulse_sync >= 5) {
 	  global_data_A36507.control_state = STATE_FAULT_SYSTEM;
 	  SendToEventLog(LOG_ID_PERSONALITY_ERROR_6_4);
 	}
 #endif
 	
 #ifndef __SYSTEM_CONFIGURATION_6_4_MEV
-	if (etm_can_pulse_sync_mirror.status_data.data_word_B != 255) {
+	if (global_data_A36507.personality_select_from_pulse_sync != 255) {
 	  global_data_A36507.control_state = STATE_FAULT_SYSTEM;
 	  SendToEventLog(LOG_ID_PERSONALITY_ERROR_2_5);
 	}
@@ -295,7 +295,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
-    ReadSystemConfigurationFromEEProm(etm_can_pulse_sync_mirror.status_data.data_word_B);
+    ReadSystemConfigurationFromEEProm(global_data_A36507.personality_select_from_pulse_sync);
     // Calculate all of the warmup counters based on previous warmup completed
     CalculateHeaterWarmupTimers();
     SendToEventLog(LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION);
@@ -697,14 +697,14 @@ unsigned int CheckFault(void) {
   }  
 
 
-  if (_PULSE_CURRENT_NOT_READY) {
+  if (_PULSE_MON_NOT_READY) {
     if (!board_not_ready_latch.magnetron_current_board) {
       // There is a NEW COOLING Fault
       SendToEventLog(LOG_ID_NOT_READY_PULSE_MONITOR_BOARD);
       LogModuleFault(ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD);
       board_not_ready_latch.magnetron_current_board = 1;
     }
-    _FAULT_PULSE_CURRENT_MON_NOT_OPERATE = 1;
+    _FAULT_PULSE_MON_NOT_OPERATE = 1;
 #ifndef __IGNORE_PULSE_CURRENT_MODULE
     fault = 1;
 #endif
@@ -817,7 +817,7 @@ unsigned int CheckAllModulesConfigured(void) {
 #endif
 
 #ifndef __IGNORE_PULSE_CURRENT_MODULE
-  if ((board_com_fault.magnetron_current_board) || (_PULSE_CURRENT_NOT_CONFIGURED)) {
+  if ((board_com_fault.magnetron_current_board) || (_PULSE_MON_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
@@ -843,11 +843,15 @@ unsigned int CheckAllModulesConfigured(void) {
 
 void DoA36507(void) {
 #ifdef DEBUG_ETMMODBUS
-   static MODBUS_RESP_SMALL etmmodbus_test[4];
-   static unsigned etmmodbus_index = 0;
-   static unsigned etmmodbus_relay_set_index = 0;
-   static unsigned etmmodbus_relay_toggle = 0;
+  static MODBUS_RESP_SMALL etmmodbus_test[4];
+  static unsigned etmmodbus_index = 0;
+  static unsigned etmmodbus_relay_set_index = 0;
+  static unsigned etmmodbus_relay_toggle = 0;
 #endif 
+  _SYNC_CONTROL_WORD                 = 0xF0F0;
+  etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
+  etm_can_master_sync_message.sync_2 = 0x0123;
+  etm_can_master_sync_message.sync_3 = 0x4567;
 
   ETMCanMasterDoCan();
   TCPmodbus_task();
@@ -880,23 +884,25 @@ void DoA36507(void) {
     _FAULT_COOLING_NOT_READY = 1;
   }
 #endif
-  
-  local_debug_data.debug_0 = global_data_A36507.control_state;
-  local_debug_data.debug_1 = global_data_A36507.event_log_counter;
-  local_debug_data.debug_2 = (unsigned int)(global_data_A36507.time_seconds_now >> 16);
-  local_debug_data.debug_3 = (unsigned int)(global_data_A36507.time_seconds_now & 0x0000FFFF);
-  local_debug_data.debug_4 = global_data_A36507.no_connect_count_ion_pump_board;
-  local_debug_data.debug_5 = global_data_A36507.no_connect_count_magnetron_current_board;
-  local_debug_data.debug_6 = global_data_A36507.no_connect_count_pulse_sync_board;
-  local_debug_data.debug_7 = global_data_A36507.no_connect_count_hv_lambda_board;
-  local_debug_data.debug_8 = global_data_A36507.no_connect_count_afc_board;
-  local_debug_data.debug_9 = global_data_A36507.no_connect_count_cooling_interface_board;
-  local_debug_data.debug_A = global_data_A36507.no_connect_count_heater_magnet_board;
-  local_debug_data.debug_B = global_data_A36507.no_connect_count_gun_driver_board;
-  local_debug_data.debug_C = etm_can_next_pulse_level;
-  local_debug_data.debug_D = etm_can_next_pulse_count;
+  /*
+  debug_data_ecb.debug_0 = global_data_A36507.control_state;
+  debug_data_ecb.debug_1 = global_data_A36507.event_log_counter;
+  debug_data_ecb.debug_2 = (unsigned int)(global_data_A36507.time_seconds_now >> 16);
+  debug_data_ecb.debug_3 = (unsigned int)(global_data_A36507.time_seconds_now & 0x0000FFFF);
+  debug_data_ecb.debug_4 = global_data_A36507.no_connect_count_ion_pump_board;
+  debug_data_ecb.debug_5 = global_data_A36507.no_connect_count_magnetron_current_board;
+  debug_data_ecb.debug_6 = global_data_A36507.no_connect_count_pulse_sync_board;
+  debug_data_ecb.debug_7 = global_data_A36507.no_connect_count_hv_lambda_board;
+  debug_data_ecb.debug_8 = global_data_A36507.no_connect_count_afc_board;
+  debug_data_ecb.debug_9 = global_data_A36507.no_connect_count_cooling_interface_board;
+  debug_data_ecb.debug_A = global_data_A36507.no_connect_count_heater_magnet_board;
+  debug_data_ecb.debug_B = global_data_A36507.no_connect_count_gun_driver_board;
+  debug_data_ecb.debug_C = etm_can_next_pulse_level;
+  debug_data_ecb.debug_D = etm_can_next_pulse_count;
 
-  etm_can_ethernet_board_data.mirror_sync_0_control_word = *(unsigned int*)&etm_can_sync_message.sync_0_control_word;
+  */
+
+
   
 
 
@@ -938,21 +944,21 @@ void DoA36507(void) {
       // check readbacks 
       if (etmmodbus_test[0].done) {
 	if (etmmodbus_test[0].done == ETMMODBUS_RESPONSE_OK) {
-	  local_debug_data.debug_E &= 0xfff0;
+	  //local_debug_data.debug_E &= 0xfff0;
 	}
-	local_debug_data.debug_E |= etmmodbus_test[0].data & 0x0f;
+	//local_debug_data.debug_E |= etmmodbus_test[0].data & 0x0f;
 	etmmodbus_test[0].done = 0;
       }
       if (etmmodbus_test[1].done) {
 	if (etmmodbus_test[1].done == ETMMODBUS_RESPONSE_OK) {
-	  local_debug_data.debug_E &= 0x000f;
+	  //local_debug_data.debug_E &= 0x000f;
 	}
-	local_debug_data.debug_E |= (etmmodbus_test[1].data << 4) & 0xfff0;
+	//local_debug_data.debug_E |= (etmmodbus_test[1].data << 4) & 0xfff0;
 	etmmodbus_test[1].done = 0;
       }
       if (etmmodbus_test[2].done) {
 	if (etmmodbus_test[2].done == ETMMODBUS_RESPONSE_OK) {
-	  local_debug_data.debug_F = etmmodbus_test[2].data;
+	  //local_debug_data.debug_F = etmmodbus_test[2].data;
 	}
 	etmmodbus_test[2].done = 0;
       }
@@ -961,6 +967,10 @@ void DoA36507(void) {
 #endif
     
     // Copy data from global variable strucutre to strucutre that gets sent to GUI
+
+    //DPARKER figure out some way to do this
+    /*
+    etm_can_ethernet_board_data.mirror_sync_0_control_word = *(unsigned int*)&etm_can_sync_message.sync_0_control_word;
     etm_can_ethernet_board_data.mirror_control_state = global_data_A36507.control_state;
     etm_can_ethernet_board_data.mirror_system_powered_seconds = global_data_A36507.system_powered_seconds;
     etm_can_ethernet_board_data.mirror_system_hv_on_seconds = global_data_A36507.system_hv_on_seconds;
@@ -971,7 +981,7 @@ void DoA36507(void) {
     etm_can_ethernet_board_data.mirror_magnetron_heater_warmup_counter_seconds = global_data_A36507.magnetron_heater_warmup_counter_seconds;
     etm_can_ethernet_board_data.mirror_gun_driver_heater_warmup_counter_seconds = global_data_A36507.gun_driver_heater_warmup_counter_seconds;
     etm_can_ethernet_board_data.mirror_board_com_fault = *(unsigned int*)&board_com_fault;
-
+    */
     if (global_data_A36507.control_state == STATE_DRIVE_UP) {
       global_data_A36507.drive_up_timer++;
     }
@@ -1127,14 +1137,14 @@ void UpdateHeaterScale() {
 
   // Load the energy per pulse into temp32
   // Use the higher of High/Low Energy set point
-  if (etm_can_hv_lambda_mirror.ecb_high_set_point > etm_can_hv_lambda_mirror.ecb_low_set_point) {
-    temp32 = CalculatePulseEnergyMilliJoules(etm_can_hv_lambda_mirror.ecb_low_set_point);
+  if (local_hv_lambda_high_en_set_point > local_hv_lambda_low_en_set_point) {
+    temp32 = CalculatePulseEnergyMilliJoules(local_hv_lambda_high_en_set_point);
   } else {
-    temp32 = CalculatePulseEnergyMilliJoules(etm_can_hv_lambda_mirror.ecb_low_set_point);
+    temp32 = CalculatePulseEnergyMilliJoules(local_hv_lambda_low_en_set_point);
   }
   
   // Multiply the Energy per Pulse times the PRF (in deci-Hz)
-  temp32 *= etm_can_pulse_sync_mirror.status_data.data_word_A; // This is the pulse frequency
+  temp32 *= ETMCanMasterGetPulsePRF();
   if (global_data_A36507.control_state != STATE_XRAY_ON) {
     // Set the power to zero if we are not in the X-RAY ON state
     temp32 = 0;
@@ -1156,10 +1166,9 @@ void UpdateHeaterScale() {
     temp16 = 0x3F;
   }
   
-  
-  etm_can_heater_magnet_mirror.htrmag_heater_current_set_point_scaled = ETMScaleFactor16(etm_can_heater_magnet_mirror.htrmag_heater_current_set_point,
-											 FilamentLookUpTable[temp16],
-											 0);
+  local_heater_current_scaled_set_point = ETMScaleFactor16(local_heater_current_full_set_point,
+							   FilamentLookUpTable[temp16],
+							   0);
 }
 
 
@@ -1169,16 +1178,10 @@ void InitializeA36507(void) {
 
 
 
-  _FAULT_REGISTER = 0;
-  _CONTROL_REGISTER = 0;
-
-  etm_can_status_register.data_word_A = 0x0000;
-  etm_can_status_register.data_word_B = 0x0000;
-
-  etm_can_my_configuration.firmware_major_rev = FIRMWARE_AGILE_REV;
-  etm_can_my_configuration.firmware_branch = FIRMWARE_BRANCH;
-  etm_can_my_configuration.firmware_minor_rev = FIRMWARE_MINOR_REV;
-
+  _FAULT_REGISTER      = 0;
+  _CONTROL_REGISTER    = 0;
+  _WARNING_REGISTER    = 0;
+  _NOT_LOGGED_REGISTER = 0;
 
   // Set the not connected bits for all boards
   board_com_fault.hv_lambda_board         = 1;
@@ -1189,15 +1192,6 @@ void InitializeA36507(void) {
   board_com_fault.gun_driver_board        = 1;
   board_com_fault.magnetron_current_board = 1;
   board_com_fault.pulse_sync_board        = 1;
-  //_HV_LAMBDA_NOT_CONNECTED     = 1;
-  //_ION_PUMP_NOT_CONNECTED      = 1;
-  //_AFC_NOT_CONNECTED           = 1;
-  //_COOLING_NOT_CONNECTED       = 1;
-  //_HEATER_MAGNET_NOT_CONNECTED = 1;
-  //_GUN_DRIVER_NOT_CONNECTED    = 1;
-  //_PULSE_CURRENT_NOT_CONNECTED = 1;
-  //_PULSE_SYNC_NOT_CONNECTED    = 1;
-
 
     
   // Check it reset was a result of full power cycle
@@ -1242,9 +1236,12 @@ void InitializeA36507(void) {
   ETMEEPromConfigureExternalDevice(EEPROM_SIZE_8K_BYTES, FCY_CLK, ETM_I2C_400K_BAUD, EEPROM_I2C_ADDRESS_0, 1);
   ConfigureDS3231(&U6_DS3231, I2C_PORT, RTC_DEFAULT_CONFIG, FCY_CLK, ETM_I2C_400K_BAUD);
 
+#define AGILE_REV 77
+#define SERIAL_NUMBER 100 
+
   // Initialize the Can module
-  ETMCanMasterInitialize(FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
-  ETMCanMasterLoadConfiguration(36507, 0, FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_MINOR_REV);
+  ETMCanMasterInitialize(CAN_PORT_1, FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
+  ETMCanMasterLoadConfiguration(36507, 0, AGILE_REV, FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, SERIAL_NUMBER);
   
   // Initialize TCPmodbus Module
   TCPmodbus_init();
@@ -1329,26 +1326,27 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   }
   
   // Load data for HV Lambda
-  etm_can_hv_lambda_mirror.ecb_low_set_point = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT + (2*personality)));
-  etm_can_hv_lambda_mirror.ecb_high_set_point = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT + (2*personality)));
+  local_hv_lambda_low_en_set_point    = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT + (2*personality)));
+  local_hv_lambda_high_en_set_point   = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT + (2*personality)));
 
   // Load data for AFC
-  etm_can_afc_mirror.afc_home_position = ETMEEPromReadWord((EEPROM_REGISTER_AFC_HOME_POSITION + personality));
-  etm_can_afc_mirror.afc_offset = ETMEEPromReadWord(EEPROM_REGISTER_AFC_OFFSET);
-  etm_can_afc_mirror.aft_control_voltage = ETMEEPromReadWord(EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE);
+  local_afc_home_position             = ETMEEPromReadWord((EEPROM_REGISTER_AFC_HOME_POSITION + personality));
+  local_afc_aft_control_voltage       = ETMEEPromReadWord(EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE);
+  // etm_can_afc_mirror.afc_offset = ETMEEPromReadWord(EEPROM_REGISTER_AFC_OFFSET);
+
   
   // Load Data for Heater/Magnet Supply
-  etm_can_heater_magnet_mirror.htrmag_heater_current_set_point = ETMEEPromReadWord(EEPROM_REGISTER_HTR_MAG_HEATER_CURRENT);
-  etm_can_heater_magnet_mirror.htrmag_magnet_current_set_point = ETMEEPromReadWord((EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT + personality));
+  local_heater_current_full_set_point = ETMEEPromReadWord(EEPROM_REGISTER_HTR_MAG_HEATER_CURRENT);
+  local_magnet_current_set_point      = ETMEEPromReadWord((EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT + personality));
   
   // Load data for Gun Driver
-  etm_can_gun_driver_mirror.gun_heater_voltage_set_point = ETMEEPromReadWord(EEPROM_REGISTER_GUN_DRV_HTR_VOLTAGE);
-  etm_can_gun_driver_mirror.gun_high_energy_pulse_top_voltage_set_point = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_HIGH_PULSE_TOP + (3*personality)));
-  etm_can_gun_driver_mirror.gun_low_energy_pulse_top_voltage_set_point = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_LOW_PULSE_TOP + (3*personality)));
-  etm_can_gun_driver_mirror.gun_cathode_voltage_set_point = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_CATHODE + (3*personality)));
+  local_gun_drv_heater_v_set_point    = ETMEEPromReadWord(EEPROM_REGISTER_GUN_DRV_HTR_VOLTAGE);
+  local_gun_drv_high_en_pulse_top_v   = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_HIGH_PULSE_TOP + (3*personality)));
+  local_gun_drv_low_en_pulse_top_v    = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_LOW_PULSE_TOP + (3*personality)));
+  local_gun_drv_cathode_set_point     = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_CATHODE + (3*personality)));
 
   // Load data for Pulse Sync
-  ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 12, (unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2);
+  ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 12, (unsigned int*)&local_pulse_sync_timing_reg_0_word_0);
 }
 
 
@@ -1475,9 +1473,9 @@ void ExecuteEthernetCommand(unsigned int personality) {
   unsigned int temp;
   unsigned int temp_array[12];
 
-  ETMCanMessage can_message;
-  unsigned long temp_long;
-  RTC_TIME set_time;
+
+  //unsigned long temp_long;
+  //RTC_TIME set_time;
 
 
   // DPARKER what happens if this is called before personality has been read??? 
@@ -1508,211 +1506,190 @@ void ExecuteEthernetCommand(unsigned int personality) {
     // This message needs to be processsed by the ethernet control board
     switch (next_message.index) {
     case REGISTER_HEATER_CURRENT_AT_STANDBY:
-      etm_can_heater_magnet_mirror.htrmag_heater_current_set_point = next_message.data_2;
+      local_heater_current_full_set_point = next_message.data_2;
       eeprom_register = next_message.index;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_ELECTROMAGNET_CURRENT:
-      etm_can_heater_magnet_mirror.htrmag_magnet_current_set_point = next_message.data_2;
+      local_magnet_current_set_point = next_message.data_2;
       eeprom_register = next_message.index + personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_HOME_POSITION:
-      etm_can_afc_mirror.afc_home_position = next_message.data_2;
+      local_afc_home_position = next_message.data_2;
       eeprom_register = next_message.index + personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_AFC_OFFSET:
-      etm_can_afc_mirror.afc_offset = next_message.data_2;
+      //etm_can_afc_mirror.afc_offset = next_message.data_2;
       eeprom_register = next_message.index;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
       
     case REGISTER_AFC_AFT_CONTROL_VOLTAGE:
-      etm_can_afc_mirror.aft_control_voltage = next_message.data_2;
+      local_afc_aft_control_voltage = next_message.data_2;
       eeprom_register = next_message.index;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_HIGH_ENERGY_SET_POINT:
-      etm_can_hv_lambda_mirror.ecb_high_set_point = next_message.data_2;
+      local_hv_lambda_high_en_set_point = next_message.data_2;
       eeprom_register = next_message.index + 2 * personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       // DPARKER figure out how this is going to work - voltage or current programming
       break;
 
     case REGISTER_LOW_ENERGY_SET_POINT:
-      etm_can_hv_lambda_mirror.ecb_low_set_point = next_message.data_2;
+      local_hv_lambda_low_en_set_point = next_message.data_2;
       eeprom_register = next_message.index + 2 * personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       // DPARKER figure out how this is going to work - voltage or current programming
       break;
 
     case REGISTER_GUN_DRIVER_HEATER_VOLTAGE:
-      etm_can_gun_driver_mirror.gun_heater_voltage_set_point = next_message.data_2;
+      local_gun_drv_heater_v_set_point = next_message.data_2;
       eeprom_register = next_message.index;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_GUN_DRIVER_HIGH_ENERGY_PULSE_TOP_VOLTAGE:
-      etm_can_gun_driver_mirror.gun_high_energy_pulse_top_voltage_set_point = next_message.data_2;
+      local_gun_drv_high_en_pulse_top_v = next_message.data_2;
       eeprom_register = next_message.index + personality * 3;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_GUN_DRIVER_LOW_ENERGY_PULSE_TOP_VOLTAGE:
-      etm_can_gun_driver_mirror.gun_low_energy_pulse_top_voltage_set_point = next_message.data_2;
+      local_gun_drv_low_en_pulse_top_v = next_message.data_2;
       eeprom_register = next_message.index + personality * 3;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_GUN_DRIVER_CATHODE_VOLTAGE:
-      etm_can_gun_driver_mirror.gun_cathode_voltage_set_point = next_message.data_2;
+      local_gun_drv_cathode_set_point = next_message.data_2;
       eeprom_register = next_message.index + personality * 3;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_A_B:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2 = next_message.data_2;
+      local_pulse_sync_timing_reg_0_word_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_C_D:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_0 = next_message.data_2;
+      local_pulse_sync_timing_reg_0_word_1 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_RF_TRIGGER_AND_THYRATRON_PULSE_DELAY_HIGH_ENERGY:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_pfn_delay_high = next_message.data_2;
+      local_pulse_sync_timing_reg_0_word_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_HIGH_ENERGY_A_B:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_3 = next_message.data_2;
+      local_pulse_sync_timing_reg_1_word_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_HIGH_ENERGY_C_D:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_1 = next_message.data_2;
+      local_pulse_sync_timing_reg_1_word_1 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_HIGH_ENERGY:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_high = next_message.data_2;
+      local_pulse_sync_timing_reg_1_word_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_A_B:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_2 = next_message.data_2;
+      local_pulse_sync_timing_reg_2_word_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_C_D:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_0 = next_message.data_2;
+      local_pulse_sync_timing_reg_2_word_1 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_RF_TRIGGER_AND_THYRATRON_PULSE_DELAY_LOW_ENERGY:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_pfn_delay_low = next_message.data_2;
+      local_pulse_sync_timing_reg_2_word_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_A_B:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_3 = next_message.data_2;
+      local_pulse_sync_timing_reg_3_word_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_C_D:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_1 = next_message.data_2;
+      local_pulse_sync_timing_reg_3_word_1 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_LOW_ENERGY:
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_low = next_message.data_2;
+      local_pulse_sync_timing_reg_3_word_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_CMD_AFC_SELECT_AFC_MODE:
-      can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 3));
-      can_message.word3 = ETM_CAN_REGISTER_AFC_CMD_SELECT_AFC_MODE;
-      can_message.word2 = 0;
-      can_message.word1 = 0;
-      can_message.word0 = 0;
-      ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
-      MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+      ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
+			  ETM_CAN_REGISTER_AFC_CMD_SELECT_AFC_MODE,
+			  0,
+			  0,
+			  0);
       break;
 
     case REGISTER_CMD_AFC_SELECT_MANUAL_MODE:
-      can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 3));
-      can_message.word3 = ETM_CAN_REGISTER_AFC_CMD_SELECT_MANUAL_MODE;
-      can_message.word2 = 0;
-      can_message.word1 = 0;
-      can_message.word0 = 0;
-      ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
-      MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+      ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
+			  ETM_CAN_REGISTER_AFC_CMD_SELECT_MANUAL_MODE,
+			  0,
+			  0,
+			  0);
       break;
 
     case REGISTER_CMD_AFC_MANUAL_TARGET_POSITION:
-      can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 3));
-      can_message.word3 = ETM_CAN_REGISTER_AFC_CMD_SET_MANUAL_TARGET_POSITION;
-      can_message.word2 = 0;
-      can_message.word1 = 0;
-      can_message.word0 = next_message.data_2;
-      ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
-      MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+      ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
+			  ETM_CAN_REGISTER_AFC_CMD_SET_MANUAL_TARGET_POSITION,
+			  0,
+			  0,
+			  next_message.data_2);
       break;
 
     case REGISTER_CMD_COOLANT_INTERFACE_ALLOW_25_MORE_SF6_PULSES:
-      can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_COOLING_INTERFACE_BOARD << 3));
-      can_message.word3 = ETM_CAN_REGISTER_COOLING_CMD_SF6_PULSE_LIMIT_OVERRIDE;
-      can_message.word2 = 0;
-      can_message.word1 = 0;
-      can_message.word0 = 0;
-      ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
-      MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+      ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_COOLING_INTERFACE_BOARD << 2)),
+			  ETM_CAN_REGISTER_COOLING_CMD_SF6_PULSE_LIMIT_OVERRIDE,
+			  0,
+			  0,
+			  0);
       break;
 
     case REGISTER_CMD_COOLANT_INTERFACE_ALLOW_SF6_PULSES_WHEN_PRESSURE_BELOW_LIMIT:
-      can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_COOLING_INTERFACE_BOARD << 3));
-      can_message.word3 = ETM_CAN_REGISTER_COOLING_CMD_SF6_LEAK_LIMIT_OVERRIDE;
-      can_message.word2 = 0;
-      can_message.word1 = 0;
-      can_message.word0 = next_message.data_2;
-      ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
-      MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+      ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_COOLING_INTERFACE_BOARD << 2)),
+			  ETM_CAN_REGISTER_COOLING_CMD_SF6_LEAK_LIMIT_OVERRIDE,
+			  0,
+			  0,
+			  next_message.data_2);
       break;
 
     case REGISTER_CMD_COOLANT_INTERFACE_SET_SF6_PULSES_IN_BOTTLE:
-      can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_COOLING_INTERFACE_BOARD << 3));
-      can_message.word3 = ETM_CAN_REGISTER_COOLING_CMD_RESET_BOTTLE_COUNT;
-      can_message.word2 = 0;
-      can_message.word1 = 0;
-      can_message.word0 = next_message.data_2;
-      ETMCanAddMessageToBuffer(&etm_can_tx_message_buffer, &can_message);
-      MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
-      break;
-
-    case REGISTER_SPECIAL_SET_TIME:
-      temp_long = next_message.data_2;
-      temp_long <<= 16;
-      temp_long += next_message.data_1;
-      RTCSecondsToDate(temp_long, &set_time);
-      SetDateAndTime(&U6_DS3231, &set_time);
-      break;
+      ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_COOLING_INTERFACE_BOARD << 2)),
+			  ETM_CAN_REGISTER_COOLING_CMD_RESET_BOTTLE_COUNT,
+			  0,
+			  0,
+			  next_message.data_2);
 
     case REGISTER_SPECIAL_ECB_RESET_ARC_AND_PULSE_COUNT:
       // DPARKER the command to do this is not yet part of the CAN library
@@ -1766,10 +1743,10 @@ void ExecuteEthernetCommand(unsigned int personality) {
       temp_array[6] = temp;
       temp_array[7] = temp;
       ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2 = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_0 = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_2 = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_0 = temp;
+      local_pulse_sync_timing_reg_0_word_0 = temp;
+      local_pulse_sync_timing_reg_0_word_1 = temp;
+      local_pulse_sync_timing_reg_2_word_0 = temp;
+      local_pulse_sync_timing_reg_2_word_1 = temp;
       break;
 
     case REGISTER_SPECIAL_2_5_SET_GRID_STOP:
@@ -1784,12 +1761,14 @@ void ExecuteEthernetCommand(unsigned int personality) {
       temp_array[9] = temp;
       temp_array[10] = temp;
       ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_3 = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_1 = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_3 = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_1 = temp;
+      local_pulse_sync_timing_reg_1_word_0 = temp;
+      local_pulse_sync_timing_reg_1_word_1 = temp;
+      local_pulse_sync_timing_reg_3_word_0 = temp;
+      local_pulse_sync_timing_reg_3_word_1 = temp;
       break;
 
+      // DPARKER BRING ALL OF THESE BACK
+      /*
     case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START:
       CalculatePulseSyncParams(next_message.data_2, etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_3);
       break;
@@ -1842,10 +1821,10 @@ void ExecuteEthernetCommand(unsigned int personality) {
       *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_high = temp;
       *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_low = temp;
       break;
-
+      */
     case REGISTER_SPECIAL_2_5_SET_HV_LAMBDA_VOLTAGE:
-      etm_can_hv_lambda_mirror.ecb_high_set_point = next_message.data_2;     
-      etm_can_hv_lambda_mirror.ecb_low_set_point = next_message.data_2;
+      local_hv_lambda_low_en_set_point  = next_message.data_2;     
+      local_hv_lambda_high_en_set_point = next_message.data_2;
 
       eeprom_register = REGISTER_HIGH_ENERGY_SET_POINT + 2 * personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
@@ -1910,6 +1889,8 @@ void ExecuteEthernetCommand(unsigned int personality) {
 #define HALF_TMIN   3   // 60nS 
 
 void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
+  // DPARKER BRING THIS BACK
+  /*
   unsigned char start_max;
   unsigned char start_med;
   unsigned char start_small;
@@ -1922,6 +1903,7 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
   unsigned char stop_min;
 
   unsigned int temp;
+
 
   if (stop > (start + 2*HALF_TMIN)) { 
     start_max = start;
@@ -1965,6 +1947,8 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
   
   ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 12, (unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2);
   // DPARKER need to update for multiple personalities
+
+  */
 }
 
 
@@ -1975,15 +1959,18 @@ void LogBoardReadyStatus(void) {
 
 
 
-
+// DPARKER need to update all the logging functionality
 
 void LogModuleFault(unsigned int board_address) {
-  ETMCanStatusRegisterFaultBits fault_bits;
   /* 
      Faults are numbered as = 0x10bf
      b = Board Address as defined in P1395_CAN_CORE.h
      f = Fault bit that is set (0 -> F)
   */
+  /*
+  ETMCanStatusRegisterFaultBits fault_bits;
+
+
   switch (board_address) 
     {
     case ETM_CAN_ADDR_ION_PUMP_BOARD:
@@ -2073,7 +2060,7 @@ void LogModuleFault(unsigned int board_address) {
   if (fault_bits.fault_F) {
     SendToEventLog(0x1000 + (board_address << 4) + 15);
   }
-  
+  */
 }
 
 
