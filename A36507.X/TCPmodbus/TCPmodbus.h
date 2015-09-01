@@ -29,8 +29,6 @@ extern unsigned int SendPulseData(unsigned char is_buffer_a);
 
 #define ETH_EVENT_SIZE  100
 
-#define MODBUS_COMMAND_REFRESH_TOTAL     10
-
 enum
 {
 	MODBUS_WR_HVLAMBDA = 1, 	
@@ -42,7 +40,8 @@ enum
 	MODBUS_WR_MAGNETRON_CURRENT,
 	MODBUS_WR_PULSE_SYNC,
 	MODBUS_WR_ETHERNET,
-	MODBUS_WR_EVENTS,	   /* 10 */
+	MODBUS_WR_DEBUG_DATA,
+	MODBUS_WR_EVENTS,	   /* 11 */
 	
 	MODBUS_WR_ONE_CAL_ENTRY,
 	MODBUS_WR_PULSE_LOG,
@@ -50,6 +49,10 @@ enum
 
 
 };
+
+#define MODBUS_COMMAND_REFRESH_TOTAL     MODBUS_WR_EVENTS
+
+
 
 
 #define MAX_CUSTOM_DATA_LENGTH  32

@@ -774,6 +774,32 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
        return (total_bytes);
 
 }
+
+
+WORD BuildModbusOutput_debug_data(unsigned char *tx_ptr)
+{
+	  WORD i; 
+	  WORD total_bytes = 0;  // default: no cmd out 
+    
+      if (tx_ptr) // otherwise index is wrong, don't need send any cmd out
+      {
+	total_bytes = 80;
+        BuildModbusOutput_write_header(total_bytes);   
+
+        // data starts at offset 13
+	    for (i = 0; i < total_bytes; i++, tx_ptr++)
+        {
+        	data_buffer[i + 13] = *tx_ptr;
+        }
+        total_bytes = i + 13;
+        		     
+       }
+       
+       return (total_bytes);
+
+}
+
+
 /****************************************************************************
   Function:
     BuildModbusOutput_read_command()
@@ -871,8 +897,15 @@ WORD BuildModbusOutput(void)
 		          {
                                 total_bytes = BuildModbusOutput_write_boards(tx_ptr);
 		          }
-	      }      
-	      else
+	      }  else if (modbus_send_index == MODBUS_WR_DEBUG_DATA) {
+		// Write debugging information
+		if (etm_can_active_debugging_board_id == 9) {
+		  tx_ptr = (unsigned char *)&debug_data_ecb;
+		} else {
+		  tx_ptr = (unsigned char *)&debug_data_slave_mirror;
+		}
+		total_bytes = BuildModbusOutput_debug_data(tx_ptr);     
+	      } else
 	      {	 // special command for rd or write info
 		      switch (modbus_send_index)
 		      {
@@ -1050,7 +1083,7 @@ void GenericTCPClient(void)
             }
     
 	  		modbus_cmd_need_repeat = 0;
-
+			etm_can_active_debugging_board_id = data_buffer[10];
        //    GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
 		} // if (data_buffer[0] == (modbus_array_index + 1))
     

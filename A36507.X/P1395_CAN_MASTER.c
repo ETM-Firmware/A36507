@@ -831,7 +831,8 @@ void ETMCanMasterProcessLogData(void) {
     } else if (log_id >= 0x100) {
       // It is debugging information, load into the common debugging register if that board is actively being debugged
       // DPARKER impliment this using used debug_data_slave_mirror
-      if (board_id == etm_can_active_debugging_board_id) {
+      if (1) { // DPARKER Change this back
+	//if (board_id == etm_can_active_debugging_board_id) {
 	switch (log_id) 
 	  {
 	  case ETM_CAN_DATA_LOG_REGISTER_DEFAULT_DEBUG_0:

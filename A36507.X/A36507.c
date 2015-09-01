@@ -902,8 +902,88 @@ void DoA36507(void) {
 
   */
 
+  mirror_pulse_mon.local_data[0] = 100;
+  mirror_pulse_mon.local_data[1] = 101;
+  mirror_pulse_mon.local_data[2] = 102;
+  mirror_pulse_mon.local_data[3] = 103;
 
-  
+  mirror_pulse_mon.local_data[4] = 104;
+  mirror_pulse_mon.local_data[5] = 105;
+  mirror_pulse_mon.local_data[6] = 106;
+  mirror_pulse_mon.local_data[7] = 107;
+
+  mirror_pulse_mon.local_data[8] = 108;
+  mirror_pulse_mon.local_data[9] = 109;
+  mirror_pulse_mon.local_data[10] = 110;
+  mirror_pulse_mon.local_data[11] = 111;
+
+  mirror_pulse_mon.local_data[12] = 112;
+  mirror_pulse_mon.local_data[13] = 113;
+  mirror_pulse_mon.local_data[14] = 114;
+  mirror_pulse_mon.local_data[15] = 115;
+
+  mirror_gun_drv.local_data[0] = 200;
+  mirror_gun_drv.local_data[1] = 201;
+  mirror_gun_drv.local_data[2] = 202;
+  mirror_gun_drv.local_data[3] = 203;
+
+  mirror_gun_drv.local_data[4] = 204;
+  mirror_gun_drv.local_data[5] = 205;
+  mirror_gun_drv.local_data[6] = 206;
+  mirror_gun_drv.local_data[7] = 207;
+
+  mirror_gun_drv.local_data[8] = 208;
+  mirror_gun_drv.local_data[9] = 209;
+  mirror_gun_drv.local_data[10] = 210;
+  mirror_gun_drv.local_data[11] = 211;
+
+  mirror_gun_drv.local_data[12] = 212;
+  mirror_gun_drv.local_data[13] = 213;
+  mirror_gun_drv.local_data[14] = 214;
+  mirror_gun_drv.local_data[15] = 215;
+
+
+  local_data_ecb.local_data[0] = 300;
+  local_data_ecb.local_data[1] = 301;
+  local_data_ecb.local_data[2] = 302;
+  local_data_ecb.local_data[3] = 303;
+
+  local_data_ecb.local_data[4] = 304;
+  local_data_ecb.local_data[5] = 305;
+  local_data_ecb.local_data[6] = 306;
+  local_data_ecb.local_data[7] = 307;
+
+  local_data_ecb.local_data[8] = 308;
+  local_data_ecb.local_data[9] = 309;
+  local_data_ecb.local_data[10] = 310;
+  local_data_ecb.local_data[11] = 311;
+
+  local_data_ecb.local_data[12] = 312;
+  local_data_ecb.local_data[13] = 313;
+  local_data_ecb.local_data[14] = 314;
+  local_data_ecb.local_data[15] = 315;
+
+
+
+  debug_data_ecb.debug_reg[0]  = 0; 
+  debug_data_ecb.debug_reg[1]  = 1; 
+  debug_data_ecb.debug_reg[2]  = 2; 
+  debug_data_ecb.debug_reg[3]  = 3; 
+
+  debug_data_ecb.debug_reg[4]  = 4; 
+  debug_data_ecb.debug_reg[5]  = 5; 
+  debug_data_ecb.debug_reg[6]  = 6; 
+  debug_data_ecb.debug_reg[7]  = 7; 
+
+  debug_data_ecb.debug_reg[8]  = 8; 
+  debug_data_ecb.debug_reg[9]  = 9; 
+  debug_data_ecb.debug_reg[10] = 10; 
+  debug_data_ecb.debug_reg[11] = 11; 
+
+  debug_data_ecb.debug_reg[12] = 12; 
+  debug_data_ecb.debug_reg[13] = 13; 
+  debug_data_ecb.debug_reg[14] = 14; 
+  debug_data_ecb.debug_reg[15] = 15; 
 
 
   if (_T2IF) {

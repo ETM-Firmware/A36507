@@ -277,6 +277,7 @@ extern ETMCanHighSpeedData high_speed_data_buffer_b[HIGH_SPEED_DATA_BUFFER_SIZE]
 
 extern ETMCanHighSpeedData              etm_can_high_speed_data_test;
 
+extern unsigned int etm_can_active_debugging_board_id;
 
 void ETMCanMasterDoCan(void);
 
