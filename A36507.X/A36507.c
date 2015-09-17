@@ -1616,6 +1616,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
 
     case REGISTER_HIGH_ENERGY_SET_POINT:
+      local_data_ecb.log_data[0]++;
       local_hv_lambda_high_en_set_point = next_message.data_2;
       eeprom_register = next_message.index + 2 * personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);

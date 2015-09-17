@@ -66,6 +66,10 @@
 //#include "TCPmodbus.h"
 #include "A36507.h"
 
+
+unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id, unsigned char *data_ptr);
+
+
 // Declare AppConfig structure and some other supporting stack variables
 APP_CONFIG AppConfig;
 static unsigned short wOriginalAppConfigChecksum;    // Checksum of the ROM defaults for AppConfig
@@ -666,9 +670,6 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
 {
 	  WORD x, i; 
 	  WORD total_bytes = 0;  // default: no cmd out 
-      static unsigned pulse_index = 0;  // index for eash tracking
-	  unsigned char *ptr;
-    
       switch (index) // otherwise index is wrong, don't need send any cmd out
       {
       case MODBUS_WR_EVENTS: 
@@ -705,6 +706,7 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
 
        
        break;
+       /*
       case MODBUS_WR_ONE_CAL_ENTRY:
       	if (queue_is_empty(QUEUE_CAL_TO_GUI) == 0) 
         {
@@ -730,42 +732,7 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
             
          }   
        break;
-       
-      case MODBUS_WR_PULSE_LOG:
-      
-      	if (send_high_speed_data_buffer) 
-        {
-	      	total_bytes = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData) + 2;
-	        
-        	BuildModbusOutput_write_header(total_bytes); 
-            
-            data_buffer[13] = (pulse_index >> 8) & 0xff;
-            data_buffer[14] = pulse_index & 0xff;
-            pulse_index++;  // overflows at 65535
-            
-            if (send_high_speed_data_buffer & 0x01) 
-            {
-            	ptr = (unsigned char *)&high_speed_data_buffer_a[0];
-                send_high_speed_data_buffer &= 0xfe;
-            } 
-            else  
-            {
-            	ptr = (unsigned char *)&high_speed_data_buffer_b[0];
-                send_high_speed_data_buffer = 0;
-            } 
-
-        	// data starts at offset 13
-            total_bytes -= 2;
-            for (x = 0; x < total_bytes; x++) {
-	      data_buffer[15 + x] = *ptr;
-	      *ptr = 0;
-	      ptr++;
-	    }
-	      	total_bytes += 15;
-            
-         }   
-       break;
-      
+       */
       default:
        break;           
 	     
@@ -773,6 +740,107 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
        
        return (total_bytes);
 
+}
+
+
+unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id, unsigned char *data_ptr) {
+  unsigned int i;
+  unsigned int total_bytes;
+
+  total_bytes = msg_bytes + 13;
+
+  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  data_buffer[1] = transaction_number & 0xff;	         // transaction lo byte
+  data_buffer[2] = 0;	                                 // protocol hi 
+  data_buffer[3] = 0;	                                 // protocol lo 
+  data_buffer[4] = ((msg_bytes + 7) >> 8);               // This is the length of data HB
+  data_buffer[5] = msg_bytes + 7;                        // This is the length of data LB
+  data_buffer[6] = unit_id;	                         // 
+  data_buffer[7] = 0x10;                                 // function code 
+  data_buffer[8] = 0;                                    // ref # hi
+  data_buffer[9] = 0;	                                 // ref # lo
+  data_buffer[10] = (msg_bytes >> 9);                    // msg length in words hi
+  data_buffer[11] = msg_bytes >> 1;                      // msg length in words lo
+  data_buffer[12] = total_bytes & 0xff;                  // data length in bytes // DPARKER is this used???
+
+  for (i = 0; i < msg_bytes; i++, data_ptr++) {
+    data_buffer[i + 13] = *data_ptr;
+  }
+  return total_bytes;
+}
+
+unsigned int BuildModbusOutputHighSpeedDataLog(void) {
+  unsigned int data_bytes;
+  unsigned int x;
+  static unsigned pulse_index = 0;  // index for eash tracking
+  unsigned char *ptr;
+  
+  data_bytes = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData) + 2;
+
+  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  data_buffer[1] = transaction_number & 0xff;	         // transaction lo byte
+  data_buffer[2] = 0;	                                 // protocol hi 
+  data_buffer[3] = 0;	                                 // protocol lo 
+  data_buffer[4] = ((data_bytes + 7) >> 8);              // This is the length of data HB
+  data_buffer[5] = data_bytes + 7;                       // This is the length of data LB
+  data_buffer[6] = MODBUS_WR_PULSE_LOG;                  // 
+  data_buffer[7] = 0x10;                                 // function code 
+  data_buffer[8] = 0;                                    // ref # hi
+  data_buffer[9] = 0;	                                 // ref # lo
+  data_buffer[10] = data_bytes >> 9;                     // msg length in words hi
+  data_buffer[11] = data_bytes >> 1;                     // msg length in words lo
+  data_buffer[12] = data_bytes & 0xff;                   // data length in bytes // DPARKER is this used???
+  data_buffer[13] = (pulse_index >> 8) & 0xff;           // pulse index high word
+  data_buffer[14] = pulse_index & 0xff;                  // pulse index low word
+  
+  pulse_index++;  // overflows at 65535
+
+  if (send_high_speed_data_buffer & 0x01) {
+    ptr = (unsigned char *)&high_speed_data_buffer_a[0];
+    send_high_speed_data_buffer &= 0xfe;
+  } else {
+    ptr = (unsigned char *)&high_speed_data_buffer_b[0];
+    send_high_speed_data_buffer = 0;
+  } 
+
+  for (x = 0; x < (data_bytes - 2); x++) {
+    data_buffer[15 + x] = *ptr;
+    *ptr = 0;
+    ptr++;
+  }
+
+  return data_bytes + 13;
+
+}
+
+
+
+unsigned int BuildModbusOutputCalibrationData(void) {
+
+  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  data_buffer[1] = transaction_number & 0xff;	         // transaction lo byte
+  data_buffer[2] = 0;	                                 // protocol hi 
+  data_buffer[3] = 0;	                                 // protocol lo 
+  data_buffer[4] = 0;                                    // This is the length of data HB
+  data_buffer[5] = 13;                                   // This is the length of data LB
+  data_buffer[6] = MODBUS_WR_ONE_CAL_ENTRY;              // 
+  data_buffer[7] = 0x10;                                 // function code 
+  data_buffer[8] = 0;                                    // ref # hi
+  data_buffer[9] = 0;	                                 // ref # lo
+  data_buffer[10] = 0;                                   // msg length in words hi
+  data_buffer[11] = 3;                                   // msg length in words lo
+  data_buffer[12] = 6;                                   // data length in bytes // DPARKER is this used???
+  data_buffer[13] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].index >> 8) & 0xff;
+  data_buffer[14] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].index & 0xff;
+  data_buffer[15] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale >> 8) & 0xff;
+  data_buffer[16] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale & 0xff;
+  data_buffer[17] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset >> 8) & 0xff;
+  data_buffer[18] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset & 0xff;
+  
+  eth_cal_to_GUI_get_index++;
+  eth_cal_to_GUI_get_index = eth_cal_to_GUI_get_index & (ETH_CAL_TO_GUI_BUFFER_SIZE - 1);
+  
+  return 19;
 }
 
 
@@ -841,121 +909,115 @@ WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count)
     Build modbus command, return 0 if we don't want to send anything
  
 ***************************************************************************/
-WORD BuildModbusOutput(void)
-{
-  	static DWORD	Timer_write = 0;
-    WORD total_bytes = 0;  // default: no cmd out
-    unsigned char *tx_ptr = 0;
-    
-    
-	  if((TickGet()-Timer_write) >= TICK_100MS) 
-      {
- 		  Timer_write = TickGet();
-	      if (!modbus_cmd_need_repeat)
-	      {
-	      	   modbus_refresh_index++;
-	           if (modbus_refresh_index > MODBUS_COMMAND_REFRESH_TOTAL) modbus_refresh_index = 1;	 // starts from 1
-	      }
-	      
-          modbus_send_index = modbus_refresh_index;
-          
-	      if (modbus_send_index >= MODBUS_WR_HVLAMBDA && modbus_send_index <= MODBUS_WR_ETHERNET)
-	      {  // write info to the GUI
-		          switch (modbus_send_index)
-		          {
-				  case MODBUS_WR_HVLAMBDA:
-		          	tx_ptr = (unsigned char *)&mirror_hv_lambda;
-		          	break;
-				  case MODBUS_WR_ION_PUMP:
-		          	tx_ptr = (unsigned char *)&mirror_ion_pump;
-		          	break;
-				  case MODBUS_WR_AFC:
-		          	tx_ptr = (unsigned char *)&mirror_afc;
-		          	break;
-				  case MODBUS_WR_COOLING:
-		          	tx_ptr = (unsigned char *)&mirror_cooling;
-		          	break;
-				  case MODBUS_WR_HTR_MAGNET:
-		          	tx_ptr = (unsigned char *)&mirror_htr_mag;
-		          	break;
-				  case MODBUS_WR_GUN_DRIVER:
-		          	tx_ptr = (unsigned char *)&mirror_gun_drv;
-		          	break;
-				  case MODBUS_WR_MAGNETRON_CURRENT:
-				    tx_ptr = (unsigned char *)&mirror_pulse_mon;
-		          	break;
-				  case MODBUS_WR_PULSE_SYNC:
-		          	tx_ptr = (unsigned char *)&mirror_pulse_sync;
-		          	break;
-				  case MODBUS_WR_ETHERNET:
-		         	tx_ptr = (unsigned char *)&local_data_ecb;
-		          	break;
-				  default: // move to the next for now, ignore some boards
-		          	break;
-		          } 
-		      	  if (tx_ptr) // otherwise index is wrong, don't need send any cmd out
-		          {
-                                total_bytes = BuildModbusOutput_write_boards(tx_ptr);
-		          }
-	      }  else if (modbus_send_index == MODBUS_WR_DEBUG_DATA) {
-		// Write debugging information
-		if (etm_can_active_debugging_board_id == 9) {
-		  tx_ptr = (unsigned char *)&debug_data_ecb;
-		} else {
-		  tx_ptr = (unsigned char *)&debug_data_slave_mirror;
-		}
-		total_bytes = BuildModbusOutput_debug_data(tx_ptr);     
-	      } else
-	      {	 // special command for rd or write info
-		      switch (modbus_send_index)
-		      {
-		      	  case MODBUS_WR_EVENTS:  
-                  	  total_bytes = BuildModbusOutput_write_commands(modbus_send_index);
-              		break;
-                  
-			      default:
-		          	break;
-	      	  }
-	          
-	      }
-	      
-      }
-      else {  // time to send queue commands
-      	  modbus_send_index = 0;
-          if (send_high_speed_data_buffer)
-          	 modbus_send_index = MODBUS_WR_PULSE_LOG;
-          else if (modbus_command_request) 
-          {
-          	 modbus_send_index = MODBUS_RD_COMMAND_DETAIL;
-             modbus_command_request = 0; 
-          }             
-          else if (queue_is_empty(QUEUE_CAL_TO_GUI) == 0)
-          	 modbus_send_index = MODBUS_WR_ONE_CAL_ENTRY;
+WORD BuildModbusOutput(void) {
+  static DWORD	Timer_write = 0;
+  WORD total_bytes = 0;  // default: no cmd out
+  unsigned char *tx_ptr = 0;
+  unsigned int msg_size_bytes;
 
-		  switch (modbus_send_index)
-		  {
-		  	  case MODBUS_WR_ONE_CAL_ENTRY: 
-		  	  case MODBUS_WR_PULSE_LOG: 
-              	  total_bytes = BuildModbusOutput_write_commands(modbus_send_index);
-          		break;
-              
-		      case MODBUS_RD_COMMAND_DETAIL:
-	          	total_bytes = BuildModbusOutput_read_command(modbus_send_index, 8);
-		      	break;
-		      default:
-		      	break;
-	      }
-      }
-
-	  if (total_bytes) 
-	  {
-	  	 transaction_number++; // don't care about overflow
-	      modbus_cmd_need_repeat = 1; // clear when there is response
+  
+  if((TickGet()-Timer_write) >= TICK_100MS) {
+    Timer_write = TickGet();
+    if (!modbus_cmd_need_repeat) {
+      modbus_refresh_index++;
+      if (modbus_refresh_index > MODBUS_COMMAND_REFRESH_TOTAL) modbus_refresh_index = 1;	 // starts from 1
+    }
+	      
+    modbus_send_index = modbus_refresh_index;
+    
+    if (modbus_send_index >= MODBUS_WR_HVLAMBDA && modbus_send_index <= MODBUS_WR_DEBUG_DATA) {  // write info to the GUI
+      switch (modbus_send_index)
+	{
+	case MODBUS_WR_HVLAMBDA:
+	  tx_ptr = (unsigned char *)&mirror_hv_lambda;
+	  msg_size_bytes = 104;
+	  break;
+	case MODBUS_WR_ION_PUMP:
+	  tx_ptr = (unsigned char *)&mirror_ion_pump;
+	  msg_size_bytes = 104;
+	  break;
+	case MODBUS_WR_AFC:
+	  tx_ptr = (unsigned char *)&mirror_afc;
+	  msg_size_bytes = 104;
+	  break;
+	case MODBUS_WR_COOLING:
+	  tx_ptr = (unsigned char *)&mirror_cooling;
+	  msg_size_bytes = 104;
+	  break;
+	case MODBUS_WR_HTR_MAGNET:
+	  tx_ptr = (unsigned char *)&mirror_htr_mag;
+	  msg_size_bytes = 104;
+	  break;
+	case MODBUS_WR_GUN_DRIVER:
+	  tx_ptr = (unsigned char *)&mirror_gun_drv;
+	  msg_size_bytes = 104;
+	  break;
+	case MODBUS_WR_MAGNETRON_CURRENT:
+	  tx_ptr = (unsigned char *)&mirror_pulse_mon;
+	  msg_size_bytes = 104;
+	  break;
+	case MODBUS_WR_PULSE_SYNC:
+	  tx_ptr = (unsigned char *)&mirror_pulse_sync;
+	  msg_size_bytes = 104;
+	  break;
+	case MODBUS_WR_ETHERNET:
+	  tx_ptr = (unsigned char *)&local_data_ecb;
+	  msg_size_bytes = 104;
+	  break;
+	case MODBUS_WR_DEBUG_DATA:
+	  if (etm_can_active_debugging_board_id == MODBUS_WR_ETHERNET) {
+	    tx_ptr = (unsigned char *)&debug_data_ecb;
+	  } else {
+	    tx_ptr = (unsigned char *)&debug_data_slave_mirror;
 	  }
-	  return (total_bytes);
-  	  
-      
+	  msg_size_bytes = 80;
+	  break;
+
+	default: // move to the next for now, ignore some boards
+	  break;
+	}
+      total_bytes = BuildModbusOutputGeneric(msg_size_bytes, modbus_send_index, tx_ptr);
+    } else {	 
+      // special command for rd or write info
+      switch (modbus_send_index)
+	{
+	case MODBUS_WR_EVENTS:
+	  total_bytes = BuildModbusOutput_write_commands(modbus_send_index);
+	  break;
+          
+	default:
+	  break;
+	}
+    }
+  } else {  // time to send queue commands
+    modbus_send_index = 0;
+    if (send_high_speed_data_buffer) {
+      //modbus_send_index = MODBUS_WR_PULSE_LOG;
+      total_bytes = BuildModbusOutputHighSpeedDataLog();
+    } else if (modbus_command_request) {
+      modbus_send_index = MODBUS_RD_COMMAND_DETAIL;
+      total_bytes = BuildModbusOutput_read_command(modbus_send_index, 8);
+      modbus_command_request = 0; 
+    } else if (queue_is_empty(QUEUE_CAL_TO_GUI) == 0) {
+      //modbus_send_index = MODBUS_WR_ONE_CAL_ENTRY;
+      total_bytes = BuildModbusOutputCalibrationData();
+    }    
     
+    switch (modbus_send_index)
+      {
+      case MODBUS_RD_COMMAND_DETAIL:
+
+	break;
+      default:
+	break;
+      }
+  }
+  
+  if (total_bytes) {
+    transaction_number++; // don't care about overflow
+    modbus_cmd_need_repeat = 1; // clear when there is response
+  }
+  return (total_bytes);
 }
 /*****************************************************************************
   Function:
