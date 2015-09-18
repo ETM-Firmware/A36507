@@ -242,7 +242,8 @@ void DoStateMachine(void) {
     global_data_A36507.control_state = STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC;
     SendToEventLog(LOG_ID_ENTERED_STATE_STARTUP);
     if (_STATUS_LAST_RESET_WAS_POWER_CYCLE) {
-      _SYNC_CONTROL_CLEAR_DEBUG_DATA = 1;
+      //_SYNC_CONTROL_CLEAR_DEBUG_DATA = 1; // DPAKER changed for debugging
+      _SYNC_CONTROL_CLEAR_DEBUG_DATA = 0;
     }
     break;
 
@@ -848,7 +849,7 @@ void DoA36507(void) {
   static unsigned etmmodbus_relay_set_index = 0;
   static unsigned etmmodbus_relay_toggle = 0;
 #endif 
-  _SYNC_CONTROL_WORD                 = 0xF0F0;
+  //_SYNC_CONTROL_WORD                 = 0xF0F0;
   etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
   etm_can_master_sync_message.sync_2 = 0x0123;
   etm_can_master_sync_message.sync_3 = 0x4567;
@@ -1095,50 +1096,50 @@ void DoA36507(void) {
       global_data_A36507.time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
 
       // Update the warmup counters
-      if (global_data_A36507.thyratron_warmup_counter_seconds > 0) {
-	global_data_A36507.thyratron_warmup_counter_seconds--;
+      if (thyratron_warmup_counter_seconds > 0) {
+	thyratron_warmup_counter_seconds--;
       } else {
 	global_data_A36507.thyratron_heater_last_warm_seconds = global_data_A36507.time_seconds_now;
       }
       
       if ((!board_com_fault.heater_magnet_board) && (!_HEATER_MAGNET_NOT_READY)) {
 	// The Magnetron heater is on
-	if (global_data_A36507.magnetron_heater_warmup_counter_seconds > 0) {
-	  global_data_A36507.magnetron_heater_warmup_counter_seconds--;
+	if (magnetron_heater_warmup_counter_seconds > 0) {
+	  magnetron_heater_warmup_counter_seconds--;
 	} else {
 	  global_data_A36507.magnetron_heater_last_warm_seconds = global_data_A36507.time_seconds_now;
 	}
       } else {
-	global_data_A36507.magnetron_heater_warmup_counter_seconds += 2;
-	if (global_data_A36507.magnetron_heater_warmup_counter_seconds >= MAGNETRON_HEATER_WARM_UP_TIME) {
-	  global_data_A36507.magnetron_heater_warmup_counter_seconds = MAGNETRON_HEATER_WARM_UP_TIME;
+	magnetron_heater_warmup_counter_seconds += 2;
+	if (magnetron_heater_warmup_counter_seconds >= MAGNETRON_HEATER_WARM_UP_TIME) {
+	  magnetron_heater_warmup_counter_seconds = MAGNETRON_HEATER_WARM_UP_TIME;
 	}
       }
 	
       if (!board_com_fault.gun_driver_board && !_GUN_HEATER_OFF) {
 	// The gun heater is on
-	if (global_data_A36507.gun_driver_heater_warmup_counter_seconds > 0) {
-	  global_data_A36507.gun_driver_heater_warmup_counter_seconds--;
+	if (gun_driver_heater_warmup_counter_seconds > 0) {
+	  gun_driver_heater_warmup_counter_seconds--;
 	} else {
 	  global_data_A36507.gun_driver_heater_last_warm_seconds = global_data_A36507.time_seconds_now;
 	}
       } else {
-	global_data_A36507.gun_driver_heater_warmup_counter_seconds += 2;
-	if (global_data_A36507.gun_driver_heater_warmup_counter_seconds >= GUN_DRIVER_HEATER_WARM_UP_TIME) {
-	  global_data_A36507.gun_driver_heater_warmup_counter_seconds = GUN_DRIVER_HEATER_WARM_UP_TIME;
+	gun_driver_heater_warmup_counter_seconds += 2;
+	if (gun_driver_heater_warmup_counter_seconds >= GUN_DRIVER_HEATER_WARM_UP_TIME) {
+	  gun_driver_heater_warmup_counter_seconds = GUN_DRIVER_HEATER_WARM_UP_TIME;
 	}
       }
       // Check for warmup done
       
 #ifdef __IGNORE_HEATER_MAGNET_MODULE
-      global_data_A36507.magnetron_heater_warmup_counter_seconds = 0;
+      magnetron_heater_warmup_counter_seconds = 0;
 #endif
       
 #ifdef __IGNORE_GUN_DRIVER_MODULE
-      global_data_A36507.gun_driver_heater_warmup_counter_seconds = 0;
+      gun_driver_heater_warmup_counter_seconds = 0;
 #endif
       
-      if ((global_data_A36507.thyratron_warmup_counter_seconds) || (global_data_A36507.magnetron_heater_warmup_counter_seconds) || (global_data_A36507.gun_driver_heater_warmup_counter_seconds)) {
+      if ((thyratron_warmup_counter_seconds) || (magnetron_heater_warmup_counter_seconds) || (gun_driver_heater_warmup_counter_seconds)) {
 	global_data_A36507.warmup_done = 0;
       } else {
 	global_data_A36507.warmup_done = 1;
@@ -1374,25 +1375,25 @@ void CalculateHeaterWarmupTimers(void) {
   // Calculate new magnetron heater warm up time remaining
   difference = global_data_A36507.time_seconds_now - global_data_A36507.magnetron_heater_last_warm_seconds;
   if (difference > (MAGNETRON_HEATER_WARM_UP_TIME >> 1)) {
-    global_data_A36507.magnetron_heater_warmup_counter_seconds = MAGNETRON_HEATER_WARM_UP_TIME;    
+    magnetron_heater_warmup_counter_seconds = MAGNETRON_HEATER_WARM_UP_TIME;    
   } else {
-    global_data_A36507.magnetron_heater_warmup_counter_seconds = (difference << 1);
+    magnetron_heater_warmup_counter_seconds = (difference << 1);
   }
 
   // Calculate new thyratron warm up time remaining
   difference = global_data_A36507.time_seconds_now - global_data_A36507.thyratron_heater_last_warm_seconds;
   if (difference > (THYRATRON_WARM_UP_TIME >> 1)) {
-    global_data_A36507.thyratron_warmup_counter_seconds = THYRATRON_WARM_UP_TIME;    
+    thyratron_warmup_counter_seconds = THYRATRON_WARM_UP_TIME;    
   } else {
-    global_data_A36507.thyratron_warmup_counter_seconds = (difference << 1);
+    thyratron_warmup_counter_seconds = (difference << 1);
   }
   
   // Calculate new gun driver heater warm up time remaining
   difference = global_data_A36507.time_seconds_now - global_data_A36507.gun_driver_heater_last_warm_seconds;
   if (difference > (GUN_DRIVER_HEATER_WARM_UP_TIME >> 1)) {
-    global_data_A36507.gun_driver_heater_warmup_counter_seconds = GUN_DRIVER_HEATER_WARM_UP_TIME;
+    gun_driver_heater_warmup_counter_seconds = GUN_DRIVER_HEATER_WARM_UP_TIME;
   } else {
-    global_data_A36507.gun_driver_heater_warmup_counter_seconds = (difference << 1);
+    gun_driver_heater_warmup_counter_seconds = (difference << 1);
   }
 }
 

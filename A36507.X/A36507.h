@@ -162,9 +162,9 @@ typedef struct {
   AnalogInput analog_input_3v3_mon;                   // 1mV per LSB
 
   unsigned int control_state;
-  unsigned int thyratron_warmup_counter_seconds;
-  unsigned int magnetron_heater_warmup_counter_seconds;
-  unsigned int gun_driver_heater_warmup_counter_seconds;
+  //unsigned int thyratron_warmup_counter_seconds;
+  //unsigned int magnetron_heater_warmup_counter_seconds;
+  //unsigned int gun_driver_heater_warmup_counter_seconds;
 
   unsigned int millisecond_counter;
   unsigned int warmup_timer_stage;
@@ -211,6 +211,10 @@ typedef struct {
 
   
 } A36507GlobalVars;
+
+#define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[6]
+#define magnetron_heater_warmup_counter_seconds              local_data_ecb.log_data[5]
+#define gun_driver_heater_warmup_counter_seconds             local_data_ecb.log_data[4]
 
 
 
