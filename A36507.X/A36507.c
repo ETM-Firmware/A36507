@@ -903,45 +903,23 @@ void DoA36507(void) {
 
   */
 
-  mirror_pulse_mon.local_data[0] = 100;
-  mirror_pulse_mon.local_data[1] = 101;
-  mirror_pulse_mon.local_data[2] = 102;
-  mirror_pulse_mon.local_data[3] = 103;
+  local_data_ecb.log_data[0] = global_data_A36507.control_state;
+  *(unsigned long*)&local_data_ecb.log_data[1] = global_data_A36507.time_seconds_now;
+  local_data_ecb.log_data[3] = ETMCanMasterGetPulsePRF();
 
-  mirror_pulse_mon.local_data[4] = 104;
-  mirror_pulse_mon.local_data[5] = 105;
-  mirror_pulse_mon.local_data[6] = 106;
-  mirror_pulse_mon.local_data[7] = 107;
 
-  mirror_pulse_mon.local_data[8] = 108;
-  mirror_pulse_mon.local_data[9] = 109;
-  mirror_pulse_mon.local_data[10] = 110;
-  mirror_pulse_mon.local_data[11] = 111;
 
-  mirror_pulse_mon.local_data[12] = 112;
-  mirror_pulse_mon.local_data[13] = 113;
-  mirror_pulse_mon.local_data[14] = 114;
-  mirror_pulse_mon.local_data[15] = 115;
+  //mirror_pulse_mon.log_data[4] = ;
+  //mirror_pulse_mon.log_data[5] = ;
+  //mirror_pulse_mon.log_data[6] = ;
+  mirror_pulse_mon.log_data[7] = _SYNC_CONTROL_WORD;
 
-  mirror_gun_drv.local_data[0] = 200;
-  mirror_gun_drv.local_data[1] = 201;
-  mirror_gun_drv.local_data[2] = 202;
-  mirror_gun_drv.local_data[3] = 203;
-
-  mirror_gun_drv.local_data[4] = 204;
-  mirror_gun_drv.local_data[5] = 205;
-  mirror_gun_drv.local_data[6] = 206;
-  mirror_gun_drv.local_data[7] = 207;
-
-  mirror_gun_drv.local_data[8] = 208;
-  mirror_gun_drv.local_data[9] = 209;
-  mirror_gun_drv.local_data[10] = 210;
-  mirror_gun_drv.local_data[11] = 211;
-
-  mirror_gun_drv.local_data[12] = 212;
-  mirror_gun_drv.local_data[13] = 213;
-  mirror_gun_drv.local_data[14] = 214;
-  mirror_gun_drv.local_data[15] = 215;
+  *(unsigned long*)&local_data_ecb.log_data[8] = global_data_A36507.system_powered_seconds;
+  *(unsigned long*)&local_data_ecb.log_data[10] = global_data_A36507.system_hv_on_seconds;
+  
+  *(unsigned long*)&local_data_ecb.log_data[12] = global_data_A36507.system_xray_on_seconds;
+  local_data_ecb.log_data[14] = 0;
+  local_data_ecb.log_data[15] = *(unsigned int*)&board_com_fault;
 
 
   local_data_ecb.local_data[0] = 300;
@@ -1617,7 +1595,6 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
 
     case REGISTER_HIGH_ENERGY_SET_POINT:
-      local_data_ecb.log_data[0]++;
       local_hv_lambda_high_en_set_point = next_message.data_2;
       eeprom_register = next_message.index + 2 * personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);

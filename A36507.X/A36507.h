@@ -15,15 +15,15 @@
 
 #include "ETM.h"
 
-//#define __IGNORE_ION_PUMP_MODULE
+#define __IGNORE_ION_PUMP_MODULE
 //#define __IGNORE_AFC_MODULE
-//#define __IGNORE_GUN_DRIVER_MODULE
-//#define __IGNORE_COOLING_INTERFACE_MODULE
-//#define __IGNORE_HEATER_MAGNET_MODULE
-//#define __IGNORE_HV_LAMBDA_MODULE
-//#define __IGNORE_PULSE_CURRENT_MODULE
+#define __IGNORE_GUN_DRIVER_MODULE
+#define __IGNORE_COOLING_INTERFACE_MODULE
+#define __IGNORE_HEATER_MAGNET_MODULE
+#define __IGNORE_HV_LAMBDA_MODULE
+#define __IGNORE_PULSE_CURRENT_MODULE
 #define __IGNORE_PULSE_SYNC_MODULE
-//#define __IGNORE_TCU
+#define __IGNORE_TCU
 
 
 
@@ -220,8 +220,8 @@ typedef struct {
 
 extern A36507GlobalVars global_data_A36507;
 
-#define _STATUS_X_RAY_DISABLED                          _LOGGED_0
-#define _STATUS_PERSONALITY_LOADED                      _LOGGED_1
+//#define _STATUS_X_RAY_DISABLED                          _LOGGED_0
+//#define _STATUS_PERSONALITY_LOADED                      _LOGGED_1
 #define _STATUS_LAST_RESET_WAS_POWER_CYCLE              _NOT_LOGGED_0
 
 #define _FAULT_DRIVE_UP_TIMEOUT                         _FAULT_0

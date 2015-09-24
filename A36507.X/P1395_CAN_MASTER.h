@@ -164,19 +164,24 @@ extern ETMCanBoardData mirror_pulse_sync;
 #define _NOT_LOGGED_REGISTER          *(unsigned int*)&local_data_ecb.status.not_logged_bits
 
 
+// DPAKRER  - Need to evaluate how these are used under new control system
+#define _STATUS_X_RAY_DISABLED                          _LOGGED_0
+#define _STATUS_PERSONALITY_LOADED                      _LOGGED_1
+
+
 
 
 // Board Configuration data - 0x06
-#define config_agile_number_high_word      local_data_ecb.config_data[0]
-#define config_agile_number_low_word       local_data_ecb.config_data[1]
-#define config_agile_dash                  local_data_ecb.config_data[2]
-#define config_agile_rev_ascii             local_data_ecb.config_data[3]
+#define config_agile_number_high_word      local_data_ecb.config_data[3]
+#define config_agile_number_low_word       local_data_ecb.config_data[2]
+#define config_agile_dash                  local_data_ecb.config_data[1]
+#define config_agile_rev_ascii             local_data_ecb.config_data[0]
 
 // Board Configuration data - 0x07
-#define config_serial_number               local_data_ecb.config_data[4]
-#define config_firmware_agile_rev          local_data_ecb.config_data[5]
-#define config_firmware_branch             local_data_ecb.config_data[6]
-#define config_firmware_branch_rev         local_data_ecb.config_data[7]
+#define config_serial_number               local_data_ecb.config_data[7]
+#define config_firmware_agile_rev          local_data_ecb.config_data[6]
+#define config_firmware_branch             local_data_ecb.config_data[5]
+#define config_firmware_branch_rev         local_data_ecb.config_data[4]
 
 
 

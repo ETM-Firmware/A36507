@@ -377,10 +377,6 @@ void ETMCanMasterProcessMessage(void) {
 
 
 
-// DPAKRER  - Need to evaluate how these are used under new control system
-#define _STATUS_X_RAY_DISABLED     local_data_ecb.status.control_notice_bits.control_not_ready
-#define _STATUS_PERSONALITY_LOADED local_data_ecb.status.control_notice_bits.control_not_configured
-
 
 void ETMCanMasterTimedTransmit(void) {
   /*
