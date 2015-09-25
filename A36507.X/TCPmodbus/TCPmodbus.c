@@ -430,7 +430,7 @@ static void InitializeBoard(void)
 static ROM BYTE SerializedMACAddress[6] = {MY_DEFAULT_MAC_BYTE1, MY_DEFAULT_MAC_BYTE2, MY_DEFAULT_MAC_BYTE3, MY_DEFAULT_MAC_BYTE4, MY_DEFAULT_MAC_BYTE5, MY_DEFAULT_MAC_BYTE6};
 //#pragma romdata
 
-static void InitAppConfig(void)
+static void InitAppConfig(IPCONFIG* ip_config)
 {
     
   // Start out zeroing all AppConfig bytes to ensure all fields are 
@@ -445,7 +445,9 @@ static void InitAppConfig(void)
   //            MACAddressAddress.next = 0x157F8;
   //            _memcpy_p2d24((char*)&AppConfig.MyMACAddr, MACAddressAddress, sizeof(AppConfig.MyMACAddr));
   //        }
-  AppConfig.MyIPAddr.Val = MY_DEFAULT_IP_ADDR_BYTE1 | MY_DEFAULT_IP_ADDR_BYTE2<<8ul | MY_DEFAULT_IP_ADDR_BYTE3<<16ul | MY_DEFAULT_IP_ADDR_BYTE4<<24ul;
+  
+  AppConfig.MyIPAddr.Val = ip_config->ip_addr;
+  //AppConfig.MyIPAddr.Val = MY_DEFAULT_IP_ADDR_BYTE1 | MY_DEFAULT_IP_ADDR_BYTE2<<8ul | MY_DEFAULT_IP_ADDR_BYTE3<<16ul | MY_DEFAULT_IP_ADDR_BYTE4<<24ul;
   AppConfig.DefaultIPAddr.Val = AppConfig.MyIPAddr.Val;
   AppConfig.MyMask.Val = MY_DEFAULT_MASK_BYTE1 | MY_DEFAULT_MASK_BYTE2<<8ul | MY_DEFAULT_MASK_BYTE3<<16ul | MY_DEFAULT_MASK_BYTE4<<24ul;
   AppConfig.DefaultMask.Val = AppConfig.MyMask.Val;
@@ -453,7 +455,8 @@ static void InitAppConfig(void)
   AppConfig.PrimaryDNSServer.Val = MY_DEFAULT_PRIMARY_DNS_BYTE1 | MY_DEFAULT_PRIMARY_DNS_BYTE2<<8ul  | MY_DEFAULT_PRIMARY_DNS_BYTE3<<16ul  | MY_DEFAULT_PRIMARY_DNS_BYTE4<<24ul;
   AppConfig.SecondaryDNSServer.Val = MY_DEFAULT_SECONDARY_DNS_BYTE1 | MY_DEFAULT_SECONDARY_DNS_BYTE2<<8ul  | MY_DEFAULT_SECONDARY_DNS_BYTE3<<16ul  | MY_DEFAULT_SECONDARY_DNS_BYTE4<<24ul;
     
-  AppConfig.MyRemIPAddr.Val = MY_DEFAULT_REM_IP_ADDR_BYTE1 | MY_DEFAULT_REM_IP_ADDR_BYTE2<<8ul | MY_DEFAULT_REM_IP_ADDR_BYTE3<<16ul | MY_DEFAULT_REM_IP_ADDR_BYTE4<<24ul;
+  AppConfig.MyRemIPAddr.Val = ip_config->remote_ip_addr;
+  //AppConfig.MyRemIPAddr.Val = MY_DEFAULT_REM_IP_ADDR_BYTE1 | MY_DEFAULT_REM_IP_ADDR_BYTE2<<8ul | MY_DEFAULT_REM_IP_ADDR_BYTE3<<16ul | MY_DEFAULT_REM_IP_ADDR_BYTE4<<24ul;
     
     
   // Load the default NetBIOS Host Name
@@ -463,13 +466,47 @@ static void InitAppConfig(void)
 
   // Compute the checksum of the AppConfig defaults as loaded from ROM
   wOriginalAppConfigChecksum = CalcIPChecksum((BYTE*)&AppConfig, sizeof(AppConfig));
-
-
 }
+
+void TCPmodbusSetIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1) {
+  unsigned long temp;
+  temp = byte4;
+  temp <<= 24;
+  AppConfig.MyIPAddr.Val = temp;
+  
+  temp = byte3;
+  temp <<= 16;
+  AppConfig.MyIPAddr.Val |= temp;
+  
+  temp = byte2;
+  temp <<= 8;
+  AppConfig.MyIPAddr.Val |= temp;
+  
+  AppConfig.MyIPAddr.Val |= byte1;
+}
+
+
+void TCPmodbusSetRemoteIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1) {
+  unsigned long temp;
+  temp = byte4;
+  temp <<= 24;
+  AppConfig.MyRemIPAddr.Val = temp;
+  
+  temp = byte3;
+  temp <<= 16;
+  AppConfig.MyRemIPAddr.Val |= temp;
+  
+  temp = byte2;
+  temp <<= 8;
+  AppConfig.MyRemIPAddr.Val |= temp;
+  
+  AppConfig.MyRemIPAddr.Val |= byte1;
+}
+
 //
 // called once for initilization.
 //
-void TCPmodbus_init(void)
+void TCPmodbus_init(IPCONFIG* ip_config)
 {
   // Initialize application specific hardware
   InitializeBoard();
@@ -481,7 +518,7 @@ void TCPmodbus_init(void)
 #endif
 
   // Initialize Stack and application related NV variables into AppConfig.
-  InitAppConfig();
+  InitAppConfig(ip_config);
     
   InitModbusData();
 

@@ -15,13 +15,11 @@
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/ICMP.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/IP.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/MAC.h</itemPath>
-          <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/Reboot.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/StackTsk.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/TCP.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/TCPIP.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/TCPIPConfig.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/Tick.h</itemPath>
-          <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/regdef.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/TCPIPENC28.h</itemPath>
         </logicalFolder>
         <itemPath>TCPmodbus/HardwareProfile.h</itemPath>

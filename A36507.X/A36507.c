@@ -1233,7 +1233,7 @@ void UpdateHeaterScale() {
 
 void InitializeA36507(void) {
   unsigned int loop_counter;
-
+  IPCONFIG ip_config;
 
 
 
@@ -1303,8 +1303,10 @@ void InitializeA36507(void) {
   ETMCanMasterLoadConfiguration(36507, 0, AGILE_REV, FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, SERIAL_NUMBER);
   
   // Initialize TCPmodbus Module
-  TCPmodbus_init();
-
+  ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168.70.15
+  ip_config.ip_addr        = 0x6346A8C0;  // 192.168.70.99
+  TCPmodbus_init(&ip_config);
+  
 #ifndef __IGNORE_TCU
   // Initialize ETMmodbus Module
   ETMmodbus_init();

@@ -13,15 +13,28 @@
 
 #include "P1395_CAN_MASTER.h"
 
-extern void TCPmodbus_init(void);
 
-extern void TCPmodbus_task(void);
+//void TCPmodbusSetIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1);
+//void TCPmodbusSetRemoteIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1);
 
-extern unsigned int SendCalibrationData(unsigned int index, unsigned int scale, unsigned int offset);
-extern unsigned int SendPulseData(unsigned char is_buffer_a);
+typedef struct {
+  unsigned long remote_ip_addr;
+  unsigned long ip_addr;
+
+} IPCONFIG;
+
+
+
+void TCPmodbus_init(IPCONFIG* ip_config);
+
+void TCPmodbus_task(void);
+
+unsigned int SendCalibrationData(unsigned int index, unsigned int scale, unsigned int offset);
+unsigned int SendPulseData(unsigned char is_buffer_a);
 
 
 //#define TEST_MODBUS	   1
+
 
 
 #define MAX_TX_SIZE    800	 // ethernet header for TCP/modbus is 60 bytes
