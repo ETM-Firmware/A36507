@@ -1002,7 +1002,7 @@ WORD BuildModbusOutput(void) {
 	  msg_size_bytes = 104;
 	  break;
 	case MODBUS_WR_DEBUG_DATA:
-	  if (etm_can_active_debugging_board_id == MODBUS_WR_ETHERNET) {
+	  if (etm_can_active_debugging_board_id == ETM_CAN_ADDR_ETHERNET_BOARD) {
 	    tx_ptr = (unsigned char *)&debug_data_ecb;
 	  } else {
 	    tx_ptr = (unsigned char *)&debug_data_slave_mirror;
@@ -1183,6 +1183,44 @@ void GenericTCPClient(void)
     
 	  		modbus_cmd_need_repeat = 0;
 			etm_can_active_debugging_board_id = data_buffer[10];
+			switch (data_buffer[10]) 
+			  {
+			  case MODBUS_WR_HVLAMBDA:
+			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_HV_LAMBDA_BOARD;
+			    break;
+			    
+			  case MODBUS_WR_ION_PUMP:
+			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_ION_PUMP_BOARD;
+			    break;
+
+			  case MODBUS_WR_AFC:
+			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_AFC_CONTROL_BOARD;
+			    break;
+
+			  case MODBUS_WR_COOLING:
+			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_COOLING_INTERFACE_BOARD;
+			    break;
+			    
+			  case MODBUS_WR_HTR_MAGNET:
+			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_HEATER_MAGNET_BOARD;
+			    break;
+
+			  case MODBUS_WR_GUN_DRIVER:
+			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_GUN_DRIVER_BOARD;
+			    break;
+
+			  case MODBUS_WR_MAGNETRON_CURRENT:
+			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD;
+			    break;
+
+			  case MODBUS_WR_PULSE_SYNC:
+			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_PULSE_SYNC_BOARD;
+			    break;
+			    
+			  case MODBUS_WR_ETHERNET:
+			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_ETHERNET_BOARD;
+			    break;
+			  }
        //    GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
 		} // if (data_buffer[0] == (modbus_array_index + 1))
     
