@@ -71,18 +71,18 @@ const unsigned int eeprom_default_values_gun_driver[16]  = {DEFAULT_GUN_DRV_HEAT
 const unsigned int eeprom_default_values_p_sync_per_1[16]= {((DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_A),
 							    ((DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_C),
 							    ((DEFAULT_P_SYNC_HIGH_DOSE_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_HIGH_THYRATRON_DELAY_PER_1),
+							    DEFAULT_UNUSED_EEPROM,
 							    ((DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_A),
 							    ((DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_C),
 							    ((DEFAULT_P_SYNC_HIGH_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_HIGH_AFC_SAMPLE_DELAY_PER_1),
+							    DEFAULT_UNUSED_EEPROM,
 							    ((DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_A),
 							    ((DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_C),
-							    ((DEFAULT_P_SYNC_LOW_DOSE_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_LOW_THYRATRON_DELAY_PER_1),	
+							    ((DEFAULT_P_SYNC_LOW_DOSE_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_LOW_THYRATRON_DELAY_PER_1),
+							    DEFAULT_UNUSED_EEPROM,	
 							    ((DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_A),
 							    ((DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_C),
 							    ((DEFAULT_P_SYNC_LOW_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_LOW_AFC_SAMPLE_DELAY_PER_1),
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
 							    DEFAULT_UNUSED_EEPROM};
 
 
@@ -1380,7 +1380,6 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   local_afc_aft_control_voltage       = ETMEEPromReadWord(EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE);
   // etm_can_afc_mirror.afc_offset = ETMEEPromReadWord(EEPROM_REGISTER_AFC_OFFSET);
 
-  
   // Load Data for Heater/Magnet Supply
   local_heater_current_full_set_point = ETMEEPromReadWord(EEPROM_REGISTER_HTR_MAG_HEATER_CURRENT);
   local_magnet_current_set_point      = ETMEEPromReadWord((EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT + personality));
@@ -1392,7 +1391,7 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   local_gun_drv_cathode_set_point     = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_CATHODE + (3*personality)));
 
   // Load data for Pulse Sync
-  ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
 }
 
 
@@ -1516,8 +1515,8 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 void ExecuteEthernetCommand(unsigned int personality) {
   ETMEthernetMessageFromGUI next_message;
   unsigned int eeprom_register;
-  //unsigned int temp;
-  //unsigned int temp_array[12];
+  unsigned int temp;
+  unsigned int temp_array[16];
 
 
   //unsigned long temp_long;
@@ -1775,45 +1774,8 @@ void ExecuteEthernetCommand(unsigned int personality) {
 	_SYNC_CONTROL_RESET_ENABLE = 1;
       }
       break;
+
       
-      /*
-    case REGISTER_SPECIAL_2_5_SET_GRID_START:
-      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      temp =  next_message.data_2;
-      if (temp > 255) {
-	temp = 255;
-      }
-      temp = (temp << 8) + temp;
-      temp_array[0] = temp;
-      temp_array[1] = temp;
-      temp_array[6] = temp;
-      temp_array[7] = temp;
-      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      local_pulse_sync_timing_reg_0_word_0 = temp;
-      local_pulse_sync_timing_reg_0_word_1 = temp;
-      local_pulse_sync_timing_reg_2_word_0 = temp;
-      local_pulse_sync_timing_reg_2_word_1 = temp;
-      break;
-
-    case REGISTER_SPECIAL_2_5_SET_GRID_STOP:
-      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      temp =  next_message.data_2;
-      if (temp > 255) {
-	temp = 255;
-      }
-      temp = (temp << 8) + temp;
-      temp_array[3] = temp;
-      temp_array[4] = temp;
-      temp_array[9] = temp;
-      temp_array[10] = temp;
-      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      local_pulse_sync_timing_reg_1_word_0 = temp;
-      local_pulse_sync_timing_reg_1_word_1 = temp;
-      local_pulse_sync_timing_reg_3_word_0 = temp;
-      local_pulse_sync_timing_reg_3_word_1 = temp;
-      break;
-      */
-
     case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START:
       CalculatePulseSyncParams(next_message.data_2, psync_grid_stop_high_intensity_3);
       break;
@@ -1823,55 +1785,64 @@ void ExecuteEthernetCommand(unsigned int personality) {
       CalculatePulseSyncParams(psync_grid_start_high_intensity_3, next_message.data_2);
       break;
 
-      // DPARKER BRING ALL OF THESE BACK
-      /*
-
-
 
     case REGISTER_SPECIAL_2_5_SET_PFN_DELAY:
-      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, &temp_array[0]);
       temp =  next_message.data_2;
       if (temp > 255) {
 	temp = 255;
       }
+      psync_pfn_delay_high = temp;
+      psync_pfn_delay_low = temp;
       temp <<= 8;
       temp += (temp_array[2] & 0x00FF);
       temp_array[2] = temp;
-      temp_array[8] = temp;
-      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_pfn_delay_high = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_pfn_delay_low = temp;
+      temp_array[10] = temp;
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, &temp_array[0]);
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, &temp_array[0]);
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, &temp_array[0]);
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, &temp_array[0]);
       break;
+
 
     case REGISTER_SPECIAL_2_5_SET_AFC_SAMPLE_DELAY:
-      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, &temp_array[0]);
       temp =  next_message.data_2;
       if (temp > 255) {
 	temp = 255;
       }
+      psync_afc_delay_high = temp;
+      psync_afc_delay_low = temp;
       temp <<= 8;
-      temp += (temp_array[5] & 0x00FF);
-      temp_array[5] = temp;
-      temp_array[11] = temp;
-      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_high = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_low = temp;
+      temp += (temp_array[6] & 0x00FF);
+      temp_array[6] = temp;
+      temp_array[14] = temp;
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, &temp_array[0]);
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, &temp_array[0]);
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, &temp_array[0]);
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, &temp_array[0]);
       break;
 
+
     case REGISTER_SPECIAL_2_5_SET_MAGNETRON_CURRENT_SAMPLE_DELAY:
-      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
+      ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, &temp_array[0]);
       temp =  next_message.data_2;
       if (temp > 255) {
 	temp = 255;
       }
-      temp += (temp_array[5] & 0xFF00);
-      temp_array[5] = temp;
-      temp_array[11] = temp;
-      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_high = temp;
-      *(unsigned int*)&etm_can_pulse_sync_mirror.psync_afc_delay_low = temp;
+      psync_mag_delay_high = temp;
+      psync_mag_delay_low = temp;
+      
+      temp += (temp_array[6] & 0xFF00);
+      temp_array[6] = temp;
+      temp_array[14] = temp;
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, &temp_array[0]);
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, &temp_array[0]);
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, &temp_array[0]);
+      ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, &temp_array[0]);
       break;
-      */
+
+
     case REGISTER_SPECIAL_2_5_SET_HV_LAMBDA_VOLTAGE:
       local_hv_lambda_low_en_set_point  = next_message.data_2;     
       local_hv_lambda_high_en_set_point = next_message.data_2;
@@ -1994,10 +1965,10 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
     psync_grid_stop_low_intensity_0 = psync_grid_stop_high_intensity_0;
   }
   
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2 + 0), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3 + 0), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4 + 0), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
   // DPARKER need to update for multiple personalities
 }
 

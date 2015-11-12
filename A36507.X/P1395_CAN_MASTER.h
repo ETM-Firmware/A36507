@@ -264,6 +264,22 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define psync_grid_stop_low_intensity_1                 *(unsigned char*)&mirror_pulse_sync.local_data[13]
 #define psync_grid_stop_low_intensity_0                 *((unsigned char*)&mirror_pulse_sync.local_data[13] + 1)
 
+#define psync_dose_delay_high                           *(unsigned char*)&mirror_pulse_sync.local_data[2]
+#define psync_dose_delay_low                            *(unsigned char*)&mirror_pulse_sync.local_data[10]
+
+#define psync_pfn_delay_high                            *((unsigned char*)&mirror_pulse_sync.local_data[2] + 1)
+#define psync_pfn_delay_low                             *((unsigned char*)&mirror_pulse_sync.local_data[10] + 1)
+
+#define psync_mag_delay_high                            *(unsigned char*)&mirror_pulse_sync.local_data[6]
+#define psync_mag_delay_low                             *(unsigned char*)&mirror_pulse_sync.local_data[14]
+
+#define psync_afc_delay_high                            *((unsigned char*)&mirror_pulse_sync.local_data[6] + 1)
+#define psync_afc_delay_low                             *((unsigned char*)&mirror_pulse_sync.local_data[14] + 1)
+
+
+
+
+
 
 
 #define local_pulse_sync_timing_reg_0_word_0            mirror_pulse_sync.local_data[0]

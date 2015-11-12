@@ -1656,7 +1656,7 @@ void DoCanInterrupt(void) {
       ETMCanRXMessageBuffer(&etm_can_master_rx_message_buffer, CXRX0CON_ptr);  
       debug_data_ecb.can_rx_0_filt_1++;
     }
-    *CXINTF_ptr &= RX1_INT_FLAG_BIT; // Clear the RX1 Interrupt Flag  
+    *CXINTF_ptr &= RX0_INT_FLAG_BIT; // Clear the RX0 Interrupt Flag  
   }
   
   if (*CXRX1CON_ptr & BUFFER_FULL_BIT) { 
@@ -1680,8 +1680,7 @@ void DoCanInterrupt(void) {
   if (*CXINTF_ptr & ERROR_FLAG_BIT) {
     // There was some sort of CAN Error
     debug_data_ecb.can_error_flag++;
-    *CXINTF_ptr &= ~ERROR_FLAG_BIT; // Clear the ERR Flag
-    *CXINTF_ptr &= 0x001F; // Clear the ERR Flag
+    *CXINTF_ptr &= 0x001F; // Clear all the ERR Flags
   } else {
     // FLASH THE CAN LED
     if (ETMReadPinLatch(can_params.led)) {
