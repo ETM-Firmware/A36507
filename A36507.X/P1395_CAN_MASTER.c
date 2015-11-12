@@ -563,9 +563,9 @@ void ETMCanMasterPulseSyncUpdateHighRegZero(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_HIGH_ENERGY_TIMING_REG_0;
-  can_message.word2 = local_pulse_sync_timing_reg_0_word_2;
-  can_message.word1 = local_pulse_sync_timing_reg_0_word_1;
-  can_message.word0 = local_pulse_sync_timing_reg_0_word_0;
+  can_message.word2 = *(unsigned int*)&psync_grid_start_high_intensity_3;
+  can_message.word1 = *(unsigned int*)&psync_grid_start_high_intensity_1;
+  can_message.word0 = *(unsigned int*)&psync_dose_delay_high;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
 }
@@ -574,9 +574,9 @@ void ETMCanMasterPulseSyncUpdateHighRegOne(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_HIGH_ENERGY_TIMING_REG_1;
-  can_message.word2 = local_pulse_sync_timing_reg_1_word_2;
-  can_message.word1 = local_pulse_sync_timing_reg_1_word_1;
-  can_message.word0 = local_pulse_sync_timing_reg_1_word_0;
+  can_message.word2 = *(unsigned int*)&psync_grid_stop_high_intensity_3;
+  can_message.word1 = *(unsigned int*)&psync_grid_stop_high_intensity_1;
+  can_message.word0 = *(unsigned int*)&psync_mag_delay_high;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
 }
@@ -585,9 +585,9 @@ void ETMCanMasterPulseSyncUpdateLowRegZero(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_LOW_ENERGY_TIMING_REG_0;
-  can_message.word2 = local_pulse_sync_timing_reg_2_word_2;
-  can_message.word1 = local_pulse_sync_timing_reg_2_word_1;
-  can_message.word0 = local_pulse_sync_timing_reg_2_word_0;
+  can_message.word2 = *(unsigned int*)&psync_grid_start_low_intensity_3;
+  can_message.word1 = *(unsigned int*)&psync_grid_start_low_intensity_1;
+  can_message.word0 = *(unsigned int*)&psync_dose_delay_low;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
 }
@@ -596,9 +596,9 @@ void ETMCanMasterPulseSyncUpdateLowRegOne(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_LOW_ENERGY_TIMING_REG_1;
-  can_message.word2 = local_pulse_sync_timing_reg_3_word_2;
-  can_message.word1 = local_pulse_sync_timing_reg_3_word_1;
-  can_message.word0 = local_pulse_sync_timing_reg_3_word_0;
+  can_message.word2 = *(unsigned int*)&psync_grid_stop_low_intensity_3;
+  can_message.word1 = *(unsigned int*)&psync_grid_stop_low_intensity_1;
+  can_message.word0 = *(unsigned int*)&psync_mag_delay_low;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
 }

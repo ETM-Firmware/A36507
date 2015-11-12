@@ -245,35 +245,28 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define psync_grid_start_high_intensity_2               *((unsigned char*)&mirror_pulse_sync.local_data[0] + 1)
 #define psync_grid_start_high_intensity_1               *(unsigned char*)&mirror_pulse_sync.local_data[1]
 #define psync_grid_start_high_intensity_0               *((unsigned char*)&mirror_pulse_sync.local_data[1] + 1)
-
+#define psync_dose_delay_high                           *(unsigned char*)&mirror_pulse_sync.local_data[2]
+#define psync_pfn_delay_high                            *((unsigned char*)&mirror_pulse_sync.local_data[2] + 1)
 
 #define psync_grid_stop_high_intensity_3                *(unsigned char*)&mirror_pulse_sync.local_data[4]
 #define psync_grid_stop_high_intensity_2                *((unsigned char*)&mirror_pulse_sync.local_data[4] + 1)
 #define psync_grid_stop_high_intensity_1                *(unsigned char*)&mirror_pulse_sync.local_data[5]
 #define psync_grid_stop_high_intensity_0                *((unsigned char*)&mirror_pulse_sync.local_data[5] + 1)
-
+#define psync_mag_delay_high                            *(unsigned char*)&mirror_pulse_sync.local_data[6]
+#define psync_afc_delay_high                            *((unsigned char*)&mirror_pulse_sync.local_data[6] + 1)
 
 #define psync_grid_start_low_intensity_3                *(unsigned char*)&mirror_pulse_sync.local_data[8]
 #define psync_grid_start_low_intensity_2                *((unsigned char*)&mirror_pulse_sync.local_data[8] + 1)
 #define psync_grid_start_low_intensity_1                *(unsigned char*)&mirror_pulse_sync.local_data[9]
 #define psync_grid_start_low_intensity_0                *((unsigned char*)&mirror_pulse_sync.local_data[9] + 1)
-
+#define psync_dose_delay_low                            *(unsigned char*)&mirror_pulse_sync.local_data[10]
+#define psync_pfn_delay_low                             *((unsigned char*)&mirror_pulse_sync.local_data[10] + 1)
 
 #define psync_grid_stop_low_intensity_3                 *(unsigned char*)&mirror_pulse_sync.local_data[12]
 #define psync_grid_stop_low_intensity_2                 *((unsigned char*)&mirror_pulse_sync.local_data[12] + 1)
 #define psync_grid_stop_low_intensity_1                 *(unsigned char*)&mirror_pulse_sync.local_data[13]
 #define psync_grid_stop_low_intensity_0                 *((unsigned char*)&mirror_pulse_sync.local_data[13] + 1)
-
-#define psync_dose_delay_high                           *(unsigned char*)&mirror_pulse_sync.local_data[2]
-#define psync_dose_delay_low                            *(unsigned char*)&mirror_pulse_sync.local_data[10]
-
-#define psync_pfn_delay_high                            *((unsigned char*)&mirror_pulse_sync.local_data[2] + 1)
-#define psync_pfn_delay_low                             *((unsigned char*)&mirror_pulse_sync.local_data[10] + 1)
-
-#define psync_mag_delay_high                            *(unsigned char*)&mirror_pulse_sync.local_data[6]
 #define psync_mag_delay_low                             *(unsigned char*)&mirror_pulse_sync.local_data[14]
-
-#define psync_afc_delay_high                            *((unsigned char*)&mirror_pulse_sync.local_data[6] + 1)
 #define psync_afc_delay_low                             *((unsigned char*)&mirror_pulse_sync.local_data[14] + 1)
 
 
@@ -285,15 +278,15 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define local_pulse_sync_timing_reg_0_word_0            mirror_pulse_sync.local_data[0]
 #define local_pulse_sync_timing_reg_0_word_1            mirror_pulse_sync.local_data[1]
 #define local_pulse_sync_timing_reg_0_word_2            mirror_pulse_sync.local_data[2]
-#define local_pulse_sync_timing_reg_1_word_0            mirror_pulse_sync.local_data[3]
-#define local_pulse_sync_timing_reg_1_word_1            mirror_pulse_sync.local_data[4]
-#define local_pulse_sync_timing_reg_1_word_2            mirror_pulse_sync.local_data[5]
-#define local_pulse_sync_timing_reg_2_word_0            mirror_pulse_sync.local_data[6]
-#define local_pulse_sync_timing_reg_2_word_1            mirror_pulse_sync.local_data[7]
-#define local_pulse_sync_timing_reg_2_word_2            mirror_pulse_sync.local_data[8]
-#define local_pulse_sync_timing_reg_3_word_0            mirror_pulse_sync.local_data[9]
-#define local_pulse_sync_timing_reg_3_word_1            mirror_pulse_sync.local_data[10]
-#define local_pulse_sync_timing_reg_3_word_2            mirror_pulse_sync.local_data[11]
+#define local_pulse_sync_timing_reg_1_word_0            mirror_pulse_sync.local_data[4]
+#define local_pulse_sync_timing_reg_1_word_1            mirror_pulse_sync.local_data[5]
+#define local_pulse_sync_timing_reg_1_word_2            mirror_pulse_sync.local_data[6]
+#define local_pulse_sync_timing_reg_2_word_0            mirror_pulse_sync.local_data[8]
+#define local_pulse_sync_timing_reg_2_word_1            mirror_pulse_sync.local_data[9]
+#define local_pulse_sync_timing_reg_2_word_2            mirror_pulse_sync.local_data[10]
+#define local_pulse_sync_timing_reg_3_word_0            mirror_pulse_sync.local_data[12]
+#define local_pulse_sync_timing_reg_3_word_1            mirror_pulse_sync.local_data[13]
+#define local_pulse_sync_timing_reg_3_word_2            mirror_pulse_sync.local_data[14]
 
 
 
