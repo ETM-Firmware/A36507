@@ -3,7 +3,8 @@
 #include "P1395_CAN_MASTER.h"
 #include "ETM_IO_PORTS.H"
 #include "ETM_SCALE.H"
-//#include "A36507.h"
+
+
 
 // DPARKER fix these
 extern unsigned int SendCalibrationData(unsigned int index, unsigned int scale, unsigned int offset);
@@ -76,7 +77,8 @@ unsigned int etm_can_master_next_pulse_prf;
 unsigned int master_high_speed_update_index;
 unsigned int master_low_speed_update_index;
 P1395BoardBits board_status_received;
-P1395BoardBits board_com_fault;
+P1395BoardBits board_com_ok;
+//P1395BoardBits board_com_fault;
 TYPE_CAN_PARAMETERS can_params;
 
 
@@ -334,7 +336,7 @@ void ETMCanMasterDoCan(void) {
   ETMCanMasterProcessLogData();
   ETMCanMasterCheckForTimeOut();
   if (_SYNC_CONTROL_CLEAR_DEBUG_DATA) {
-    //ETMCanMasterClearDebug(); // DPARKER ADD THIS BACK IN
+    ETMCanMasterClearDebug(); // DPARKER ADD THIS BACK IN
   }
 
 
@@ -620,11 +622,22 @@ void ETMCanMasterDataReturnFromSlave(ETMCanMessage* message_ptr) {
 }
 
 
+
+/*
+  How to tell what boards are connected.
+
+  When a status message is recieved, the the board_status_received register is updated.
+  Every 250ms.  THe board_status_received register is checked.
+  If a bit is not set & it is not ignored then a not connected error is generates
+
+
+*/
+
 void ETMCanMasterUpdateSlaveStatus(ETMCanMessage* message_ptr) {
   ETMCanStatusRegister status_message;
   unsigned int source_board;
-  unsigned int all_boards_connected;
   unsigned int message_bit;
+
   source_board = (message_ptr->identifier >> 2);
   source_board &= 0x000F;
   message_bit = 1 << source_board;
@@ -634,6 +647,7 @@ void ETMCanMasterUpdateSlaveStatus(ETMCanMessage* message_ptr) {
   status_message.warning_bits        = *(ETMCanStatusRegisterWarningBits*)&message_ptr->word2;
   status_message.not_logged_bits     = *(ETMCanStatusRegisterNotLoggedBits*)&message_ptr->word3;
   ClrWdt();
+
 
   switch (source_board) {
     /*
@@ -679,72 +693,107 @@ void ETMCanMasterUpdateSlaveStatus(ETMCanMessage* message_ptr) {
     mirror_gun_drv.status = status_message;
     board_status_received.gun_driver_board = 1;
     break;
-
-
+    
+    
   default:
     debug_data_ecb.can_address_error++;
     break;
   }
+  /*
+#ifdef __IGNORE_ION_PUMP_MODULE
+  board_status_received.ion_pump_board = 1;
+#endif
+  
+#ifdef __IGNORE_AFC_MODULE
+  board_status_received.afc_board = 1;
+#endif
+  
+#ifdef __IGNORE_GUN_DRIVER_MODULE
+  board_status_received.gun_driver_board = 1;
+#endif
 
+#ifdef __IGNORE_COOLING_INTERFACE_MODULE
+  board_status_received.cooling_interface_board = 1;
+#endif
+
+#ifdef __IGNORE_HEATER_MAGNET_MODULE
+  board_status_received.heater_magnet_board = 1;
+#endif
+    
+#ifdef __IGNORE_HV_LAMBDA_MODULE
+  board_status_received.hv_lambda_board = 1;
+#endif
+
+#ifdef __IGNORE_PULSE_CURRENT_MODULE
+  board_status_received.magnetron_current_board = 1;
+#endif
+    
+#ifdef __IGNORE_PULSE_SYNC_MODULE
+  board_status_received.pulse_sync_board = 1;
+#endif
+    
+    
   // Figure out if all the boards are connected
   all_boards_connected = 1;
 
-#ifndef __IGNORE_ION_PUMP_MODULE
+  //#ifndef __IGNORE_ION_PUMP_MODULE
   if (!board_status_received.ion_pump_board) {
     all_boards_connected = 0;
   }
-#endif
-
-
-#ifndef __IGNORE_PULSE_CURRENT_MODULE
+  //#endif
+  
+  
+  //#ifndef __IGNORE_PULSE_CURRENT_MODULE
   if (!board_status_received.magnetron_current_board) {
     all_boards_connected = 0;
   }
-#endif
-
-#ifndef __IGNORE_PULSE_SYNC_MODULE
+  //#endif
+  
+  //#ifndef __IGNORE_PULSE_SYNC_MODULE
   if (!board_status_received.pulse_sync_board) {
     all_boards_connected = 0;
   }
-#endif
-
-#ifndef __IGNORE_HV_LAMBDA_MODULE
+  //#endif
+  
+  //#ifndef __IGNORE_HV_LAMBDA_MODULE
   if (!board_status_received.hv_lambda_board) {
     all_boards_connected = 0;
   }
-#endif
-
-#ifndef __IGNORE_AFC_MODULE
+  //#endif
+  
+  //#ifndef __IGNORE_AFC_MODULE
   if (!board_status_received.afc_board) {
     all_boards_connected = 0;
   }
-#endif
-
-#ifndef __IGNORE_COOLING_INTERFACE_MODULE
+  //#endif
+  
+  //#ifndef __IGNORE_COOLING_INTERFACE_MODULE
   if (!board_status_received.cooling_interface_board) {
     all_boards_connected = 0;
   }
-#endif
-
-#ifndef __IGNORE_HEATER_MAGNET_MODULE
+  //#endif
+  
+  //#ifndef __IGNORE_HEATER_MAGNET_MODULE
   if (!board_status_received.heater_magnet_board) {
     all_boards_connected = 0;
   }
-#endif
-
-#ifndef __IGNORE_GUN_DRIVER_MODULE
+  //#endif
+  
+  //#ifndef __IGNORE_GUN_DRIVER_MODULE
   if (!board_status_received.gun_driver_board) {
     all_boards_connected = 0;
   }
-#endif
-
+  //#endif
+  
   if (all_boards_connected) {
     // Clear the status received register
     *(unsigned int*)&board_status_received = 0x0000; 
-    
+    *(unsigned int*)&board_com_fault = 0x0000;
     // Reset T5 to start the next timer cycle
     TMR5 = 0;
   } 
+*/
+
 }
 
 
@@ -1019,6 +1068,140 @@ void ETMCanMasterProcessLogData(void) {
 
 void ETMCanMasterCheckForTimeOut(void) {
   
+  if (_T5IF) {
+    // Update this once every 250mS
+    if (_LATG13) {
+      _LATG13 = 0;
+    } else {
+      _LATG13 = 1;
+    }
+    _T5IF = 0;
+    //TMR5 = 0;
+
+    if (board_status_received.ion_pump_board != board_com_ok.ion_pump_board) {
+      if (board_status_received.ion_pump_board) {
+      // The board just connected
+	SendToEventLog(LOG_ID_CONNECTED_ION_PUMP_BOARD);	
+      } else {
+      // The board just lost connection
+	SendToEventLog(LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD);
+      }
+    }
+
+    if (board_status_received.magnetron_current_board != board_com_ok.magnetron_current_board) {
+      if (board_status_received.magnetron_current_board) {
+      // The board just connected
+	SendToEventLog(LOG_ID_CONNECTED_MAGNETRON_CURRENT_BOARD);	
+      } else {
+      // The board just lost connection
+	SendToEventLog(LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD);
+      }
+    }
+
+    if (board_status_received.pulse_sync_board != board_com_ok.pulse_sync_board) {
+      if (board_status_received.pulse_sync_board) {
+      // The board just connected
+	SendToEventLog(LOG_ID_CONNECTED_PULSE_SYNC_BOARD);	
+      } else {
+      // The board just lost connection
+	SendToEventLog(LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD);
+      }
+    }
+
+    if (board_status_received.hv_lambda_board != board_com_ok.hv_lambda_board) {
+      if (board_status_received.hv_lambda_board) {
+      // The board just connected
+	SendToEventLog(LOG_ID_CONNECTED_HV_LAMBDA_BOARD);	
+      } else {
+      // The board just lost connection
+	SendToEventLog(LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD);
+      }
+    }
+
+    if (board_status_received.afc_board != board_com_ok.afc_board) {
+      if (board_status_received.afc_board) {
+      // The board just connected
+	SendToEventLog(LOG_ID_CONNECTED_AFC_BOARD);	
+      } else {
+      // The board just lost connection
+	SendToEventLog(LOG_ID_NOT_CONNECTED_AFC_BOARD);
+      }
+    }
+
+    if (board_status_received.cooling_interface_board != board_com_ok.cooling_interface_board) {
+      if (board_status_received.cooling_interface_board) {
+      // The board just connected
+	SendToEventLog(LOG_ID_CONNECTED_COOLING_BOARD);	
+      } else {
+      // The board just lost connection
+	SendToEventLog(LOG_ID_NOT_CONNECTED_COOLING_BOARD);
+      }
+    }
+
+    if (board_status_received.heater_magnet_board != board_com_ok.heater_magnet_board) {
+      if (board_status_received.heater_magnet_board) {
+      // The board just connected
+	SendToEventLog(LOG_ID_CONNECTED_HEATER_MAGNET_BOARD);	
+      } else {
+      // The board just lost connection
+	SendToEventLog(LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD);
+      }
+    }
+
+    if (board_status_received.gun_driver_board != board_com_ok.gun_driver_board) {
+      if (board_status_received.gun_driver_board) {
+      // The board just connected
+	SendToEventLog(LOG_ID_CONNECTED_GUN_DRIVER_BOARD);	
+      } else {
+      // The board just lost connection
+	SendToEventLog(LOG_ID_NOT_CONNECTED_GUN_DRIVER_BOARD);
+      }
+    }
+    
+    board_com_ok = board_status_received;
+    
+#ifdef __IGNORE_ION_PUMP_MODULE
+    board_status_received.ion_pump_board = 1;
+#endif
+    
+#ifdef __IGNORE_AFC_MODULE
+    board_status_received.afc_board = 1;
+#endif
+    
+#ifdef __IGNORE_GUN_DRIVER_MODULE
+    board_status_received.gun_driver_board = 1;
+#endif
+    
+#ifdef __IGNORE_COOLING_INTERFACE_MODULE
+    board_status_received.cooling_interface_board = 1;
+#endif
+    
+#ifdef __IGNORE_HEATER_MAGNET_MODULE
+    board_status_received.heater_magnet_board = 1;
+#endif
+    
+#ifdef __IGNORE_HV_LAMBDA_MODULE
+    board_status_received.hv_lambda_board = 1;
+#endif
+    
+#ifdef __IGNORE_PULSE_CURRENT_MODULE
+    board_status_received.magnetron_current_board = 1;
+#endif
+    
+#ifdef __IGNORE_PULSE_SYNC_MODULE
+    board_status_received.pulse_sync_board = 1;
+#endif
+
+    if (((*(unsigned int*)&board_status_received) & 0b0000000111111110) != 0b0000000111111110) {
+      debug_data_ecb.can_timeout++;
+      etm_can_persistent_data.can_timeout_count = debug_data_ecb.can_timeout;
+    }
+
+    *(unsigned int*)&board_status_received = 0x0000;
+    
+  }
+}
+  /*
   // Check to see if a faulted board has regained communication.  If so, clear the fault bit and write to event log
 
   // Ion Pump Board
@@ -1075,6 +1258,7 @@ void ETMCanMasterCheckForTimeOut(void) {
   if (_T5IF) {
     // At least one board failed to communicate durring the T5 period
     _T5IF = 0;
+    TMR5 = 0;
     debug_data_ecb.can_timeout++;
     etm_can_persistent_data.can_timeout_count = debug_data_ecb.can_timeout;
     // _CONTROL_CAN_COM_LOSS = 1; // DPARKER change this to a fault
@@ -1174,8 +1358,10 @@ void ETMCanMasterCheckForTimeOut(void) {
     *(unsigned int*)&board_status_received = 0x0000;
 
   }
+ 
+  
 }
-
+ */
 
 
 void SendCalibrationSetPointToSlave(unsigned int index, unsigned int data_1, unsigned int data_0) {
@@ -1495,6 +1681,7 @@ void DoCanInterrupt(void) {
     // There was some sort of CAN Error
     debug_data_ecb.can_error_flag++;
     *CXINTF_ptr &= ~ERROR_FLAG_BIT; // Clear the ERR Flag
+    *CXINTF_ptr &= 0x001F; // Clear the ERR Flag
   } else {
     // FLASH THE CAN LED
     if (ETMReadPinLatch(can_params.led)) {

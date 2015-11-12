@@ -3,6 +3,18 @@
 
 #include "P1395_CAN_CORE.h"
 
+#define __IGNORE_ION_PUMP_MODULE
+#define __IGNORE_AFC_MODULE
+#define __IGNORE_GUN_DRIVER_MODULE
+#define __IGNORE_COOLING_INTERFACE_MODULE
+#define __IGNORE_HEATER_MAGNET_MODULE
+#define __IGNORE_HV_LAMBDA_MODULE
+#define __IGNORE_PULSE_CURRENT_MODULE
+//#define __IGNORE_PULSE_SYNC_MODULE
+#define __IGNORE_TCU
+
+
+
 
 
 typedef struct {
@@ -25,7 +37,7 @@ typedef struct {
 } P1395BoardBits;
 
 extern P1395BoardBits board_status_received;
-extern P1395BoardBits board_com_fault;
+extern P1395BoardBits board_com_ok;
 
 
 typedef struct {
@@ -212,7 +224,6 @@ extern ETMCanBoardDebuggingData debug_data_ecb;
 extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 
 
-
 // This "defines" data that may need to be displayed on the GUI
 #define local_hv_lambda_high_en_set_point               mirror_hv_lambda.local_data[0]
 #define local_hv_lambda_low_en_set_point                mirror_hv_lambda.local_data[1]
@@ -228,6 +239,32 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define local_gun_drv_low_en_pulse_top_v                mirror_gun_drv.local_data[1]
 #define local_gun_drv_heater_v_set_point                mirror_gun_drv.local_data[2]
 #define local_gun_drv_cathode_set_point                 mirror_gun_drv.local_data[3]
+
+
+#define psync_grid_start_high_intensity_3               *(unsigned char*)&mirror_pulse_sync.local_data[0]
+#define psync_grid_start_high_intensity_2               *((unsigned char*)&mirror_pulse_sync.local_data[0] + 1)
+#define psync_grid_start_high_intensity_1               *(unsigned char*)&mirror_pulse_sync.local_data[1]
+#define psync_grid_start_high_intensity_0               *((unsigned char*)&mirror_pulse_sync.local_data[1] + 1)
+
+
+#define psync_grid_stop_high_intensity_3                *(unsigned char*)&mirror_pulse_sync.local_data[4]
+#define psync_grid_stop_high_intensity_2                *((unsigned char*)&mirror_pulse_sync.local_data[4] + 1)
+#define psync_grid_stop_high_intensity_1                *(unsigned char*)&mirror_pulse_sync.local_data[5]
+#define psync_grid_stop_high_intensity_0                *((unsigned char*)&mirror_pulse_sync.local_data[5] + 1)
+
+
+#define psync_grid_start_low_intensity_3                *(unsigned char*)&mirror_pulse_sync.local_data[8]
+#define psync_grid_start_low_intensity_2                *((unsigned char*)&mirror_pulse_sync.local_data[8] + 1)
+#define psync_grid_start_low_intensity_1                *(unsigned char*)&mirror_pulse_sync.local_data[9]
+#define psync_grid_start_low_intensity_0                *((unsigned char*)&mirror_pulse_sync.local_data[9] + 1)
+
+
+#define psync_grid_stop_low_intensity_3                 *(unsigned char*)&mirror_pulse_sync.local_data[12]
+#define psync_grid_stop_low_intensity_2                 *((unsigned char*)&mirror_pulse_sync.local_data[12] + 1)
+#define psync_grid_stop_low_intensity_1                 *(unsigned char*)&mirror_pulse_sync.local_data[13]
+#define psync_grid_stop_low_intensity_0                 *((unsigned char*)&mirror_pulse_sync.local_data[13] + 1)
+
+
 
 #define local_pulse_sync_timing_reg_0_word_0            mirror_pulse_sync.local_data[0]
 #define local_pulse_sync_timing_reg_0_word_1            mirror_pulse_sync.local_data[1]
@@ -270,8 +307,11 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 
 #define _PULSE_SYNC_NOT_READY              mirror_pulse_sync.status.control_notice_bits.control_not_ready
 #define _PULSE_SYNC_NOT_CONFIGURED         mirror_pulse_sync.status.control_notice_bits.control_not_configured
-#define _PULSE_SYNC_CUSTOMER_HV_OFF        1 // DPARKER point to correct warning bit
-#define _PULSE_SYNC_CUSTOMER_XRAY_OFF      1 // DPARKER point to correct warning bit
+#define _PULSE_SYNC_CUSTOMER_HV_OFF        mirror_pulse_sync.status.warning_bits.warning_0
+#define _PULSE_SYNC_CUSTOMER_XRAY_OFF      mirror_pulse_sync.status.warning_bits.warning_1
+#define _PULSE_SYNC_PERSONALITY_READY      mirror_pulse_sync.status.warning_bits.warning_4
+
+#define _PULSE_SYNC_PERSONALITY_VALUE      ((*(unsigned int*)&mirror_pulse_sync.status.not_logged_bits) & 0x000F)
 
 
 // PUBLIC Variables
@@ -316,8 +356,8 @@ void SendToEventLog(unsigned int log_id);
 #define LOG_ID_ENTERED_STATE_STARTUP                                          0x0010
 #define LOG_ID_ENTERED_STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC             0x0011
 #define LOG_ID_PERSONALITY_RECEIVED                                           0x0012
-#define LOG_ID_PERSONALITY_ERROR_6_4                                          0x0013
-#define LOG_ID_PERSONALITY_ERROR_2_5                                          0x0014
+#define LOG_ID_PERSONALITY_ERROR                                              0x0013
+//#define LOG_ID_PERSONALITY_ERROR_2_5                                          0x0014
 #define LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION                       0x0015
 #define LOG_ID_ALL_MODULES_CONFIGURED                                         0x0016
 #define LOG_ID_ENTERED_STATE_WARMUP                                           0x0017

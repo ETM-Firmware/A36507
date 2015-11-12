@@ -261,29 +261,22 @@ void DoStateMachine(void) {
       DoA36507();
       FlashLeds();
 
-      // DPARKER HOW IS MODULE TYPE BEING RECEIVED FROM PULSE SYNC
-      // I SUGGEST 4 bits of the NOT LOGGED REGISTER
-#ifdef __IGNORE_PULSE_SYNC_MODULE
-      global_data_A36507.personality_select_from_pulse_sync = 255;
-#endif
-      if (global_data_A36507.personality_select_from_pulse_sync != 0) {
-	// a personality has been received from pulse sync board
+      if (_PULSE_SYNC_PERSONALITY_READY) {
+	global_data_A36507.personality_select_from_pulse_sync = _PULSE_SYNC_PERSONALITY_VALUE;
 	global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
 	SendToEventLog(LOG_ID_PERSONALITY_RECEIVED);
+      }
+      
+#ifdef __IGNORE_PULSE_SYNC_MODULE
+      global_data_A36507.personality_select_from_pulse_sync = 0;
+      global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
+#endif
 
-#ifndef __SYSTEM_CONFIGURATION_2_5_MEV
-	if (global_data_A36507.personality_select_from_pulse_sync >= 5) {
-	  global_data_A36507.control_state = STATE_FAULT_SYSTEM;
-	  SendToEventLog(LOG_ID_PERSONALITY_ERROR_6_4);
-	}
-#endif
-	
-#ifndef __SYSTEM_CONFIGURATION_6_4_MEV
-	if (global_data_A36507.personality_select_from_pulse_sync != 255) {
-	  global_data_A36507.control_state = STATE_FAULT_SYSTEM;
-	  SendToEventLog(LOG_ID_PERSONALITY_ERROR_2_5);
-	}
-#endif
+#define PERSONALITY_ERROR_READING  0x000F
+
+      if (global_data_A36507.personality_select_from_pulse_sync == PERSONALITY_ERROR_READING) {
+	global_data_A36507.control_state = STATE_FAULT_SYSTEM;
+	SendToEventLog(LOG_ID_PERSONALITY_ERROR);
       }
     }
 
@@ -731,7 +724,7 @@ unsigned int CheckAllModulesConfigured(void) {
   
   system_configured = 1;
 
-  if (board_com_fault.hv_lambda_board) {
+  if (!board_com_ok.hv_lambda_board) {
 #ifndef __IGNORE_HV_LAMBDA_MODULE
     system_configured = 0;
 #endif
@@ -753,7 +746,7 @@ unsigned int CheckAllModulesConfigured(void) {
   } 
   
   
-  if (board_com_fault.ion_pump_board) {
+  if (!board_com_ok.ion_pump_board) {
 #ifndef __IGNORE_ION_PUMP_MODULE
     system_configured = 0;
 #endif
@@ -775,7 +768,7 @@ unsigned int CheckAllModulesConfigured(void) {
   }
 
 
-  if (board_com_fault.afc_board) {
+  if (!board_com_ok.afc_board) {
 #ifndef __IGNORE_AFC_MODULE
     system_configured = 0;
 #endif  
@@ -800,31 +793,31 @@ unsigned int CheckAllModulesConfigured(void) {
 
 
 #ifndef __IGNORE_COOLING_INTERFACE_MODULE
-  if ((board_com_fault.cooling_interface_board) || (_COOLING_NOT_CONFIGURED)) {
+  if ((!board_com_ok.cooling_interface_board) || (_COOLING_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif  
 
 #ifndef __IGNORE_HEATER_MAGNET_MODULE
-  if ((board_com_fault.heater_magnet_board) || (_HEATER_MAGNET_NOT_CONFIGURED)) {
+  if ((!board_com_ok.heater_magnet_board) || (_HEATER_MAGNET_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
 
 #ifndef __IGNORE_GUN_DRIVER_MODULE
-  if ((board_com_fault.gun_driver_board) || (_GUN_DRIVER_NOT_CONFIGURED)) {
+  if ((!board_com_ok.gun_driver_board) || (_GUN_DRIVER_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
 
 #ifndef __IGNORE_PULSE_CURRENT_MODULE
-  if ((board_com_fault.magnetron_current_board) || (_PULSE_MON_NOT_CONFIGURED)) {
+  if ((!board_com_ok.magnetron_current_board) || (_PULSE_MON_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
 
 #ifndef __IGNORE_PULSE_SYNC_MODULE
-  if ((board_com_fault.pulse_sync_board) || (_PULSE_SYNC_NOT_CONFIGURED)) {
+  if ((!board_com_ok.pulse_sync_board) || (_PULSE_SYNC_NOT_CONFIGURED)) {
     system_configured = 0;
   }
 #endif
@@ -844,10 +837,10 @@ unsigned int CheckAllModulesConfigured(void) {
 
 void DoA36507(void) {
 #ifdef DEBUG_ETMMODBUS
-  static MODBUS_RESP_SMALL etmmodbus_test[4];
-  static unsigned etmmodbus_index = 0;
-  static unsigned etmmodbus_relay_set_index = 0;
-  static unsigned etmmodbus_relay_toggle = 0;
+  //static MODBUS_RESP_SMALL etmmodbus_test[4];
+  //static unsigned etmmodbus_index = 0;
+  //static unsigned etmmodbus_relay_set_index = 0;
+  //static unsigned etmmodbus_relay_toggle = 0;
 #endif 
   //_SYNC_CONTROL_WORD                 = 0xF0F0;
   etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
@@ -856,7 +849,7 @@ void DoA36507(void) {
 
   ETMCanMasterDoCan();
   TCPmodbus_task();
-  ExecuteEthernetCommand(1);  // DPARKER This is using personality 1, should read from pulse sync
+  ExecuteEthernetCommand(global_data_A36507.personality_select_from_pulse_sync);
 
 #ifndef __IGNORE_TCU
   ETMmodbus_task();
@@ -876,7 +869,7 @@ void DoA36507(void) {
   // Check to see if cooling is present
   _SYNC_CONTROL_COOLING_FAULT = 0;
 #ifndef __IGNORE_COOLING_INTERFACE_MODULE
-  if (board_com_fault.cooling_interface_board) {
+  if (!board_com_ok.cooling_interface_board) {
     _SYNC_CONTROL_COOLING_FAULT = 1;
     _FAULT_COOLING_NOT_CONNECTED = 1;
   }
@@ -907,7 +900,7 @@ void DoA36507(void) {
   *(unsigned long*)&local_data_ecb.log_data[1] = global_data_A36507.time_seconds_now;
   local_data_ecb.log_data[3] = ETMCanMasterGetPulsePRF();
 
-
+  
 
   //mirror_pulse_mon.log_data[4] = ;
   //mirror_pulse_mon.log_data[5] = ;
@@ -918,8 +911,10 @@ void DoA36507(void) {
   *(unsigned long*)&local_data_ecb.log_data[10] = global_data_A36507.system_hv_on_seconds;
   
   *(unsigned long*)&local_data_ecb.log_data[12] = global_data_A36507.system_xray_on_seconds;
-  local_data_ecb.log_data[14] = 0;
-  local_data_ecb.log_data[15] = *(unsigned int*)&board_com_fault;
+  local_data_ecb.log_data[14] = global_data_A36507.average_output_power_watts;
+  local_data_ecb.log_data[15] = global_data_A36507.personality_select_from_pulse_sync;
+
+  local_data_ecb.log_data[16] = *(unsigned int*)&board_com_ok;
 
 
   local_data_ecb.local_data[0] = 300;
@@ -1080,7 +1075,7 @@ void DoA36507(void) {
 	global_data_A36507.thyratron_heater_last_warm_seconds = global_data_A36507.time_seconds_now;
       }
       
-      if ((!board_com_fault.heater_magnet_board) && (!_HEATER_MAGNET_NOT_READY)) {
+      if ((board_com_ok.heater_magnet_board) && (!_HEATER_MAGNET_NOT_READY)) {
 	// The Magnetron heater is on
 	if (magnetron_heater_warmup_counter_seconds > 0) {
 	  magnetron_heater_warmup_counter_seconds--;
@@ -1094,7 +1089,7 @@ void DoA36507(void) {
 	}
       }
 	
-      if (!board_com_fault.gun_driver_board && !_GUN_HEATER_OFF) {
+      if (board_com_ok.gun_driver_board && !_GUN_HEATER_OFF) {
 	// The gun heater is on
 	if (gun_driver_heater_warmup_counter_seconds > 0) {
 	  gun_driver_heater_warmup_counter_seconds--;
@@ -1243,15 +1238,7 @@ void InitializeA36507(void) {
   _NOT_LOGGED_REGISTER = 0;
 
   // Set the not connected bits for all boards
-  board_com_fault.hv_lambda_board         = 1;
-  board_com_fault.ion_pump_board          = 1;
-  board_com_fault.afc_board               = 1;
-  board_com_fault.cooling_interface_board = 1;
-  board_com_fault.heater_magnet_board     = 1;
-  board_com_fault.gun_driver_board        = 1;
-  board_com_fault.magnetron_current_board = 1;
-  board_com_fault.pulse_sync_board        = 1;
-
+  *(unsigned int*)&board_com_ok = 0x0000;
     
   // Check it reset was a result of full power cycle
   _STATUS_LAST_RESET_WAS_POWER_CYCLE = 0;
@@ -1379,12 +1366,10 @@ void CalculateHeaterWarmupTimers(void) {
 
 
 void ReadSystemConfigurationFromEEProm(unsigned int personality) {
-  if (personality >= 5) {
-    personality = 1;
+  if (personality >= 3) {
+    personality = 0;
   }
-  if (personality) {
-    personality--;  // Personality is now a register offset
-  }
+  // Personality is a register offset
   
   // Load data for HV Lambda
   local_hv_lambda_low_en_set_point    = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT + (2*personality)));
@@ -1407,7 +1392,7 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   local_gun_drv_cathode_set_point     = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_CATHODE + (3*personality)));
 
   // Load data for Pulse Sync
-  ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 12, (unsigned int*)&local_pulse_sync_timing_reg_0_word_0);
+  ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
 }
 
 
@@ -1531,8 +1516,8 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 void ExecuteEthernetCommand(unsigned int personality) {
   ETMEthernetMessageFromGUI next_message;
   unsigned int eeprom_register;
-  unsigned int temp;
-  unsigned int temp_array[12];
+  //unsigned int temp;
+  //unsigned int temp_array[12];
 
 
   //unsigned long temp_long;
@@ -1542,12 +1527,11 @@ void ExecuteEthernetCommand(unsigned int personality) {
   // DPARKER what happens if this is called before personality has been read??? 
   // Easy to solve in the state machine, just don't call until state when the personality is known
 
-  if (personality >= 5) {
-    personality = 1;
+  if (personality >= 3) {
+    personality = 0;
   }
-  if (personality) {
-    personality--;  // Personality is now a register offset
-  }
+  // Personality is now a register offset
+
   next_message = GetNextMessage();
   if (next_message.index == 0xFFFF) {
     // there was no message
@@ -1791,7 +1775,8 @@ void ExecuteEthernetCommand(unsigned int personality) {
 	_SYNC_CONTROL_RESET_ENABLE = 1;
       }
       break;
-
+      
+      /*
     case REGISTER_SPECIAL_2_5_SET_GRID_START:
       ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 12, &temp_array[0]);
       temp =  next_message.data_2;
@@ -1827,16 +1812,20 @@ void ExecuteEthernetCommand(unsigned int personality) {
       local_pulse_sync_timing_reg_3_word_0 = temp;
       local_pulse_sync_timing_reg_3_word_1 = temp;
       break;
+      */
+
+    case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START:
+      CalculatePulseSyncParams(next_message.data_2, psync_grid_stop_high_intensity_3);
+      break;
+
+
+    case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_STOP:
+      CalculatePulseSyncParams(psync_grid_start_high_intensity_3, next_message.data_2);
+      break;
 
       // DPARKER BRING ALL OF THESE BACK
       /*
-    case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START:
-      CalculatePulseSyncParams(next_message.data_2, etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_3);
-      break;
 
-    case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_STOP:
-      CalculatePulseSyncParams(etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3, next_message.data_2);
-      break;
 
 
     case REGISTER_SPECIAL_2_5_SET_PFN_DELAY:
@@ -1950,8 +1939,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
 #define HALF_TMIN   3   // 60nS 
 
 void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
-  // DPARKER BRING THIS BACK
-  /*
+
   unsigned char start_max;
   unsigned char start_med;
   unsigned char start_small;
@@ -1985,31 +1973,32 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
     start_small = start_max + temp;
     stop_small  = stop_max - temp;
     
-    etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_3 = start_max;
-    etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2 = start_med;
-    etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_1 = start_small;
-    etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_0 = start_min;
-    
-    etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_3 = start_max;
-    etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_2 = start_med;
-    etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_1 = start_small;
-    etm_can_pulse_sync_mirror.psync_grid_delay_low_intensity_0 = start_min;
-    
-    etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_3 = stop_max;      
-    etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_2 = stop_med;      
-    etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_1 = stop_small;      
-    etm_can_pulse_sync_mirror.psync_grid_width_high_intensity_0 = stop_min;      
-    
-    etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_3 = stop_max;      
-    etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_2 = stop_med;      
-    etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_1 = stop_small;      
-    etm_can_pulse_sync_mirror.psync_grid_width_low_intensity_0 = stop_min;      
+    psync_grid_start_high_intensity_3 = start_max;
+    psync_grid_start_high_intensity_2 = start_med;
+    psync_grid_start_high_intensity_1 = start_small;
+    psync_grid_start_high_intensity_0 = start_min;
+
+    psync_grid_start_low_intensity_3 = psync_grid_start_high_intensity_3;
+    psync_grid_start_low_intensity_2 = psync_grid_start_high_intensity_2;
+    psync_grid_start_low_intensity_1 = psync_grid_start_high_intensity_1;
+    psync_grid_start_low_intensity_0 = psync_grid_start_high_intensity_0;
+ 
+    psync_grid_stop_high_intensity_3 = stop_max;      
+    psync_grid_stop_high_intensity_2 = stop_med;      
+    psync_grid_stop_high_intensity_1 = stop_small;      
+    psync_grid_stop_high_intensity_0 = stop_min;      
+
+    psync_grid_stop_low_intensity_3 = psync_grid_stop_high_intensity_3;
+    psync_grid_stop_low_intensity_2 = psync_grid_stop_high_intensity_2;
+    psync_grid_stop_low_intensity_1 = psync_grid_stop_high_intensity_1;
+    psync_grid_stop_low_intensity_0 = psync_grid_stop_high_intensity_0;
   }
   
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 12, (unsigned int*)&etm_can_pulse_sync_mirror.psync_grid_delay_high_intensity_2);
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2 + 0), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3 + 0), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4 + 0), 12, (unsigned int*)&mirror_pulse_sync.local_data[0]);
   // DPARKER need to update for multiple personalities
-
-  */
 }
 
 
