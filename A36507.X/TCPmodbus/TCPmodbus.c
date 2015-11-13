@@ -252,7 +252,7 @@ ETMEthernetMessageFromGUI GetNextMessage(void)
 }
 /****************************************************************************
   Function:
-		unsigned int SendCalibrationData(unsigned int index, unsigned int scale, unsigned int offset)
+		unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset)
 
   Input:
     pointer to data
@@ -262,7 +262,7 @@ ETMEthernetMessageFromGUI GetNextMessage(void)
 	// This will add  a transmit message to the Send Calibration Data queue
 	// It will return 0x0000 if the message was added to the queue or 0xFFFF if it was not (buffer full)
 ***************************************************************************/
-unsigned int SendCalibrationData(unsigned int index, unsigned int scale, unsigned int offset)
+unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset)
 {
     
     if (queue_buffer_room(QUEUE_CAL_TO_GUI) > 0)

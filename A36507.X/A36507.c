@@ -192,7 +192,6 @@ void LoadDefaultSystemCalibrationToEEProm(void);
   Loads the default system calibration parmaeters from flash program memmory into the EEPROM
   This is used to restore "factory defaults" if all goes to hell
   DPARKER - need to add pulse sync personalities 2,3,4 
-  DPARKER - need to be added to the etherenet interface
 */
 
 void CalculatePulseSyncParams(unsigned char start, unsigned char stop);
@@ -242,7 +241,6 @@ void DoStateMachine(void) {
     global_data_A36507.control_state = STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC;
     SendToEventLog(LOG_ID_ENTERED_STATE_STARTUP);
     if (_STATUS_LAST_RESET_WAS_POWER_CYCLE) {
-      //_SYNC_CONTROL_CLEAR_DEBUG_DATA = 1; // DPAKER changed for debugging
       _SYNC_CONTROL_CLEAR_DEBUG_DATA = 0;
     }
     break;
@@ -472,7 +470,6 @@ void DoStateMachine(void) {
     while (global_data_A36507.control_state == STATE_FAULT_RESET) {
       DoA36507();
       _FAULT_REGISTER = 0; // DPARKER IS THIS RIGHT????
-
 
       if (CheckHVOffFault() == 0) {
 	global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
@@ -905,17 +902,19 @@ void DoA36507(void) {
   debug_data_ecb.debug_reg[14] = 14; 
   debug_data_ecb.debug_reg[15] = 15; 
 
+  ETMCanMasterSetSyncState(global_data_A36507.control_state);
+
 
   if (_T2IF) {
     // 10ms Timer has expired
     _T2IF = 0;
-    global_data_A36507.millisecond_counter += 10;
+    can_master_millisecond_counter += 10;
     
 #ifndef __IGNORE_TCU
     if (ETMmodbus_timer_10ms < 60000) ETMmodbus_timer_10ms++;
     
 #ifdef DEBUG_ETMMODBUS
-    if (global_data_A36507.millisecond_counter == 500) {
+    if (can_master_millisecond_counter == 500) {
       switch (etmmodbus_index) 
 	{
 	case 0:
@@ -966,22 +965,6 @@ void DoA36507(void) {
 #endif    
 #endif
     
-    // Copy data from global variable strucutre to strucutre that gets sent to GUI
-
-    //DPARKER figure out some way to do this
-    /*
-    etm_can_ethernet_board_data.mirror_sync_0_control_word = *(unsigned int*)&etm_can_sync_message.sync_0_control_word;
-    etm_can_ethernet_board_data.mirror_control_state = global_data_A36507.control_state;
-    etm_can_ethernet_board_data.mirror_system_powered_seconds = system_powered_seconds;
-    etm_can_ethernet_board_data.mirror_system_hv_on_seconds = system_hv_on_seconds;
-    etm_can_ethernet_board_data.mirror_system_xray_on_seconds = system_xray_on_seconds;
-    etm_can_ethernet_board_data.mirror_time_seconds_now = mem_time_seconds_now;
-    etm_can_ethernet_board_data.mirror_average_output_power_watts = average_output_power_watts;
-    etm_can_ethernet_board_data.mirror_thyratron_warmup_counter_seconds = global_data_A36507.thyratron_warmup_counter_seconds;
-    etm_can_ethernet_board_data.mirror_magnetron_heater_warmup_counter_seconds = global_data_A36507.magnetron_heater_warmup_counter_seconds;
-    etm_can_ethernet_board_data.mirror_gun_driver_heater_warmup_counter_seconds = global_data_A36507.gun_driver_heater_warmup_counter_seconds;
-    etm_can_ethernet_board_data.mirror_board_com_fault = *(unsigned int*)&board_com_fault;
-    */
     if (global_data_A36507.control_state == STATE_DRIVE_UP) {
       global_data_A36507.drive_up_timer++;
     }
@@ -997,19 +980,18 @@ void DoA36507(void) {
     UpdateHeaterScale();
 
 
-
     /*
       The following tasks require use of the i2c bus which can hold the processor for a lot of time
       Need to schedule them at different point of a 1 second period
     */
 
     // Run at 1 second interval
-    if (global_data_A36507.millisecond_counter >= 1000) {
-      global_data_A36507.millisecond_counter = 0;
+    if (can_master_millisecond_counter >= 1000) {
+      can_master_millisecond_counter = 0;
     }
 
     // Run once a second at 0 milliseconds
-    if (global_data_A36507.millisecond_counter == 0) {
+    if (can_master_millisecond_counter == 0) {
       // Read Date/Time from RTC and update the warmup up counters
       ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
       mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
@@ -1067,14 +1049,14 @@ void DoA36507(void) {
     
 
     // Run once a second at 250 milliseconds
-    if (global_data_A36507.millisecond_counter == 250) {
+    if (can_master_millisecond_counter == 250) {
       // Write Warmup Done Timers to EEPROM
       ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 6, (unsigned int*)&global_data_A36507.magnetron_heater_last_warm_seconds);
     } // End of tasks that happen when millisecond = 250
     
 
     // Run once a second at 500 milliseconds
-    if (global_data_A36507.millisecond_counter == 500) {
+    if (can_master_millisecond_counter == 500) {
       // Write Seconds on Counters to EEPROM
       system_powered_seconds++;
       
@@ -1093,7 +1075,6 @@ void DoA36507(void) {
 }
 
 
-// DPARKER - This will change if we use a new PFN with a different capacitance
 unsigned int CalculatePulseEnergyMilliJoules(unsigned int lambda_voltage) {
   unsigned long power_milli_joule;
   unsigned int return_data;
@@ -1214,9 +1195,7 @@ void InitializeA36507(void) {
   _T2IF = 0;
   T2CON = T2CON_VALUE;
 
-  // manually clock out I2C CLK
-  // DPARKER make this a generic reset I2C Function
-  
+  // manually clock out I2C CLK to clear any connected processors that may have been stuck on a reset  
   _TRISG2 = 0; // g2 is output
   for (loop_counter = 0; loop_counter <= 100; loop_counter++) {
     _LATG2 = 0;
@@ -1227,7 +1206,11 @@ void InitializeA36507(void) {
 
   ETMEEPromConfigureExternalDevice(EEPROM_SIZE_8K_BYTES, FCY_CLK, ETM_I2C_400K_BAUD, EEPROM_I2C_ADDRESS_0, 1);
   ConfigureDS3231(&U6_DS3231, I2C_PORT, RTC_DEFAULT_CONFIG, FCY_CLK, ETM_I2C_400K_BAUD);
-
+  
+  // Read the current time
+  ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
+  mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
+  
 #define AGILE_REV 77
 #define SERIAL_NUMBER 100 
 
@@ -1468,10 +1451,6 @@ void ExecuteEthernetCommand(unsigned int personality) {
   unsigned long temp_long;
   RTC_TIME set_time;
 
-
-  // DPARKER what happens if this is called before personality has been read??? 
-  // Easy to solve in the state machine, just don't call until state when the personality is known
-
   if (personality >= 3) {
     personality = 0;
   }
@@ -1485,12 +1464,12 @@ void ExecuteEthernetCommand(unsigned int personality) {
   
   if ((next_message.index & 0x0F00) == 0x0100) {
     // this is a calibration set message, route to appropriate board
-    // DPARKER only allow when customer has not commanded high voltage on
-    SendCalibrationSetPointToSlave(next_message.index, next_message.data_1, next_message.data_0);
+    if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
+      SendCalibrationSetPointToSlave(next_message.index, next_message.data_1, next_message.data_0);
+    }
   } else if ((next_message.index & 0x0F00) == 0x0900) {
     // this is a calibration requestion message, route to appropriate board
     // When the response is received, the data will be transfered to the GUI
-    // DPARKER only allow when customer has not commanded high voltage on
     ReadCalibrationSetPointFromSlave(next_message.index);
   } else {
     // This message needs to be processsed by the ethernet control board
@@ -1529,14 +1508,12 @@ void ExecuteEthernetCommand(unsigned int personality) {
       local_hv_lambda_high_en_set_point = next_message.data_2;
       eeprom_register = next_message.index + 2 * personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
-      // DPARKER figure out how this is going to work - voltage or current programming
       break;
 
     case REGISTER_LOW_ENERGY_SET_POINT:
       local_hv_lambda_low_en_set_point = next_message.data_2;
       eeprom_register = next_message.index + 2 * personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
-      // DPARKER figure out how this is going to work - voltage or current programming
       break;
 
     case REGISTER_GUN_DRIVER_HEATER_VOLTAGE:
@@ -1692,24 +1669,28 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
 
     case REGISTER_SPECIAL_ECB_LOAD_DEFAULT_SETTINGS_TO_EEPROM_AND_REBOOT:
-      // DPARKER only allow when customer has not commanded high voltage on
-      LoadDefaultSystemCalibrationToEEProm();
+      if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
+	LoadDefaultSystemCalibrationToEEProm();
+      }
       __delay32(1000000);
       __asm__ ("Reset");
       break;
 
     case REGISTER_SPECIAL_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS:
-      // DPARKER only allow when customer has not commanded high voltage on
-      SendSlaveLoadDefaultEEpromData(next_message.data_2);
+      if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
+	SendSlaveLoadDefaultEEpromData(next_message.data_2);
+      }
       break;
     
     case REGISTER_SPECIAL_ECB_RESET_SLAVE:
-      SendSlaveReset(next_message.data_2);
+      if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
+	SendSlaveReset(next_message.data_2);
+      }
       break;
 
     /*
     case REGISTER_SPECIAL_SEND_ALL_CAL_DATA_TO_GUI:
-      // DPARKER only allow when customer has not commanded high voltage on
+      // DPARKER Figure out how to impliment this - Is it even possible?
       SendSlaveUploadAllCalData(next_message.data_2);
       break;
     */
@@ -1923,7 +1904,6 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
   ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
   ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
   ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  // DPARKER need to update for multiple personalities
 }
 
 
@@ -1935,7 +1915,6 @@ void LogBoardReadyStatus(void) {
 
 
 // DPARKER need to update all the logging functionality
-
 void LogModuleFault(unsigned int board_address) {
   /* 
      Faults are numbered as = 0x10bf
@@ -2041,7 +2020,6 @@ void LogModuleFault(unsigned int board_address) {
 
 void __attribute__((interrupt, no_auto_psv)) _DefaultInterrupt(void) {
   // Clearly should not get here without a major problem occuring
-  // DPARKER do something to save the state into a RAM location that is not re-initialized and then reset
   
   Nop();
   Nop();

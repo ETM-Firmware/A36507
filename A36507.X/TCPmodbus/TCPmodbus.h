@@ -29,7 +29,7 @@ void TCPmodbus_init(IPCONFIG* ip_config);
 
 void TCPmodbus_task(void);
 
-unsigned int SendCalibrationData(unsigned int index, unsigned int scale, unsigned int offset);
+unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset);
 unsigned int SendPulseData(unsigned char is_buffer_a);
 
 

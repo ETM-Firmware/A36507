@@ -155,7 +155,7 @@ typedef struct {
   //unsigned int magnetron_heater_warmup_counter_seconds;
   //unsigned int gun_driver_heater_warmup_counter_seconds;
 
-  unsigned int millisecond_counter;
+  //unsigned int millisecond_counter;
   unsigned int warmup_timer_stage;
   unsigned int warmup_done;
 
@@ -201,7 +201,6 @@ typedef struct {
   
 } A36507GlobalVars;
 
-#define mem_time_seconds_now                                 (*(unsigned long*)&local_data_ecb.log_data[1])
 #define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[4]
 #define magnetron_heater_warmup_counter_seconds              local_data_ecb.log_data[5]
 #define gun_driver_heater_warmup_counter_seconds             local_data_ecb.log_data[6]

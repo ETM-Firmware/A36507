@@ -325,17 +325,16 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 
 // PUBLIC Variables
 #define HIGH_SPEED_DATA_BUFFER_SIZE   16
-extern ETMCanHighSpeedData high_speed_data_buffer_a[HIGH_SPEED_DATA_BUFFER_SIZE];
-extern ETMCanHighSpeedData high_speed_data_buffer_b[HIGH_SPEED_DATA_BUFFER_SIZE];
+extern ETMCanHighSpeedData high_speed_data_buffer_a[HIGH_SPEED_DATA_BUFFER_SIZE]; // Used by TCP/IP Module
+extern ETMCanHighSpeedData high_speed_data_buffer_b[HIGH_SPEED_DATA_BUFFER_SIZE]; // Used by TCP/IP Module
+extern ETMCanHighSpeedData etm_can_high_speed_data_test;                          // Used by TCP/IP Module
+extern unsigned int etm_can_active_debugging_board_id;                            // Used by TCP/IP Module
 
 
-extern ETMCanHighSpeedData              etm_can_high_speed_data_test;
-
-extern unsigned int etm_can_active_debugging_board_id;
-
-void ETMCanMasterDoCan(void);
 
 // Public Functions
+void ETMCanMasterDoCan(void);
+
 void ETMCanMasterInitialize(unsigned int requested_can_port, unsigned long fcy, unsigned int etm_can_address, unsigned long can_operation_led, unsigned int can_interrupt_priority);
 /*
   This is called once when the processor starts up to initialize the can bus and all of the can variables
@@ -346,9 +345,7 @@ void ETMCanMasterLoadConfiguration(unsigned long agile_id, unsigned int agile_da
   This is called once when the prcoessor starts up to load the board configuration into RAM so it can be sent over CAN to the ECB
 */
 
-// DPARKER how do you set the agile rev and the serial number?? Should this be done over can?
-
-
+void ETMCanMasterSetSyncState(unsigned int state);
 
 void SendCalibrationSetPointToSlave(unsigned int index, unsigned int data_1, unsigned int data_0);
 
@@ -497,6 +494,9 @@ typedef struct {
 
   // In the future we may add more data to the event;
 } TYPE_EVENT;
+
+extern unsigned int can_master_millisecond_counter;
+#define mem_time_seconds_now                                 (*(unsigned long*)&local_data_ecb.log_data[1])
 
 
 typedef struct {

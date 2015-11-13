@@ -5,9 +5,11 @@
 #include "ETM_SCALE.H"
 
 
+unsigned int can_master_millisecond_counter;
+
 
 // DPARKER fix these
-extern unsigned int SendCalibrationData(unsigned int index, unsigned int scale, unsigned int offset);
+extern unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset);
 unsigned int etm_can_active_debugging_board_id;
 
 // ----------- Can Timers T4 & T5 Configuration ----------- //
@@ -16,7 +18,6 @@ unsigned int etm_can_active_debugging_board_id;
 
 // DPARKER remove the need for timers.h here
 #define T4CON_VALUE              (T4_OFF & T4_IDLE_CON & T4_GATE_OFF & T4_PS_1_256 & T4_32BIT_MODE_OFF & T4_SOURCE_INT)
-
 #define T5CON_VALUE              (T5_OFF & T5_IDLE_CON & T5_GATE_OFF & T5_PS_1_256 & T5_SOURCE_INT)
 
 
@@ -43,8 +44,6 @@ typedef struct {
   unsigned int no_connect_count_gun_driver_board;
   
   unsigned int event_log_counter;
-  unsigned int time_seconds_now;
-  unsigned int millisecond_counter;
   
   unsigned int buffer_a_ready_to_send;
   unsigned int buffer_a_sent;
@@ -52,6 +51,7 @@ typedef struct {
   unsigned int buffer_b_ready_to_send;
   unsigned int buffer_b_sent;
 } TYPE_GLOBAL_DATA_CAN_MASTER;
+
 
 TYPE_GLOBAL_DATA_CAN_MASTER global_data_can_master;
 
@@ -329,6 +329,10 @@ void ETMCanMasterLoadConfiguration(unsigned long agile_id, unsigned int agile_da
   config_serial_number = serial_number;
 }
 
+void ETMCanMasterSetSyncState(unsigned int state) {
+  etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = state;
+}
+
 
 void ETMCanMasterDoCan(void) {
   ETMCanMasterProcessMessage();
@@ -336,7 +340,7 @@ void ETMCanMasterDoCan(void) {
   ETMCanMasterProcessLogData();
   ETMCanMasterCheckForTimeOut();
   if (_SYNC_CONTROL_CLEAR_DEBUG_DATA) {
-    ETMCanMasterClearDebug(); // DPARKER ADD THIS BACK IN
+    ETMCanMasterClearDebug();
   }
 
 
@@ -493,7 +497,7 @@ void ETMCanMasterSendSync(void) {
   ETMCanMessage sync_message;
   sync_message.identifier = ETM_CAN_MSG_SYNC_TX;
   sync_message.word0 = _SYNC_CONTROL_WORD;
-  sync_message.word2 = etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic; // DPARKER update with the current state or point to the current state
+  sync_message.word2 = etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic;
   sync_message.word2 = etm_can_master_sync_message.sync_2;
   sync_message.word3 = etm_can_master_sync_message.sync_3;
   
@@ -523,7 +527,7 @@ void ETMCanMasterAFCUpdateHomeOffset(void) {
   can_message.word1 = 0;
   can_message.word0 = local_afc_home_position;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
+  MacroETMCanCheckTXBuffer();
 }
 
 void ETMCanMasterHtrMagnetUpdateOutput(void) {
@@ -534,7 +538,7 @@ void ETMCanMasterHtrMagnetUpdateOutput(void) {
   can_message.word1 = local_heater_current_scaled_set_point;
   can_message.word0 = local_magnet_current_set_point;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
+  MacroETMCanCheckTXBuffer();
 }
 
 void ETMCanMasterGunDriverUpdatePulseTop(void) {
@@ -545,7 +549,7 @@ void ETMCanMasterGunDriverUpdatePulseTop(void) {
   can_message.word1 = local_gun_drv_high_en_pulse_top_v;
   can_message.word0 = local_gun_drv_low_en_pulse_top_v;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
+  MacroETMCanCheckTXBuffer();
 }
 
 void ETMCanMasterGunDriverUpdateHeaterCathode(void) {
@@ -556,7 +560,7 @@ void ETMCanMasterGunDriverUpdateHeaterCathode(void) {
   can_message.word1 = local_gun_drv_cathode_set_point;
   can_message.word0 = local_gun_drv_heater_v_set_point;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
+  MacroETMCanCheckTXBuffer();
 }
 
 void ETMCanMasterPulseSyncUpdateHighRegZero(void) {
@@ -567,7 +571,7 @@ void ETMCanMasterPulseSyncUpdateHighRegZero(void) {
   can_message.word1 = *(unsigned int*)&psync_grid_start_high_intensity_1;
   can_message.word0 = *(unsigned int*)&psync_dose_delay_high;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
+  MacroETMCanCheckTXBuffer();
 }
 
 void ETMCanMasterPulseSyncUpdateHighRegOne(void) {
@@ -578,7 +582,7 @@ void ETMCanMasterPulseSyncUpdateHighRegOne(void) {
   can_message.word1 = *(unsigned int*)&psync_grid_stop_high_intensity_1;
   can_message.word0 = *(unsigned int*)&psync_mag_delay_high;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
+  MacroETMCanCheckTXBuffer();
 }
 
 void ETMCanMasterPulseSyncUpdateLowRegZero(void) {
@@ -589,7 +593,7 @@ void ETMCanMasterPulseSyncUpdateLowRegZero(void) {
   can_message.word1 = *(unsigned int*)&psync_grid_start_low_intensity_1;
   can_message.word0 = *(unsigned int*)&psync_dose_delay_low;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
+  MacroETMCanCheckTXBuffer();
 }
 
 void ETMCanMasterPulseSyncUpdateLowRegOne(void) {
@@ -600,7 +604,7 @@ void ETMCanMasterPulseSyncUpdateLowRegOne(void) {
   can_message.word1 = *(unsigned int*)&psync_grid_stop_low_intensity_1;
   can_message.word0 = *(unsigned int*)&psync_mag_delay_low;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
+  MacroETMCanCheckTXBuffer();
 }
 
 
@@ -613,8 +617,7 @@ void ETMCanMasterDataReturnFromSlave(ETMCanMessage* message_ptr) {
   
   if ((index_word >= 0x0100) & (index_word < 0x0200)) {
     // This is Calibration data that was read from the slave EEPROM
-    SendCalibrationData(message_ptr->word3, message_ptr->word1, message_ptr->word0);
-    // DPARKER SendCalibrationData Sends data to the GUI over TCP/IP.  Could use a better name
+    SendCalibrationDataToGUI(message_ptr->word3, message_ptr->word1, message_ptr->word0);
   } else {
     // It was not a set value index 
     debug_data_ecb.can_invalid_index++;
@@ -875,7 +878,6 @@ void ETMCanMasterProcessLogData(void) {
 	}
     } else if (log_id >= 0x100) {
       // It is debugging information, load into the common debugging register if that board is actively being debugged
-      // DPARKER impliment this using used debug_data_slave_mirror
       if (board_id == etm_can_active_debugging_board_id) {
 	switch (log_id) 
 	  {
@@ -1201,167 +1203,6 @@ void ETMCanMasterCheckForTimeOut(void) {
     
   }
 }
-  /*
-  // Check to see if a faulted board has regained communication.  If so, clear the fault bit and write to event log
-
-  // Ion Pump Board
-  if (board_status_received.ion_pump_board && board_com_fault.ion_pump_board) {
-    // The slave board has regained communication
-    SendToEventLog(LOG_ID_CONNECTED_ION_PUMP_BOARD);
-    board_com_fault.ion_pump_board = 0;
-  }
-  
-  // Pulse Current Monitor Board
-  if (board_status_received.magnetron_current_board && board_com_fault.magnetron_current_board) {
-    // The slave board has regained communication
-    SendToEventLog(LOG_ID_CONNECTED_MAGNETRON_CURRENT_BOARD);
-    board_com_fault.magnetron_current_board = 0;
-  }
-  
-  // Pulse Sync Board
-  if (board_status_received.pulse_sync_board && board_com_fault.pulse_sync_board) {
-    // The slave board has regained communication
-    SendToEventLog(LOG_ID_CONNECTED_PULSE_SYNC_BOARD);
-    board_com_fault.pulse_sync_board = 0;
-  }
-  
-  // HV Lambda Board
-  if (board_status_received.hv_lambda_board && board_com_fault.hv_lambda_board) {
-    SendToEventLog(LOG_ID_CONNECTED_HV_LAMBDA_BOARD);
-    board_com_fault.hv_lambda_board = 0;
-  }
-  
-  // AFC Board
-  if (board_status_received.afc_board  && board_com_fault.afc_board) {
-    SendToEventLog(LOG_ID_CONNECTED_AFC_BOARD);
-    board_com_fault.afc_board = 0;
-  }
-  
-  // Cooling Interface
-  if (board_status_received.cooling_interface_board && board_com_fault.cooling_interface_board) {
-    SendToEventLog(LOG_ID_CONNECTED_COOLING_BOARD);
-    board_com_fault.cooling_interface_board = 0;
-  }
-  
-  // Heater Magnet Supply
-  if (board_status_received.heater_magnet_board && board_com_fault.heater_magnet_board) {
-    SendToEventLog(LOG_ID_CONNECTED_HEATER_MAGNET_BOARD);
-    board_com_fault.heater_magnet_board = 0;
-  }
-  
-  // Gun Driver
-  if (board_status_received.gun_driver_board && board_com_fault.gun_driver_board) {
-    SendToEventLog(LOG_ID_CONNECTED_GUN_DRIVER_BOARD);
-    board_com_fault.gun_driver_board = 0;
-  }
-  
-  if (_T5IF) {
-    // At least one board failed to communicate durring the T5 period
-    _T5IF = 0;
-    TMR5 = 0;
-    debug_data_ecb.can_timeout++;
-    etm_can_persistent_data.can_timeout_count = debug_data_ecb.can_timeout;
-    // _CONTROL_CAN_COM_LOSS = 1; // DPARKER change this to a fault
-    
-    // store which boards are not connect and write to the event log
-    
-    // Ion Pump Board
-#ifndef __IGNORE_ION_PUMP_MODULE
-    if (!board_status_received.ion_pump_board) {                          // The slave board is not connected
-      global_data_can_master.no_connect_count_ion_pump_board++;
-      if (!board_com_fault.ion_pump_board) {                              // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD);
-      }
-      board_com_fault.ion_pump_board = 1;
-    }
-#endif
-    
-    // Pulse Current Monitor Board
-#ifndef __IGNORE_PULSE_CURRENT_MODULE
-    if (!board_status_received.magnetron_current_board) {                 // The slave board is not connected
-      global_data_can_master.no_connect_count_magnetron_current_board++;
-      if (!board_com_fault.magnetron_current_board) {                     // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD);
-      }
-      board_com_fault.magnetron_current_board = 1;
-    }
-#endif
-    
-
-    // Pulse Sync Board
-#ifndef __IGNORE_PULSE_SYNC_MODULE
-    if (!board_status_received.pulse_sync_board) {                        // The slave board is not connected
-      global_data_can_master.no_connect_count_pulse_sync_board++;
-      if (!board_com_fault.pulse_sync_board) {                            // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD);
-      }
-      board_com_fault.pulse_sync_board = 1;
-    }
-#endif
-
-    // HV Lambda Board
-#ifndef __IGNORE_HV_LAMBDA_MODULE
-    if (!board_status_received.hv_lambda_board) {                         // The slave board is not connected
-      global_data_can_master.no_connect_count_hv_lambda_board++;
-      if (!board_com_fault.hv_lambda_board) {                             // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD);
-      }
-      board_com_fault.hv_lambda_board = 1;
-    }
-#endif
-
-    // AFC Board
-#ifndef __IGNORE_AFC_MODULE
-    if (!board_status_received.afc_board) {                               // The slave board is not connected
-      global_data_can_master.no_connect_count_afc_board++;
-      if (!board_com_fault.afc_board) {                                   // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_AFC_BOARD);
-      }
-      board_com_fault.afc_board = 1;
-    }    
-#endif
-
-    // Cooling Interface
-#ifndef __IGNORE_COOLING_INTERFACE_MODULE
-    if (!board_status_received.cooling_interface_board) {                 // The slave board is not connected
-      global_data_can_master.no_connect_count_cooling_interface_board++;
-      if (!board_com_fault.cooling_interface_board) {                     // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_COOLING_BOARD);
-      }
-      board_com_fault.cooling_interface_board = 1;
-    }
-#endif
-
-    // Heater Magnet Supply
-#ifndef __IGNORE_HEATER_MAGNET_MODULE
-    if (!board_status_received.heater_magnet_board) {                     // The slave board is not connected
-      global_data_can_master.no_connect_count_heater_magnet_board++;
-      if (!board_com_fault.heater_magnet_board) {                         // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD);
-      }
-      board_com_fault.heater_magnet_board = 1;
-    }
-#endif
-
-    // Gun Driver
-#ifndef __IGNORE_GUN_DRIVER_MODULE
-    if (!board_status_received.gun_driver_board) {                        // The slave board is not connected
-      global_data_can_master.no_connect_count_gun_driver_board++;
-      if (!board_com_fault.gun_driver_board) {                            // The slave board has lost communication
-	SendToEventLog(LOG_ID_NOT_CONNECTED_GUN_DRIVER_BOARD);
-      }
-      board_com_fault.gun_driver_board = 1;
-    }
-#endif
-
-    // Clear the status received register
-    *(unsigned int*)&board_status_received = 0x0000;
-
-  }
- 
-  
-}
- */
 
 
 void SendCalibrationSetPointToSlave(unsigned int index, unsigned int data_1, unsigned int data_0) {
@@ -1370,14 +1211,13 @@ void SendCalibrationSetPointToSlave(unsigned int index, unsigned int data_1, uns
   board_id = index & 0xF000;
   board_id >>= 12;
   
-  
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (board_id << 2));
   can_message.word3 = index;
   can_message.word2 = 0;
   can_message.word1 = data_1;
   can_message.word0 = data_0;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+  MacroETMCanCheckTXBuffer();
 }
 
 void ReadCalibrationSetPointFromSlave(unsigned int index) {
@@ -1392,7 +1232,7 @@ void ReadCalibrationSetPointFromSlave(unsigned int index) {
   can_message.word1 = 0;
   can_message.word0 = 0;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+  MacroETMCanCheckTXBuffer();
 }
 
 void SendSlaveLoadDefaultEEpromData(unsigned int board_id) {
@@ -1404,7 +1244,7 @@ void SendSlaveLoadDefaultEEpromData(unsigned int board_id) {
   can_message.word1 = 0;
   can_message.word0 = 0;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+  MacroETMCanCheckTXBuffer();
 }
 
 void SendSlaveReset(unsigned int board_id) {
@@ -1416,7 +1256,7 @@ void SendSlaveReset(unsigned int board_id) {
   can_message.word1 = 0;
   can_message.word0 = 0;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+  MacroETMCanCheckTXBuffer();
 }
 
 
@@ -1509,12 +1349,16 @@ void ETMCanMasterClearDebug(void) {
 
 void SendToEventLog(unsigned int log_id) {
   event_log.event_data[event_log.write_index].event_number = global_data_can_master.event_log_counter;
-  event_log.event_data[event_log.write_index].event_time   = global_data_can_master.time_seconds_now;
+  event_log.event_data[event_log.write_index].event_time   = mem_time_seconds_now;
   event_log.event_data[event_log.write_index].event_id     = log_id;
   event_log.write_index++;
   event_log.write_index &= 0x7F;
+  if (event_log.write_index == event_log.gui_index) {
+    // The event log is full, over write th old events
+    event_log.gui_index++;
+    event_log.gui_index &= 0x7F;
+  }
   global_data_can_master.event_log_counter++;
-  // DPARKER need to check the EEPROM and TCP locations and advance them as nesseasry so that we don't pass them when advancing the write_index
 }
 
 
@@ -1543,7 +1387,7 @@ void DoCanInterrupt(void) {
   
   // Calculate the time (in milliseconds) that this interrupt occured
   // This is used for logging pulse messages
-  pulse_time = global_data_can_master.millisecond_counter;
+  pulse_time = can_master_millisecond_counter;
   pulse_time += ETMScaleFactor2((TMR5>>11),MACRO_DEC_TO_CAL_FACTOR_2(.8192),0);
   if (_T2IF) {
     pulse_time += 10;
@@ -1582,7 +1426,7 @@ void DoCanInterrupt(void) {
 	    high_speed_data_buffer_a[fast_log_buffer_index].status_bits.high_energy_pulse = 1;
 	  }
 
-	  high_speed_data_buffer_a[fast_log_buffer_index].x_ray_on_seconds_lsw = global_data_can_master.time_seconds_now;
+	  high_speed_data_buffer_a[fast_log_buffer_index].x_ray_on_seconds_lsw = mem_time_seconds_now;
 	  high_speed_data_buffer_a[fast_log_buffer_index].x_ray_on_milliseconds = pulse_time;
 	  
 	  high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_readback_high_energy_lambda_program_voltage = 0;
@@ -1623,7 +1467,7 @@ void DoCanInterrupt(void) {
 	    high_speed_data_buffer_b[fast_log_buffer_index].status_bits.high_energy_pulse = 1;
 	  }
 	  
-	  high_speed_data_buffer_b[fast_log_buffer_index].x_ray_on_seconds_lsw = global_data_can_master.time_seconds_now;
+	  high_speed_data_buffer_b[fast_log_buffer_index].x_ray_on_seconds_lsw = mem_time_seconds_now;
 	  high_speed_data_buffer_b[fast_log_buffer_index].x_ray_on_milliseconds = pulse_time;
 	  
 	  high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_readback_high_energy_lambda_program_voltage = 0;
@@ -1705,5 +1549,5 @@ void ETMCanMasterSendMsg(unsigned int id, unsigned int word3, unsigned int word2
   can_message.word1 = word1;
   can_message.word0 = word0;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
-  MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()  
+  MacroETMCanCheckTXBuffer();
 }
