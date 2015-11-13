@@ -15,17 +15,6 @@
 
 #include "ETM.h"
 
-#define __IGNORE_ION_PUMP_MODULE
-//#define __IGNORE_AFC_MODULE
-#define __IGNORE_GUN_DRIVER_MODULE
-#define __IGNORE_COOLING_INTERFACE_MODULE
-#define __IGNORE_HEATER_MAGNET_MODULE
-#define __IGNORE_HV_LAMBDA_MODULE
-#define __IGNORE_PULSE_CURRENT_MODULE
-#define __IGNORE_PULSE_SYNC_MODULE
-#define __IGNORE_TCU
-
-
 
 
 /*
@@ -175,18 +164,18 @@ typedef struct {
   unsigned long gun_driver_heater_last_warm_seconds;
 
 
-  unsigned long system_powered_seconds;
-  unsigned long system_hv_on_seconds;
-  unsigned long system_xray_on_seconds;
+  //unsigned long system_powered_seconds;
+  //unsigned long system_hv_on_seconds;
+  //unsigned long system_xray_on_seconds;
 
   RTC_TIME time_now;
-  unsigned long time_seconds_now;
+  //unsigned long time_seconds_now;
   
 
   //unsigned int send_pulse_sync_config;
   unsigned int drive_up_timer;
 
-  unsigned int average_output_power_watts;
+  //unsigned int average_output_power_watts;
   unsigned int event_log_counter;
   
   unsigned int startup_counter;
@@ -207,16 +196,20 @@ typedef struct {
   unsigned int buffer_b_sent;
 
 
-  unsigned int personality_select_from_pulse_sync;
+  //unsigned int personality_select_from_pulse_sync;
 
   
 } A36507GlobalVars;
 
-#define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[6]
+#define mem_time_seconds_now                                 (*(unsigned long*)&local_data_ecb.log_data[1])
+#define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[4]
 #define magnetron_heater_warmup_counter_seconds              local_data_ecb.log_data[5]
-#define gun_driver_heater_warmup_counter_seconds             local_data_ecb.log_data[4]
-
-
+#define gun_driver_heater_warmup_counter_seconds             local_data_ecb.log_data[6]
+#define system_powered_seconds                               (*(unsigned long*)&local_data_ecb.log_data[8])
+#define system_hv_on_seconds                                 (*(unsigned long*)&local_data_ecb.log_data[10])
+#define system_xray_on_seconds                               (*(unsigned long*)&local_data_ecb.log_data[12])
+#define average_output_power_watts                           local_data_ecb.log_data[14]
+#define personality_select_from_pulse_sync                   local_data_ecb.log_data[15]
 
 extern A36507GlobalVars global_data_A36507;
 

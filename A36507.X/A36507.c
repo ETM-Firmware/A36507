@@ -262,19 +262,19 @@ void DoStateMachine(void) {
       FlashLeds();
 
       if (_PULSE_SYNC_PERSONALITY_READY) {
-	global_data_A36507.personality_select_from_pulse_sync = _PULSE_SYNC_PERSONALITY_VALUE;
+	personality_select_from_pulse_sync = _PULSE_SYNC_PERSONALITY_VALUE;
 	global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
 	SendToEventLog(LOG_ID_PERSONALITY_RECEIVED);
       }
       
 #ifdef __IGNORE_PULSE_SYNC_MODULE
-      global_data_A36507.personality_select_from_pulse_sync = 0;
+      personality_select_from_pulse_sync = 0;
       global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
 #endif
 
 #define PERSONALITY_ERROR_READING  0x000F
 
-      if (global_data_A36507.personality_select_from_pulse_sync == PERSONALITY_ERROR_READING) {
+      if (personality_select_from_pulse_sync == PERSONALITY_ERROR_READING) {
 	global_data_A36507.control_state = STATE_FAULT_SYSTEM;
 	SendToEventLog(LOG_ID_PERSONALITY_ERROR);
       }
@@ -289,7 +289,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
-    ReadSystemConfigurationFromEEProm(global_data_A36507.personality_select_from_pulse_sync);
+    ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
     // Calculate all of the warmup counters based on previous warmup completed
     CalculateHeaterWarmupTimers();
     SendToEventLog(LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION);
@@ -849,7 +849,7 @@ void DoA36507(void) {
 
   ETMCanMasterDoCan();
   TCPmodbus_task();
-  ExecuteEthernetCommand(global_data_A36507.personality_select_from_pulse_sync);
+  ExecuteEthernetCommand(personality_select_from_pulse_sync);
 
 #ifndef __IGNORE_TCU
   ETMmodbus_task();
@@ -878,65 +878,11 @@ void DoA36507(void) {
     _FAULT_COOLING_NOT_READY = 1;
   }
 #endif
-  /*
-  debug_data_ecb.debug_0 = global_data_A36507.control_state;
-  debug_data_ecb.debug_1 = global_data_A36507.event_log_counter;
-  debug_data_ecb.debug_2 = (unsigned int)(global_data_A36507.time_seconds_now >> 16);
-  debug_data_ecb.debug_3 = (unsigned int)(global_data_A36507.time_seconds_now & 0x0000FFFF);
-  debug_data_ecb.debug_4 = global_data_A36507.no_connect_count_ion_pump_board;
-  debug_data_ecb.debug_5 = global_data_A36507.no_connect_count_magnetron_current_board;
-  debug_data_ecb.debug_6 = global_data_A36507.no_connect_count_pulse_sync_board;
-  debug_data_ecb.debug_7 = global_data_A36507.no_connect_count_hv_lambda_board;
-  debug_data_ecb.debug_8 = global_data_A36507.no_connect_count_afc_board;
-  debug_data_ecb.debug_9 = global_data_A36507.no_connect_count_cooling_interface_board;
-  debug_data_ecb.debug_A = global_data_A36507.no_connect_count_heater_magnet_board;
-  debug_data_ecb.debug_B = global_data_A36507.no_connect_count_gun_driver_board;
-  debug_data_ecb.debug_C = etm_can_next_pulse_level;
-  debug_data_ecb.debug_D = etm_can_next_pulse_count;
-
-  */
-
+  // Load log_data Memory for types that can not be mapped directly into memory
   local_data_ecb.log_data[0] = global_data_A36507.control_state;
-  *(unsigned long*)&local_data_ecb.log_data[1] = global_data_A36507.time_seconds_now;
   local_data_ecb.log_data[3] = ETMCanMasterGetPulsePRF();
-
-  
-
-  //mirror_pulse_mon.log_data[4] = ;
-  //mirror_pulse_mon.log_data[5] = ;
-  //mirror_pulse_mon.log_data[6] = ;
-  mirror_pulse_mon.log_data[7] = _SYNC_CONTROL_WORD;
-
-  *(unsigned long*)&local_data_ecb.log_data[8] = global_data_A36507.system_powered_seconds;
-  *(unsigned long*)&local_data_ecb.log_data[10] = global_data_A36507.system_hv_on_seconds;
-  
-  *(unsigned long*)&local_data_ecb.log_data[12] = global_data_A36507.system_xray_on_seconds;
-  local_data_ecb.log_data[14] = global_data_A36507.average_output_power_watts;
-  local_data_ecb.log_data[15] = global_data_A36507.personality_select_from_pulse_sync;
-
+  local_data_ecb.log_data[7] = _SYNC_CONTROL_WORD;
   local_data_ecb.log_data[16] = *(unsigned int*)&board_com_ok;
-
-
-  local_data_ecb.local_data[0] = 300;
-  local_data_ecb.local_data[1] = 301;
-  local_data_ecb.local_data[2] = 302;
-  local_data_ecb.local_data[3] = 303;
-
-  local_data_ecb.local_data[4] = 304;
-  local_data_ecb.local_data[5] = 305;
-  local_data_ecb.local_data[6] = 306;
-  local_data_ecb.local_data[7] = 307;
-
-  local_data_ecb.local_data[8] = 308;
-  local_data_ecb.local_data[9] = 309;
-  local_data_ecb.local_data[10] = 310;
-  local_data_ecb.local_data[11] = 311;
-
-  local_data_ecb.local_data[12] = 312;
-  local_data_ecb.local_data[13] = 313;
-  local_data_ecb.local_data[14] = 314;
-  local_data_ecb.local_data[15] = 315;
-
 
 
   debug_data_ecb.debug_reg[0]  = 0; 
@@ -1026,11 +972,11 @@ void DoA36507(void) {
     /*
     etm_can_ethernet_board_data.mirror_sync_0_control_word = *(unsigned int*)&etm_can_sync_message.sync_0_control_word;
     etm_can_ethernet_board_data.mirror_control_state = global_data_A36507.control_state;
-    etm_can_ethernet_board_data.mirror_system_powered_seconds = global_data_A36507.system_powered_seconds;
-    etm_can_ethernet_board_data.mirror_system_hv_on_seconds = global_data_A36507.system_hv_on_seconds;
-    etm_can_ethernet_board_data.mirror_system_xray_on_seconds = global_data_A36507.system_xray_on_seconds;
-    etm_can_ethernet_board_data.mirror_time_seconds_now = global_data_A36507.time_seconds_now;
-    etm_can_ethernet_board_data.mirror_average_output_power_watts = global_data_A36507.average_output_power_watts;
+    etm_can_ethernet_board_data.mirror_system_powered_seconds = system_powered_seconds;
+    etm_can_ethernet_board_data.mirror_system_hv_on_seconds = system_hv_on_seconds;
+    etm_can_ethernet_board_data.mirror_system_xray_on_seconds = system_xray_on_seconds;
+    etm_can_ethernet_board_data.mirror_time_seconds_now = mem_time_seconds_now;
+    etm_can_ethernet_board_data.mirror_average_output_power_watts = average_output_power_watts;
     etm_can_ethernet_board_data.mirror_thyratron_warmup_counter_seconds = global_data_A36507.thyratron_warmup_counter_seconds;
     etm_can_ethernet_board_data.mirror_magnetron_heater_warmup_counter_seconds = global_data_A36507.magnetron_heater_warmup_counter_seconds;
     etm_can_ethernet_board_data.mirror_gun_driver_heater_warmup_counter_seconds = global_data_A36507.gun_driver_heater_warmup_counter_seconds;
@@ -1066,13 +1012,13 @@ void DoA36507(void) {
     if (global_data_A36507.millisecond_counter == 0) {
       // Read Date/Time from RTC and update the warmup up counters
       ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
-      global_data_A36507.time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
+      mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
 
       // Update the warmup counters
       if (thyratron_warmup_counter_seconds > 0) {
 	thyratron_warmup_counter_seconds--;
       } else {
-	global_data_A36507.thyratron_heater_last_warm_seconds = global_data_A36507.time_seconds_now;
+	global_data_A36507.thyratron_heater_last_warm_seconds = mem_time_seconds_now;
       }
       
       if ((board_com_ok.heater_magnet_board) && (!_HEATER_MAGNET_NOT_READY)) {
@@ -1080,7 +1026,7 @@ void DoA36507(void) {
 	if (magnetron_heater_warmup_counter_seconds > 0) {
 	  magnetron_heater_warmup_counter_seconds--;
 	} else {
-	  global_data_A36507.magnetron_heater_last_warm_seconds = global_data_A36507.time_seconds_now;
+	  global_data_A36507.magnetron_heater_last_warm_seconds = mem_time_seconds_now;
 	}
       } else {
 	magnetron_heater_warmup_counter_seconds += 2;
@@ -1094,7 +1040,7 @@ void DoA36507(void) {
 	if (gun_driver_heater_warmup_counter_seconds > 0) {
 	  gun_driver_heater_warmup_counter_seconds--;
 	} else {
-	  global_data_A36507.gun_driver_heater_last_warm_seconds = global_data_A36507.time_seconds_now;
+	  global_data_A36507.gun_driver_heater_last_warm_seconds = mem_time_seconds_now;
 	}
       } else {
 	gun_driver_heater_warmup_counter_seconds += 2;
@@ -1130,17 +1076,17 @@ void DoA36507(void) {
     // Run once a second at 500 milliseconds
     if (global_data_A36507.millisecond_counter == 500) {
       // Write Seconds on Counters to EEPROM
-      global_data_A36507.system_powered_seconds++;
+      system_powered_seconds++;
       
       if (global_data_A36507.control_state == STATE_READY) {
-	global_data_A36507.system_hv_on_seconds++;
+	system_hv_on_seconds++;
       }
       
       if (global_data_A36507.control_state == STATE_XRAY_ON) {
-	global_data_A36507.system_hv_on_seconds++;
-	global_data_A36507.system_xray_on_seconds++;
+	system_hv_on_seconds++;
+	system_xray_on_seconds++;
       }
-      ETMEEPromWritePage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&global_data_A36507.system_powered_seconds);
+      ETMEEPromWritePage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&system_powered_seconds);
     } // End of tasks that happen when millisecond = 500
   
   } // End of 10ms Tasks
@@ -1208,8 +1154,8 @@ void UpdateHeaterScale() {
   temp32 *= 13;
   temp32 >>= 11;  // Temp32 is now Magnetron Power (in Watts)
   
-  global_data_A36507.average_output_power_watts = temp32;
-  temp16 = global_data_A36507.average_output_power_watts;
+  average_output_power_watts = temp32;
+  temp16 = average_output_power_watts;
 
   temp16 >>= 7; // Convert to index for our rolloff table
   if (temp16 >= 0x3F) {
@@ -1328,7 +1274,7 @@ void InitializeA36507(void) {
   _ADON = 0;
 
   // Load System powered time from EEPROM
-  ETMEEPromReadPage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&global_data_A36507.system_powered_seconds);
+  ETMEEPromReadPage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&system_powered_seconds);
 }
 
 
@@ -1337,10 +1283,10 @@ void CalculateHeaterWarmupTimers(void) {
   // Read the warmup timers stored in EEPROM
   ETMEEPromReadPage(EEPROM_PAGE_HEATER_TIMERS, 6, (unsigned int*)&global_data_A36507.magnetron_heater_last_warm_seconds);
   ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
-  global_data_A36507.time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
+  mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
 
   // Calculate new magnetron heater warm up time remaining
-  difference = global_data_A36507.time_seconds_now - global_data_A36507.magnetron_heater_last_warm_seconds;
+  difference = mem_time_seconds_now - global_data_A36507.magnetron_heater_last_warm_seconds;
   if (difference > (MAGNETRON_HEATER_WARM_UP_TIME >> 1)) {
     magnetron_heater_warmup_counter_seconds = MAGNETRON_HEATER_WARM_UP_TIME;    
   } else {
@@ -1348,7 +1294,7 @@ void CalculateHeaterWarmupTimers(void) {
   }
 
   // Calculate new thyratron warm up time remaining
-  difference = global_data_A36507.time_seconds_now - global_data_A36507.thyratron_heater_last_warm_seconds;
+  difference = mem_time_seconds_now - global_data_A36507.thyratron_heater_last_warm_seconds;
   if (difference > (THYRATRON_WARM_UP_TIME >> 1)) {
     thyratron_warmup_counter_seconds = THYRATRON_WARM_UP_TIME;    
   } else {
@@ -1356,7 +1302,7 @@ void CalculateHeaterWarmupTimers(void) {
   }
   
   // Calculate new gun driver heater warm up time remaining
-  difference = global_data_A36507.time_seconds_now - global_data_A36507.gun_driver_heater_last_warm_seconds;
+  difference = mem_time_seconds_now - global_data_A36507.gun_driver_heater_last_warm_seconds;
   if (difference > (GUN_DRIVER_HEATER_WARM_UP_TIME >> 1)) {
     gun_driver_heater_warmup_counter_seconds = GUN_DRIVER_HEATER_WARM_UP_TIME;
   } else {
@@ -1427,9 +1373,9 @@ void FlashLeds(void) {
 
 void ZeroSystemPoweredTime(void) {
   // These values will be written to EEPROM sometime in the next second.
-  global_data_A36507.system_powered_seconds = 0;
-  global_data_A36507.system_hv_on_seconds = 0;
-  global_data_A36507.system_xray_on_seconds = 0;
+  system_powered_seconds = 0;
+  system_hv_on_seconds = 0;
+  system_xray_on_seconds = 0;
 }
 
 
@@ -1519,8 +1465,8 @@ void ExecuteEthernetCommand(unsigned int personality) {
   unsigned int temp_array[16];
 
 
-  //unsigned long temp_long;
-  //RTC_TIME set_time;
+  unsigned long temp_long;
+  RTC_TIME set_time;
 
 
   // DPARKER what happens if this is called before personality has been read??? 
@@ -1735,6 +1681,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
 			  0,
 			  next_message.data_2);
 
+
     case REGISTER_SPECIAL_ECB_RESET_ARC_AND_PULSE_COUNT:
       // DPARKER the command to do this is not yet part of the CAN library
       // This will require an extension of the can library to impliment
@@ -1775,7 +1722,14 @@ void ExecuteEthernetCommand(unsigned int personality) {
       }
       break;
 
-      
+    case REGISTER_SPECIAL_SET_TIME:
+      temp_long = next_message.data_2;
+      temp_long <<= 16;
+      temp_long += next_message.data_1;
+      RTCSecondsToDate(temp_long, &set_time);
+      SetDateAndTime(&U6_DS3231, &set_time);
+      break;
+
     case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START:
       CalculatePulseSyncParams(next_message.data_2, psync_grid_stop_high_intensity_3);
       break;
