@@ -4,16 +4,16 @@
 #include <xc.h>
 #include <libpic30.h>
 #include <adc12.h>
-
 #include <timer.h>
 
-#include "ETM_ANALOG.h"
+#include "ETM.h"
+//#include "ETM_ANALOG.h"
 #include "TCPmodbus.h"
 #include "ETMmodbus.h"
 #include "P1395_CAN_MASTER.h"
 
 
-#include "ETM.h"
+
 
 
 

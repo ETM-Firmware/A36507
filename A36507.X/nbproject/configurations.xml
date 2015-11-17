@@ -48,10 +48,10 @@
         <itemPath>TCPmodbus/TCPmodbus.c</itemPath>
       </logicalFolder>
       <itemPath>A36507.c</itemPath>
-      <itemPath>Buffern.c</itemPath>
       <itemPath>ETMmodbus.c</itemPath>
       <itemPath>P1395_CAN_MASTER.c</itemPath>
       <itemPath>P1395_CAN_CORE.s</itemPath>
+      <itemPath>Buffern.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -60,11 +60,7 @@
     </logicalFolder>
   </logicalFolder>
   <sourceRootList>
-    <Elem>TCP_modbus</Elem>
-    <Elem>Include</Elem>
-    <Elem>TCPmodbus</Elem>
-    <Elem>../../P1395_Modules</Elem>
-    <Elem>../../ETM_LIBRARY</Elem>
+    <Elem>.</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -82,8 +78,8 @@
       <compileType>
         <linkerTool>
           <linkerLibItems>
-            <linkerLibFileItem>../../ETM_LIBRARY_OLD/lib/ETM_EEPROM_EXTERNAL.X.a</linkerLibFileItem>
-            <linkerLibFileItem>../../ETM_LIBRARY_OLD/lib/ETM_LIBRARY.X.a</linkerLibFileItem>
+            <linkerLibFileItem>../../ETM_LIBRARY/Version_01/lib/ETM_EEPROM_EXTERNAL.a</linkerLibFileItem>
+            <linkerLibFileItem>../../ETM_LIBRARY/Version_01/lib/ETM_CORE.a</linkerLibFileItem>
           </linkerLibItems>
         </linkerTool>
         <archiverTool>
@@ -212,7 +208,7 @@
       </C30-LD>
       <C30Global>
         <property key="common-include-directories"
-                  value="TCPmodbus;..\..\ETM_LIBRARY_OLD\inc;..\A36507.X"/>
+                  value="TCPmodbus;..\A36507.X;..\..\ETM_LIBRARY\Version_01\inc"/>
         <property key="dual-boot-partition" value="0"/>
         <property key="fast-math" value="false"/>
         <property key="generic-16-bit" value="false"/>
@@ -257,7 +253,6 @@
         <property key="UART 1" value="true"/>
         <property key="UART 2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>
