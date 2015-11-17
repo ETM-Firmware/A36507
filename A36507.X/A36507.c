@@ -1051,7 +1051,9 @@ void DoA36507(void) {
     // Run once a second at 250 milliseconds
     if (can_master_millisecond_counter == 250) {
       // Write Warmup Done Timers to EEPROM
-      ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 6, (unsigned int*)&global_data_A36507.magnetron_heater_last_warm_seconds);
+      if (global_data_A36507.thyratron_heater_last_warm_seconds > 10) {
+	ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 6, (unsigned int*)&global_data_A36507.magnetron_heater_last_warm_seconds);
+      }
     } // End of tasks that happen when millisecond = 250
     
 
