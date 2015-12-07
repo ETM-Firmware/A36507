@@ -1405,7 +1405,7 @@ void DoCanInterrupt(void) {
       // It is a Next Pulse Level Command 
       debug_data_ecb.can_rx_0_filt_0++;
       ETMCanRXMessage(&can_message, CXRX0CON_ptr);
-      etm_can_master_next_pulse_prf   = can_message.word3;
+      etm_can_master_next_pulse_prf   = can_message.word2;
       etm_can_master_next_pulse_level = can_message.word1;
       etm_can_master_next_pulse_count = can_message.word0;
 
