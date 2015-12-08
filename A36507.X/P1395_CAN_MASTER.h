@@ -69,9 +69,9 @@ typedef struct {
   unsigned int x_ray_on_seconds_lsw;  // This is the lsw of x_ray_on_seconds, when the ECB recieved the "next pulse level" command
   unsigned int x_ray_on_milliseconds; // This is a representation of the milliseconds, when the ECB recieved the "next pulse level" command
 
-  unsigned int hvlambda_readback_high_energy_lambda_program_voltage;
-  unsigned int hvlambda_readback_low_energy_lambda_program_voltage;
-  unsigned int hvlambda_readback_peak_lambda_voltage;
+  unsigned int hvlambda_vmon_at_eoc_period;  //unsigned int hvlambda_readback_high_energy_lambda_program_voltage;
+  unsigned int hvlambda_vmon_at_trigger; //unsigned int hvlambda_readback_low_energy_lambda_program_voltage;
+  unsigned int hvlambda_vpeak_at_eoc_period; //unsigned int hvlambda_readback_peak_lambda_voltage;
 
   unsigned int afc_readback_current_position;
   unsigned int afc_readback_target_position;
@@ -82,12 +82,12 @@ typedef struct {
   unsigned int ionpump_readback_high_energy_target_current_reading;
   unsigned int ionpump_readback_low_energy_target_current_reading;
 
-  unsigned int magmon_readback_magnetron_high_energy_current;
-  unsigned int magmon_readback_magnetron_low_energy_current;
+  unsigned int magmon_internal_adc_reading;
+  unsigned int magmon_external_adc_reading;
 
-  unsigned int psync_readback_trigger_width_and_filtered_trigger_width;
-  unsigned int psync_readback_high_energy_grid_width_and_delay;
-  unsigned int psync_readback_low_energy_grid_width_and_delay;
+  unsigned int psync_trigger_width_and_filtered_trigger_width;
+  unsigned int psync_grid_width_and_delay;  //unsigned int psync_readback_high_energy_grid_width_and_delay;
+  unsigned int psync_period; //unsigned int psync_readback_low_energy_grid_width_and_delay;
 } ETMCanHighSpeedData;
 // 19 words
 

@@ -841,9 +841,9 @@ void ETMCanMasterProcessLogData(void) {
 	{
  	case ETM_CAN_DATA_LOG_REGISTER_HV_LAMBDA_FAST_LOG_0:
 	  // Update the high speed data table
-	  ptr_high_speed_data->hvlambda_readback_high_energy_lambda_program_voltage = next_message.word2;
-	  ptr_high_speed_data->hvlambda_readback_low_energy_lambda_program_voltage = next_message.word1;
-	  ptr_high_speed_data->hvlambda_readback_peak_lambda_voltage = next_message.word0;
+	  ptr_high_speed_data->hvlambda_vmon_at_eoc_period = next_message.word2;
+	  ptr_high_speed_data->hvlambda_vmon_at_trigger = next_message.word1;
+	  ptr_high_speed_data->hvlambda_vpeak_at_eoc_period = next_message.word0;
 	  break;
 
 	case ETM_CAN_DATA_LOG_REGISTER_AFC_FAST_LOG_0:
@@ -859,17 +859,17 @@ void ETMCanMasterProcessLogData(void) {
 	  break;
 	  
 	case ETM_CAN_DATA_LOG_REGISTER_MAGNETRON_MON_FAST_LOG_0:
-	  ptr_high_speed_data->magmon_readback_magnetron_low_energy_current = next_message.word2;  // Internal DAC Reading
-	  ptr_high_speed_data->magmon_readback_magnetron_high_energy_current = next_message.word1; // External DAC Reading
+	  ptr_high_speed_data->magmon_internal_adc_reading = next_message.word2;  // Internal DAC Reading
+	  ptr_high_speed_data->magmon_external_adc_reading = next_message.word1; // External DAC Reading
 	  if (next_message.word0) {
 	    ptr_high_speed_data->status_bits.arc_this_pulse = 1;
 	  }
 	  break;
 	  
 	case ETM_CAN_DATA_LOG_REGISTER_PULSE_SYNC_FAST_LOG_0:
-	  ptr_high_speed_data->psync_readback_trigger_width_and_filtered_trigger_width = next_message.word2;
-	  ptr_high_speed_data->psync_readback_high_energy_grid_width_and_delay = next_message.word1;
-	  ptr_high_speed_data->psync_readback_low_energy_grid_width_and_delay = next_message.word0;
+	  ptr_high_speed_data->psync_trigger_width_and_filtered_trigger_width = next_message.word2;
+	  ptr_high_speed_data->psync_grid_width_and_delay = next_message.word1;
+	  ptr_high_speed_data->psync_period = next_message.word0;
 	  break;
 	  
 	default:
@@ -1429,9 +1429,9 @@ void DoCanInterrupt(void) {
 	  high_speed_data_buffer_a[fast_log_buffer_index].x_ray_on_seconds_lsw = mem_time_seconds_now;
 	  high_speed_data_buffer_a[fast_log_buffer_index].x_ray_on_milliseconds = pulse_time;
 	  
-	  high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_readback_high_energy_lambda_program_voltage = 0;
-	  high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_readback_low_energy_lambda_program_voltage = 0;
-	  high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_readback_peak_lambda_voltage = 0;
+	  high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_vmon_at_eoc_period = 0;
+	  high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_vmon_at_trigger = 0;
+	  high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_vpeak_at_eoc_period = 0;
 	  
 	  high_speed_data_buffer_a[fast_log_buffer_index].afc_readback_current_position = 0;
 	  high_speed_data_buffer_a[fast_log_buffer_index].afc_readback_target_position = 0;
@@ -1442,17 +1442,13 @@ void DoCanInterrupt(void) {
 	  high_speed_data_buffer_a[fast_log_buffer_index].ionpump_readback_high_energy_target_current_reading = 0;
 	  high_speed_data_buffer_a[fast_log_buffer_index].ionpump_readback_low_energy_target_current_reading = 0;
 	  
-	  high_speed_data_buffer_a[fast_log_buffer_index].magmon_readback_magnetron_high_energy_current = 0;
-	  high_speed_data_buffer_a[fast_log_buffer_index].magmon_readback_magnetron_low_energy_current = 0;
+	  high_speed_data_buffer_a[fast_log_buffer_index].magmon_internal_adc_reading = 0;
+	  high_speed_data_buffer_a[fast_log_buffer_index].magmon_external_adc_reading = 0;
 	  
-	  high_speed_data_buffer_a[fast_log_buffer_index].psync_readback_trigger_width_and_filtered_trigger_width = 0;
-	  high_speed_data_buffer_a[fast_log_buffer_index].psync_readback_high_energy_grid_width_and_delay = 0;
-	  high_speed_data_buffer_a[fast_log_buffer_index].psync_readback_low_energy_grid_width_and_delay = 0;
+	  high_speed_data_buffer_a[fast_log_buffer_index].psync_trigger_width_and_filtered_trigger_width = 0;
+	  high_speed_data_buffer_a[fast_log_buffer_index].psync_grid_width_and_delay = 0;
+	  high_speed_data_buffer_a[fast_log_buffer_index].psync_period = 0;
 	  
-
-
-	  high_speed_data_buffer_a[fast_log_buffer_index].ionpump_readback_high_energy_target_current_reading = etm_can_master_next_pulse_level;
-
 	} else {
 	  // We are putting data into buffer B
 	  global_data_can_master.buffer_b_ready_to_send = 0;
@@ -1470,9 +1466,9 @@ void DoCanInterrupt(void) {
 	  high_speed_data_buffer_b[fast_log_buffer_index].x_ray_on_seconds_lsw = mem_time_seconds_now;
 	  high_speed_data_buffer_b[fast_log_buffer_index].x_ray_on_milliseconds = pulse_time;
 	  
-	  high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_readback_high_energy_lambda_program_voltage = 0;
-	  high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_readback_low_energy_lambda_program_voltage = 0;
-	  high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_readback_peak_lambda_voltage = 0;
+	  high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_vmon_at_eoc_period = 0;
+	  high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_vmon_at_trigger = 0;
+	  high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_vpeak_at_eoc_period = 0;
 	  
 	  high_speed_data_buffer_b[fast_log_buffer_index].afc_readback_current_position = 0;
 	  high_speed_data_buffer_b[fast_log_buffer_index].afc_readback_target_position = 0;
@@ -1483,15 +1479,13 @@ void DoCanInterrupt(void) {
 	  high_speed_data_buffer_b[fast_log_buffer_index].ionpump_readback_high_energy_target_current_reading = 0;
 	  high_speed_data_buffer_b[fast_log_buffer_index].ionpump_readback_low_energy_target_current_reading = 0;
 	  
-	  high_speed_data_buffer_b[fast_log_buffer_index].magmon_readback_magnetron_high_energy_current = 0;
-	  high_speed_data_buffer_b[fast_log_buffer_index].magmon_readback_magnetron_low_energy_current = 0;
+	  high_speed_data_buffer_b[fast_log_buffer_index].magmon_internal_adc_reading = 0;
+	  high_speed_data_buffer_b[fast_log_buffer_index].magmon_external_adc_reading = 0;
 	  
-	  high_speed_data_buffer_b[fast_log_buffer_index].psync_readback_trigger_width_and_filtered_trigger_width = 0;
-	  high_speed_data_buffer_b[fast_log_buffer_index].psync_readback_high_energy_grid_width_and_delay = 0;
-	  high_speed_data_buffer_b[fast_log_buffer_index].psync_readback_low_energy_grid_width_and_delay = 0;
+	  high_speed_data_buffer_b[fast_log_buffer_index].psync_trigger_width_and_filtered_trigger_width = 0;
+	  high_speed_data_buffer_b[fast_log_buffer_index].psync_grid_width_and_delay = 0;
+	  high_speed_data_buffer_b[fast_log_buffer_index].psync_period = 0;
 	  
-	  
-	  high_speed_data_buffer_b[fast_log_buffer_index].ionpump_readback_high_energy_target_current_reading = etm_can_master_next_pulse_level;
 	}
       }
     } else {
