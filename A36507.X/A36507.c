@@ -2,7 +2,20 @@
 #include "FIRMWARE_VERSION.h"
 #include "A36507_CONFIG.h"
 
+
+void WriteConfigToMirror(void);
+void ReadConfigFromMirror(void);
+
+
+
 #define FCY_CLK  20000000
+
+
+unsigned int a_ready;
+unsigned int a_sent;
+unsigned int b_ready;
+unsigned int b_sent;
+
 
 
 // ------------------ PROCESSOR CONFIGURATION ------------------------//
@@ -824,8 +837,6 @@ unsigned int CheckAllModulesConfigured(void) {
 }
 
 
-#define SEND_BUFFER_A            1
-#define SEND_BUFFER_B            0
 
 
 #define DEBUG_ETMMODBUS
@@ -833,6 +844,7 @@ unsigned int CheckAllModulesConfigured(void) {
 
 
 void DoA36507(void) {
+
 #ifdef DEBUG_ETMMODBUS
   //static MODBUS_RESP_SMALL etmmodbus_test[4];
   //static unsigned etmmodbus_index = 0;
@@ -851,16 +863,6 @@ void DoA36507(void) {
 #ifndef __IGNORE_TCU
   ETMmodbus_task();
 #endif
-
-  if ((global_data_A36507.buffer_a_ready_to_send) & (!global_data_A36507.buffer_a_sent)) {
-    SendPulseData(SEND_BUFFER_A);
-    global_data_A36507.buffer_a_sent = 1;
-  }
-
-  if ((global_data_A36507.buffer_b_ready_to_send) & (!global_data_A36507.buffer_b_sent)) {
-    SendPulseData(SEND_BUFFER_B);
-    global_data_A36507.buffer_b_sent = 1;
-  }
 
 
   // Check to see if cooling is present
@@ -898,9 +900,9 @@ void DoA36507(void) {
   debug_data_ecb.debug_reg[11] = 11; 
 
   debug_data_ecb.debug_reg[12] = 12; 
-  debug_data_ecb.debug_reg[13] = 13; 
-  debug_data_ecb.debug_reg[14] = 14; 
-  debug_data_ecb.debug_reg[15] = 15; 
+  //debug_data_ecb.debug_reg[13] = etm_can_master_next_pulse_prf; 
+  //debug_data_ecb.debug_reg[14] = etm_can_master_next_pulse_level;
+  //debug_data_ecb.debug_reg[15] = etm_can_master_next_pulse_count; 
 
   ETMCanMasterSetSyncState(global_data_A36507.control_state);
 
@@ -1417,11 +1419,11 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_SPECIAL_ECB_RESET_SECONDS_POWERED_HV_ON_XRAY_ON                           0xE082
 #define REGISTER_SPECIAL_ECB_RESET_SLAVE                                                   0xE083
 #define REGISTER_SPECIAL_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS                        0xE084
-
+#define REGISTER_SPECIAL_ECB_SAVE_SETTINGS_TO_EEPROM_MIRROR                                0xE085
+#define REGISTER_SPECIAL_ECB_LOAD_SETTINGS_FROM_EEPROM_MIRROR_AND_REBOOT                   0xE086
 
 
 #define REGISTER_DEBUG_TOGGLE_RESET                                                        0xEF00
-#define REGISTER_DEBUG_TOGGLE_HIGH_SPEED_LOGGING                                           0xEF01
 #define REGISTER_DEBUG_TOGGLE_HV_ENABLE                                                    0xEF02
 #define REGISTER_DEBUG_TOGGLE_XRAY_ENABLE                                                  0xEF03
 #define REGISTER_DEBUG_TOGGLE_COOLING_FAULT                                                0xEF04
@@ -1678,6 +1680,16 @@ void ExecuteEthernetCommand(unsigned int personality) {
       __asm__ ("Reset");
       break;
 
+    case REGISTER_SPECIAL_ECB_SAVE_SETTINGS_TO_EEPROM_MIRROR:
+      WriteConfigToMirror();
+      break;
+
+    case REGISTER_SPECIAL_ECB_LOAD_SETTINGS_FROM_EEPROM_MIRROR_AND_REBOOT:
+      ReadConfigFromMirror();
+      __delay32(1000000);
+      __asm__ ("Reset");
+      break;
+
     case REGISTER_SPECIAL_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS:
       if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
 	SendSlaveLoadDefaultEEpromData(next_message.data_2);
@@ -1795,19 +1807,11 @@ void ExecuteEthernetCommand(unsigned int personality) {
     case REGISTER_DEBUG_ENABLE_HIGH_SPEED_LOGGING:
       _SYNC_CONTROL_HIGH_SPEED_LOGGING = 1;
       break;
-
+      
     case REGISTER_DEBUG_DISABLE_HIGH_SPEED_LOGGING:
       _SYNC_CONTROL_HIGH_SPEED_LOGGING = 0;
       break;
       
-    case REGISTER_DEBUG_TOGGLE_HIGH_SPEED_LOGGING:
-      if (_SYNC_CONTROL_HIGH_SPEED_LOGGING) {
-	_SYNC_CONTROL_HIGH_SPEED_LOGGING = 0;
-      } else {
-	_SYNC_CONTROL_HIGH_SPEED_LOGGING = 1;
-      }
-      break;
-
     case REGISTER_DEBUG_TOGGLE_HV_ENABLE:
       if (_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV) {
 	_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
@@ -1815,7 +1819,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
 	_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
       }
       break;
-
+      
     case REGISTER_DEBUG_TOGGLE_XRAY_ENABLE:
       if (_SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY) {
 	_SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 0;
@@ -2018,6 +2022,65 @@ void LogModuleFault(unsigned int board_address) {
   }
   */
 }
+
+
+
+
+void WriteConfigToMirror(void) {
+  unsigned int temp_data[16];
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_HTR_MAG_AFC, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HTR_MAG_AFC, 16, temp_data);
+  
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_HV_LAMBDA, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HV_LAMBDA, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_GUN_DRV, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_GUN_DRV, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_1, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_2, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_3, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_4, 16, temp_data);
+}
+
+void ReadConfigFromMirror(void) {
+  unsigned int temp_data[16];
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HTR_MAG_AFC, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HTR_MAG_AFC, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HV_LAMBDA, 16, temp_data); 
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HV_LAMBDA, 16, temp_data);
+ 
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_GUN_DRV, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_GUN_DRV, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_1, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_2, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_3, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, temp_data);
+
+  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_4, 16, temp_data);
+  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, temp_data);
+}
+
+
+
+
+
+
 
 
 void __attribute__((interrupt, no_auto_psv)) _DefaultInterrupt(void) {

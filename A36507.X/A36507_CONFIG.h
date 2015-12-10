@@ -8,7 +8,7 @@
 #define DRIVE_UP_TIMEOUT                     1000  // 10 Seconds
 
 #define MAGNETRON_HEATER_WARM_UP_TIME        300   // 5 minutes
-#define THYRATRON_WARM_UP_TIME               900   // 15 minutes
+#define THYRATRON_WARM_UP_TIME               60 // DPARKER 900   // 15 minutes
 #define GUN_DRIVER_HEATER_WARM_UP_TIME       300   // 5 minutes
 
 

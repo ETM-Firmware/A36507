@@ -292,21 +292,12 @@ unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, un
 	// This will change a flag to indicate pulse data ready
 	// It will return 0x0000 if previous data was sent,  or 0xFFFF if it was not (buffer full)
 ***************************************************************************/
-unsigned int SendPulseData(unsigned char is_buffer_a)
-{
-    
-    if (is_buffer_a && (send_high_speed_data_buffer & 0x01) == 0)
-    {
-		send_high_speed_data_buffer |= 0x01;
-    }
-    else if (is_buffer_a == 0 && (send_high_speed_data_buffer & 0x02) == 0)
-    {
-		send_high_speed_data_buffer |= 0x02;
-    }
-    else
-    	return (0xffff);
-
-    return (0);
+void SendPulseData(unsigned int buffer_select) {
+  if (buffer_select == SEND_BUFFER_A) {
+    send_high_speed_data_buffer = 0x01;
+  } else {
+    send_high_speed_data_buffer = 0x02;
+  }
 }
 /****************************************************************************
   Function:
@@ -834,7 +825,7 @@ unsigned int BuildModbusOutputHighSpeedDataLog(void) {
 
   if (send_high_speed_data_buffer & 0x01) {
     ptr = (unsigned char *)&high_speed_data_buffer_a[0];
-    send_high_speed_data_buffer &= 0xfe;
+    send_high_speed_data_buffer = 0;
   } else {
     ptr = (unsigned char *)&high_speed_data_buffer_b[0];
     send_high_speed_data_buffer = 0;

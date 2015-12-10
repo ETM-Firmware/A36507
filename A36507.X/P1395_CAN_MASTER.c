@@ -3,10 +3,13 @@
 #include "P1395_CAN_MASTER.h"
 #include "ETM_IO_PORTS.H"
 #include "ETM_SCALE.H"
-
+#include "TCPmodbus.h"
 
 unsigned int can_master_millisecond_counter;
 
+
+
+void UpdateSlaveEventLog(ETMCanStatusRegister* previous_status, ETMCanStatusRegister* current_status, unsigned int slave_select);
 
 // DPARKER fix these
 extern unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset);
@@ -344,6 +347,22 @@ void ETMCanMasterDoCan(void) {
   }
 
 
+  // DPARKER
+  //ETMCanSendHighSpeedLoggingData();
+  
+  if ((global_data_can_master.buffer_a_ready_to_send == 1) && (global_data_can_master.buffer_a_sent == 0)) {
+    SendPulseData(SEND_BUFFER_A);
+    global_data_can_master.buffer_a_sent = 1;
+  }
+
+  if ((global_data_can_master.buffer_b_ready_to_send == 1) && (global_data_can_master.buffer_b_sent == 0)) {
+    SendPulseData(SEND_BUFFER_B);
+    global_data_can_master.buffer_b_sent = 1;
+  }
+
+  // DPARKER put that in a function
+
+
   // Log Debugging Information
   // Record the RCON state
   debug_data_ecb.RCON_value = RCON;
@@ -651,13 +670,13 @@ void ETMCanMasterUpdateSlaveStatus(ETMCanMessage* message_ptr) {
   status_message.not_logged_bits     = *(ETMCanStatusRegisterNotLoggedBits*)&message_ptr->word3;
   ClrWdt();
 
-
   switch (source_board) {
     /*
       Place all board specific status updates here
     */
 
   case ETM_CAN_ADDR_ION_PUMP_BOARD:
+    UpdateSlaveEventLog(&mirror_ion_pump.status, &status_message, source_board);
     mirror_ion_pump.status = status_message;
     board_status_received.ion_pump_board = 1;
     break;
@@ -797,6 +816,270 @@ void ETMCanMasterUpdateSlaveStatus(ETMCanMessage* message_ptr) {
   } 
 */
 
+}
+
+
+void UpdateSlaveEventLog(ETMCanStatusRegister* previous_status, ETMCanStatusRegister* current_status, unsigned int slave_select) {
+  unsigned int log_id;
+
+  log_id = slave_select << 8;
+
+  // First update the control_notice_bits
+  if ((*(unsigned int*)&previous_status->control_notice_bits) != (*(unsigned int*)&current_status->control_notice_bits)) {
+    //update based on changes
+    if (previous_status->control_notice_bits.control_not_ready != current_status->control_notice_bits.control_not_ready) {
+      if (current_status->control_notice_bits.control_not_ready) {
+	SendToEventLog(log_id + 0x00);
+      } else {
+	SendToEventLog(log_id + 0x08);
+      }
+    }
+
+    if (previous_status->control_notice_bits.control_not_configured != current_status->control_notice_bits.control_not_configured) {
+      if (current_status->control_notice_bits.control_not_configured) {
+	SendToEventLog(log_id + 0x01);
+      } else {
+	SendToEventLog(log_id + 0x09);
+      }
+    }
+
+    if (previous_status->control_notice_bits.control_self_check_error != current_status->control_notice_bits.control_self_check_error) {
+      if (current_status->control_notice_bits.control_self_check_error) {
+	SendToEventLog(log_id + 0x02);
+      } else {
+	SendToEventLog(log_id + 0x0A);
+      }
+    }
+
+    if (previous_status->control_notice_bits.control_3_unused != current_status->control_notice_bits.control_3_unused) {
+      if (current_status->control_notice_bits.control_3_unused) {
+	SendToEventLog(log_id + 0x03);
+      } else {
+	SendToEventLog(log_id + 0x0B);
+      }
+    }
+
+    if (previous_status->control_notice_bits.control_4_unused != current_status->control_notice_bits.control_4_unused) {
+      if (current_status->control_notice_bits.control_4_unused) {
+	SendToEventLog(log_id + 0x04);
+      } else {
+	SendToEventLog(log_id + 0x0C);
+      }
+    }
+
+    if (previous_status->control_notice_bits.control_5_unused != current_status->control_notice_bits.control_5_unused) {
+      if (current_status->control_notice_bits.control_5_unused) {
+	SendToEventLog(log_id + 0x05);
+      } else {
+	SendToEventLog(log_id + 0x0D);
+      }
+    }
+
+    if (previous_status->control_notice_bits.control_6_unused != current_status->control_notice_bits.control_6_unused) {
+      if (current_status->control_notice_bits.control_6_unused) {
+	SendToEventLog(log_id + 0x06);
+      } else {
+	SendToEventLog(log_id + 0x0E);
+      }
+    }
+
+    if (previous_status->control_notice_bits.control_7_unused != current_status->control_notice_bits.control_7_unused) {
+      if (current_status->control_notice_bits.control_7_unused) {
+	SendToEventLog(log_id + 0x07);
+      } else {
+	SendToEventLog(log_id + 0x0F);
+      }
+    }
+
+    if (current_status->control_notice_bits.notice_0) {
+      SendToEventLog(log_id + 0x10);
+      current_status->control_notice_bits.notice_0 = 0;
+    }
+
+    if (current_status->control_notice_bits.notice_1) {
+      SendToEventLog(log_id + 0x11);
+      current_status->control_notice_bits.notice_1 = 0;
+    }
+
+    if (current_status->control_notice_bits.notice_2) {
+      SendToEventLog(log_id + 0x12);
+      current_status->control_notice_bits.notice_2 = 0;
+    }
+
+    if (current_status->control_notice_bits.notice_3) {
+      SendToEventLog(log_id + 0x13);
+      current_status->control_notice_bits.notice_3 = 0;
+    }
+
+    if (current_status->control_notice_bits.notice_4) {
+      SendToEventLog(log_id + 0x14);
+      current_status->control_notice_bits.notice_4 = 0;
+    }
+
+    if (current_status->control_notice_bits.notice_5) {
+      SendToEventLog(log_id + 0x15);
+      current_status->control_notice_bits.notice_5 = 0;
+    }
+
+    if (current_status->control_notice_bits.notice_6) {
+      SendToEventLog(log_id + 0x16);
+      current_status->control_notice_bits.notice_6 = 0;
+    }
+
+    if (current_status->control_notice_bits.notice_7) {
+      SendToEventLog(log_id + 0x17);
+      current_status->control_notice_bits.notice_7 = 0;
+    }
+  }
+
+  
+  if ((*(unsigned int*)&previous_status->fault_bits) != (*(unsigned int*)&current_status->fault_bits)) {
+    if ((*(unsigned int*)&current_status->fault_bits) == 0) {
+      // The fault register has been cleared
+      SendToEventLog(log_id + 0x18);
+    }
+
+    if ((previous_status->fault_bits.fault_0 != current_status->fault_bits.fault_0) && current_status->fault_bits.fault_0) {
+      SendToEventLog(log_id + 0x20);
+    }
+
+    if ((previous_status->fault_bits.fault_1 != current_status->fault_bits.fault_1) && current_status->fault_bits.fault_1) {
+      SendToEventLog(log_id + 0x21);
+    }
+
+    if ((previous_status->fault_bits.fault_2 != current_status->fault_bits.fault_2) && current_status->fault_bits.fault_2) {
+      SendToEventLog(log_id + 0x22);
+    }
+
+    if ((previous_status->fault_bits.fault_3 != current_status->fault_bits.fault_3) && current_status->fault_bits.fault_3) {
+      SendToEventLog(log_id + 0x23);
+    }
+
+    if ((previous_status->fault_bits.fault_4 != current_status->fault_bits.fault_4) && current_status->fault_bits.fault_4) {
+      SendToEventLog(log_id + 0x24);
+    }
+
+    if ((previous_status->fault_bits.fault_5 != current_status->fault_bits.fault_5) && current_status->fault_bits.fault_5) {
+      SendToEventLog(log_id + 0x25);
+    }
+
+    if ((previous_status->fault_bits.fault_6 != current_status->fault_bits.fault_6) && current_status->fault_bits.fault_6) {
+      SendToEventLog(log_id + 0x26);
+    }
+
+    if ((previous_status->fault_bits.fault_7 != current_status->fault_bits.fault_7) && current_status->fault_bits.fault_7) {
+      SendToEventLog(log_id + 0x27);
+    }
+
+    if ((previous_status->fault_bits.fault_8 != current_status->fault_bits.fault_8) && current_status->fault_bits.fault_8) {
+      SendToEventLog(log_id + 0x28);
+    }
+
+    if ((previous_status->fault_bits.fault_9 != current_status->fault_bits.fault_9) && current_status->fault_bits.fault_9) {
+      SendToEventLog(log_id + 0x29);
+    }
+
+    if ((previous_status->fault_bits.fault_A != current_status->fault_bits.fault_A) && current_status->fault_bits.fault_A) {
+      SendToEventLog(log_id + 0x2A);
+    }
+
+    if ((previous_status->fault_bits.fault_B != current_status->fault_bits.fault_B) && current_status->fault_bits.fault_B) {
+      SendToEventLog(log_id + 0x2B);
+    }
+
+    if ((previous_status->fault_bits.fault_C != current_status->fault_bits.fault_C) && current_status->fault_bits.fault_C) {
+      SendToEventLog(log_id + 0x2C);
+    }
+
+    if ((previous_status->fault_bits.fault_D != current_status->fault_bits.fault_D) && current_status->fault_bits.fault_D) {
+      SendToEventLog(log_id + 0x2D);
+    }
+
+    if ((previous_status->fault_bits.fault_E != current_status->fault_bits.fault_E) && current_status->fault_bits.fault_E) {
+      SendToEventLog(log_id + 0x2E);
+    }
+
+    if ((previous_status->fault_bits.fault_F != current_status->fault_bits.fault_F) && current_status->fault_bits.fault_F) {
+      SendToEventLog(log_id + 0x2F);
+    }
+
+  }
+  
+
+  if ((*(unsigned int*)&previous_status->warning_bits) != (*(unsigned int*)&current_status->warning_bits)) {
+    if ((*(unsigned int*)&current_status->warning_bits) == 0) {
+      // The warning register has been cleared
+      SendToEventLog(log_id + 0x19);
+    }
+
+    if ((previous_status->warning_bits.warning_0 != current_status->warning_bits.warning_0) && current_status->warning_bits.warning_0) {
+      SendToEventLog(log_id + 0x30);
+    }
+
+    if ((previous_status->warning_bits.warning_1 != current_status->warning_bits.warning_1) && current_status->warning_bits.warning_1) {
+      SendToEventLog(log_id + 0x31);
+    }
+
+    if ((previous_status->warning_bits.warning_2 != current_status->warning_bits.warning_2) && current_status->warning_bits.warning_2) {
+      SendToEventLog(log_id + 0x32);
+    }
+
+    if ((previous_status->warning_bits.warning_3 != current_status->warning_bits.warning_3) && current_status->warning_bits.warning_3) {
+      SendToEventLog(log_id + 0x33);
+    }
+
+    if ((previous_status->warning_bits.warning_4 != current_status->warning_bits.warning_4) && current_status->warning_bits.warning_4) {
+      SendToEventLog(log_id + 0x34);
+    }
+
+    if ((previous_status->warning_bits.warning_5 != current_status->warning_bits.warning_5) && current_status->warning_bits.warning_5) {
+      SendToEventLog(log_id + 0x35);
+    }
+
+    if ((previous_status->warning_bits.warning_6 != current_status->warning_bits.warning_6) && current_status->warning_bits.warning_6) {
+      SendToEventLog(log_id + 0x36);
+    }
+
+    if ((previous_status->warning_bits.warning_7 != current_status->warning_bits.warning_7) && current_status->warning_bits.warning_7) {
+      SendToEventLog(log_id + 0x37);
+    }
+
+    if ((previous_status->warning_bits.warning_8 != current_status->warning_bits.warning_8) && current_status->warning_bits.warning_8) {
+      SendToEventLog(log_id + 0x38);
+    }
+
+    if ((previous_status->warning_bits.warning_9 != current_status->warning_bits.warning_9) && current_status->warning_bits.warning_9) {
+      SendToEventLog(log_id + 0x39);
+    }
+
+    if ((previous_status->warning_bits.warning_A != current_status->warning_bits.warning_A) && current_status->warning_bits.warning_A) {
+      SendToEventLog(log_id + 0x3A);
+    }
+
+    if ((previous_status->warning_bits.warning_B != current_status->warning_bits.warning_B) && current_status->warning_bits.warning_B) {
+      SendToEventLog(log_id + 0x3B);
+    }
+
+    if ((previous_status->warning_bits.warning_C != current_status->warning_bits.warning_C) && current_status->warning_bits.warning_C) {
+      SendToEventLog(log_id + 0x3C);
+    }
+
+    if ((previous_status->warning_bits.warning_D != current_status->warning_bits.warning_D) && current_status->warning_bits.warning_D) {
+      SendToEventLog(log_id + 0x3D);
+    }
+
+    if ((previous_status->warning_bits.warning_E != current_status->warning_bits.warning_E) && current_status->warning_bits.warning_E) {
+      SendToEventLog(log_id + 0x3E);
+    }
+
+    if ((previous_status->warning_bits.warning_F != current_status->warning_bits.warning_F) && current_status->warning_bits.warning_F) {
+      SendToEventLog(log_id + 0x3F);
+    }
+
+  }
+
+
+  
 }
 
 

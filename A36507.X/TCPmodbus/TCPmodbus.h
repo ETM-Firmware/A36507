@@ -30,7 +30,11 @@ void TCPmodbus_init(IPCONFIG* ip_config);
 void TCPmodbus_task(void);
 
 unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset);
-unsigned int SendPulseData(unsigned char is_buffer_a);
+
+void SendPulseData(unsigned int buffer_select);
+#define SEND_BUFFER_A            1
+#define SEND_BUFFER_B            0
+
 
 
 //#define TEST_MODBUS	   1
