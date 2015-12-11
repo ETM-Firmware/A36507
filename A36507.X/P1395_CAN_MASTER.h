@@ -359,94 +359,114 @@ void SendToEventLog(unsigned int log_id);
 
 
 
-#define LOG_ID_ENTERED_STATE_STARTUP                                          0x0010
-#define LOG_ID_ENTERED_STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC             0x0011
-#define LOG_ID_PERSONALITY_RECEIVED                                           0x0012
+#define LOG_ID_ENTERED_STATE_STARTUP                                          0x0110
+#define LOG_ID_ENTERED_STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC             0x0112
+#define LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION                       0x0115
+#define LOG_ID_ENTERED_STATE_WARMUP                                           0x0120
+#define LOG_ID_ENTERED_STATE_STANDBY                                          0x0130
+#define LOG_ID_ENTERED_STATE_DRIVE_UP                                         0x0140
+#define LOG_ID_ENTERED_STATE_READY                                            0x0150
+#define LOG_ID_ENTERED_STATE_XRAY_ON                                          0x0160
+#define LOG_ID_ENTERED_STATE_FAULT_HOLD                                       0x0180
+#define LOG_ID_ENTERED_STATE_FAULT_RESET                                      0x0190
+#define LOG_ID_ENTERED_STATE_FAULT_SYSTEM                                     0x01A0
+
+
+
+#define LOG_ID_PERSONALITY_RECEIVED                                           0x0200
 #define LOG_ID_PERSONALITY_ERROR                                              0x0013
-//#define LOG_ID_PERSONALITY_ERROR_2_5                                          0x0014
-#define LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION                       0x0015
 #define LOG_ID_ALL_MODULES_CONFIGURED                                         0x0016
-#define LOG_ID_ENTERED_STATE_WARMUP                                           0x0017
 #define LOG_ID_WARMUP_DONE                                                    0x0018
-#define LOG_ID_ENTERED_STATE_STANDBY                                          0x0019
 #define LOG_ID_CUSTOMER_HV_ON                                                 0x001A
-#define LOG_ID_ENTERED_STATE_DRIVE_UP                                         0x001B
 #define LOG_ID_DRIVEUP_COMPLETE                                               0x001C
 #define LOG_ID_CUSTOMER_HV_OFF                                                0x001D
 #define LOG_ID_DRIVE_UP_TIMEOUT                                               0x001E
-#define LOG_ID_ENTERED_STATE_READY                                            0x001F
 #define LOG_ID_CUSTOMER_XRAY_ON                                               0x0020
-
-#define LOG_ID_ENTERED_STATE_XRAY_ON                                          0x0022
 #define LOG_ID_CUSTOMER_XRAY_OFF                                              0x0023
-
-#define LOG_ID_ENTERED_STATE_FAULT_HOLD                                       0x0025
-
-#define LOG_ID_ENTERED_STATE_FAULT_RESET                                      0x0027
 #define LOG_ID_HV_OFF_FAULTS_CLEAR                                            0x0028
-#define LOG_ID_ENTERED_STATE_FAULT_SYSTEM                                     0x0029
 
 
 
 
 
 
+#define LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD                                   0x0001
+#define LOG_ID_CONNECTED_ION_PUMP_BOARD                                       0x0081
 
+#define LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD                          0x0002
+#define LOG_ID_CONNECTED_MAGNETRON_CURRENT_BOARD                              0x0082
+
+#define LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD                                 0x0003
+#define LOG_ID_CONNECTED_PULSE_SYNC_BOARD                                     0x0083
+
+#define LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD                                  0x0004
+#define LOG_ID_CONNECTED_HV_LAMBDA_BOARD                                      0x0084
+
+#define LOG_ID_NOT_CONNECTED_AFC_BOARD                                        0x0005
+#define LOG_ID_CONNECTED_AFC_BOARD                                            0x0085
+
+#define LOG_ID_NOT_CONNECTED_COOLING_BOARD                                    0x0006
+#define LOG_ID_CONNECTED_COOLING_BOARD                                        0x0086
+
+#define LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD                              0x0007
+#define LOG_ID_CONNECTED_HEATER_MAGNET_BOARD                                  0x0087
+
+#define LOG_ID_NOT_CONNECTED_GUN_DRIVER_BOARD                                 0x0008
+#define LOG_ID_CONNECTED_GUN_DRIVER_BOARD                                     0x0088
+
+
+
+/*
 #define LOG_ID_NOT_READY_ION_PUMP_BOARD                                       0x1110
 #define LOG_ID_READY_ION_PUMP_BOARD                                           0x1111
 #define LOG_ID_NOT_CONFIGURED_ION_PUMP_BOARD                                  0x1112
 #define LOG_ID_CONFIGURED_ION_PUMP_BOARD                                      0x1113
-#define LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD                                   0x1114
-#define LOG_ID_CONNECTED_ION_PUMP_BOARD                                       0x1115
+*/
 
-
+/*
 #define LOG_ID_NOT_READY_PULSE_MONITOR_BOARD                                  0x1120
 #define LOG_ID_READY_PULSE_MONITOR_BOARD                                      0x1121
 #define LOG_ID_NOT_CONFIGURED_PULSE_MONITOR_BOARD                             0x1122
 #define LOG_ID_CONFIGURED_PULSE_MONITOR_BOARD                                 0x1123
-#define LOG_ID_NOT_CONNECTED_MAGNETRON_CURRENT_BOARD                          0x1124
-#define LOG_ID_CONNECTED_MAGNETRON_CURRENT_BOARD                              0x1125
+*/
 
-
+/*
 #define LOG_ID_NOT_READY_PULSE_SYNC_BOARD                                     0x1130
 #define LOG_ID_READY_PULSE_SYNC_BOARD                                         0x1131
 #define LOG_ID_NOT_CONFIGURED_PULSE_SYNC_BOARD                                0x1132
 #define LOG_ID_CONFIGURED_PULSE_SYNC_BOARD                                    0x1133
-#define LOG_ID_NOT_CONNECTED_PULSE_SYNC_BOARD                                 0x1134
-#define LOG_ID_CONNECTED_PULSE_SYNC_BOARD                                     0x1135
+*/
 
 
-
+/*
 #define LOG_ID_NOT_READY_HV_LAMBDA_BOARD                                      0x1140
 #define LOG_ID_READY_HV_LAMBDA_BOARD                                          0x1141
 #define LOG_ID_NOT_CONFIGURED_HV_LAMBDA_BOARD                                 0x1142
 #define LOG_ID_CONFIGURED_HV_LAMBDA_BOARD                                     0x1143
-#define LOG_ID_NOT_CONNECTED_HV_LAMBDA_BOARD                                  0x1144
-#define LOG_ID_CONNECTED_HV_LAMBDA_BOARD                                      0x1145
+*/
 
-
+/*
 #define LOG_ID_NOT_READY_AFC_BOARD                                            0x1150
 #define LOG_ID_READY_AFC_BOARD                                                0x1151
 #define LOG_ID_NOT_CONFIGURED_AFC_BOARD                                       0x1152
 #define LOG_ID_CONFIGURED_AFC_BOARD                                           0x1153
-#define LOG_ID_NOT_CONNECTED_AFC_BOARD                                        0x1154
-#define LOG_ID_CONNECTED_AFC_BOARD                                            0x1155
+*/
 
-
+/*
 #define LOG_ID_NOT_READY_COOLING_INTERFACE_BOARD                              0x1160
 #define LOG_ID_READY_COOLING_INTERFACE_BOARD                                  0x1161
 #define LOG_ID_NOT_CONFIGURED_COOLING_INTERFACE_BOARD                         0x1162
 #define LOG_ID_CONFIGURED_COOLING_INTERFACE_BOARD                             0x1163
-#define LOG_ID_NOT_CONNECTED_COOLING_BOARD                                    0x1164
-#define LOG_ID_CONNECTED_COOLING_BOARD                                        0x1165
+*/
 
-
+/*
 #define LOG_ID_NOT_READY_HEATER_MAGNET                                        0x1170
 #define LOG_ID_READY_HEATER_MAGNET                                            0x1171
 #define LOG_ID_NOT_CONFIGURED_HEATER_MAGNET                                   0x1172
 #define LOG_ID_CONFIGURED_HEATER_MAGNET                                       0x1173
-#define LOG_ID_NOT_CONNECTED_HEATER_MAGNET_BOARD                              0x1174
-#define LOG_ID_CONNECTED_HEATER_MAGNET_BOARD                                  0x1175
+*/
+
+/*
 
 #define LOG_ID_FAULT_HTR_MAG_HEATER_OVER_CURRENT_ABSOLUTE                     0x1070
 #define LOG_ID_FAULT_HTR_MAG_HEATER_UNDER_CURRENT_ABSOLUTE                    0x1071
@@ -464,17 +484,16 @@ void SendToEventLog(unsigned int log_id);
 #define LOG_ID_FAULT_HTR_MAG_HW_TEMPERATURE_SWITCH                            0x107D
 #define LOG_ID_FAULT_HTR_MAG_COOLANT_FAULT                                    0x107E
 #define LOG_ID_FAULT_HTR_CAN_FAULT_LATCHED                                    0x107F
+*/
 
-
+/*
 #define LOG_ID_NOT_READY_GUN_DRIVER_BOARD                                     0x1180
 #define LOG_ID_READY_GUN_DRIVER_BOARD                                         0x1181
 #define LOG_ID_NOT_CONFIGURED_GUN_DRIVER_BOARD                                0x1182
 #define LOG_ID_CONFIGURED_GUN_DRIVER_BOARD                                    0x1183
-#define LOG_ID_NOT_CONNECTED_GUN_DRIVER_BOARD                                 0x1184
-#define LOG_ID_CONNECTED_GUN_DRIVER_BOARD                                     0x1185
 #define LOG_ID_GUN_DRIVER_BOARD_HEATER_OFF                                    0x1186
 #define LOG_ID_GUN_DRIVER_BOARD_HEATER_ON                                     0x1187
-
+*/
 
 
 //#define LOG_ID_FAULT_HTR_MAG_CAN_COMMUNICATION_LATCHED                        0x003A
