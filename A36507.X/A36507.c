@@ -211,8 +211,8 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop);
 
 
 //void LogModuleFault(unsigned int board_address);
-P1395BoardBits board_not_configured_latch;
-P1395BoardBits board_not_ready_latch;
+//P1395BoardBits board_not_configured_latch;
+//P1395BoardBits board_not_ready_latch;
 
 
 // ------------------- Global Variables ------------------------------ //
@@ -353,7 +353,6 @@ void DoStateMachine(void) {
       DoA36507();
       if (!_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_DRIVE_UP;
-	SendToEventLog(LOG_ID_CUSTOMER_HV_ON);
       }
       if (CheckHVOffFault()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
@@ -385,7 +384,6 @@ void DoStateMachine(void) {
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
-	SendToEventLog(LOG_ID_CUSTOMER_HV_OFF);
       }
       if (global_data_A36507.drive_up_timer >= DRIVE_UP_TIMEOUT) {
 	_FAULT_DRIVE_UP_TIMEOUT = 1;
@@ -413,11 +411,9 @@ void DoStateMachine(void) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF == 0) {
 	global_data_A36507.control_state = STATE_XRAY_ON;
-	SendToEventLog(LOG_ID_CUSTOMER_XRAY_ON);
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
-	SendToEventLog(LOG_ID_CUSTOMER_HV_OFF);
       }
       if (CheckFault()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
@@ -439,11 +435,9 @@ void DoStateMachine(void) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
 	global_data_A36507.control_state = STATE_READY;
-	SendToEventLog(LOG_ID_CUSTOMER_XRAY_OFF);
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
-	SendToEventLog(LOG_ID_CUSTOMER_HV_OFF);
       }
       if (CheckFault()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
@@ -465,7 +459,6 @@ void DoStateMachine(void) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_FAULT_RESET;
-	SendToEventLog(LOG_ID_CUSTOMER_XRAY_OFF);
       }
     }
     break;
@@ -538,42 +531,18 @@ unsigned int CheckHVOffFault(void) {
   }
   
   if (_HEATER_MAGNET_NOT_READY) {
-    if (!board_not_ready_latch.heater_magnet_board) {
-      // There is a new Heater Magnet not ready event
-      //SendToEventLog(LOG_ID_NOT_READY_HEATER_MAGNET);
-      //LogModuleFault(ETM_CAN_ADDR_HEATER_MAGNET_BOARD);
-      board_not_ready_latch.heater_magnet_board = 1;
-    }
     _FAULT_HTR_MAG_NOT_OPERATE = 1;
 #ifndef __IGNORE_HEATER_MAGNET_MODULE
     fault = 1;
 #endif
-  } else {
-    if (board_not_ready_latch.heater_magnet_board) {
-      // The heater magnet is reporting that it is ready
-      //SendToEventLog(LOG_ID_READY_HEATER_MAGNET);
-      //board_not_ready_latch.heater_magnet_board = 0;
-    }
   }
   
-
   if (_GUN_HEATER_OFF) {
-    if (!_FAULT_GUN_HEATER_OFF) {
-      // The gun heater has just turned off
-      //SendToEventLog(LOG_ID_GUN_DRIVER_BOARD_HEATER_OFF);
-    }
     _FAULT_GUN_HEATER_OFF = 1;
 #ifndef __IGNORE_GUN_DRIVER_MODULE
     fault = 1;
 #endif
-  } else {
-    if (_FAULT_GUN_HEATER_OFF) {
-      // The gun has just turned back on 
-      //SendToEventLog(LOG_ID_GUN_DRIVER_BOARD_HEATER_ON);
-    }
-    _FAULT_GUN_HEATER_OFF = 0;
-  }
-
+  } 
   return fault;
 }
 
@@ -584,142 +553,54 @@ unsigned int CheckFault(void) {
   if (CheckHVOffFault()) {
     fault = 1;
   }
-
-  // Update the fault status of each of the boards.
-
-  // DPARKER This can be simplified a lot because the logging is done when the message is received
-
   if (_HV_LAMBDA_NOT_READY) {
-    if (!board_not_ready_latch.hv_lambda_board) {
-      // There is a NEW Lambda fault.
-      //SendToEventLog(LOG_ID_NOT_READY_HV_LAMBDA_BOARD);
-      //LogModuleFault(ETM_CAN_ADDR_HV_LAMBDA_BOARD);
-      board_not_ready_latch.hv_lambda_board = 1;
-    }
     _FAULT_HV_LAMBDA_NOT_OPERATE = 1;
 #ifndef __IGNORE_HV_LAMBDA_MODULE
     fault = 1;
 #endif
-  } else {
-    if (board_not_ready_latch.hv_lambda_board) {
-      //SendToEventLog(LOG_ID_READY_HV_LAMBDA_BOARD);
-      board_not_ready_latch.hv_lambda_board = 0;
-    }
-  }
-  
+  }  
   
   if (_ION_PUMP_NOT_READY) {
-    if (!board_not_ready_latch.ion_pump_board) {
-      // There is a NEW Ion Pump Fault
-      //SendToEventLog(LOG_ID_NOT_READY_ION_PUMP_BOARD);
-      //LogModuleFault(ETM_CAN_ADDR_ION_PUMP_BOARD);
-      board_not_ready_latch.ion_pump_board = 1;
-    }
     _FAULT_ION_PUMP_NOT_OPERATE = 1;
 #ifndef __IGNORE_ION_PUMP_MODULE
     fault = 1;
 #endif
-  } else {
-    if (board_not_ready_latch.ion_pump_board) {
-      //SendToEventLog(LOG_ID_READY_ION_PUMP_BOARD);
-      board_not_ready_latch.ion_pump_board = 0;
-    }
-  }  
-
+  } 
 
   if (_AFC_NOT_READY) {
-    if (!board_not_ready_latch.afc_board) {
-      // There is a NEW AFC Fault
-      //SendToEventLog(LOG_ID_NOT_READY_AFC_BOARD);
-      //LogModuleFault(ETM_CAN_ADDR_AFC_CONTROL_BOARD);
-      board_not_ready_latch.afc_board = 1;
-    }
     _FAULT_AFC_NOT_OPERATE = 1;
 #ifndef __IGNORE_AFC_MODULE
     fault = 1;
 #endif
-  } else {
-    if (board_not_ready_latch.afc_board) {
-      //SendToEventLog(LOG_ID_READY_AFC_BOARD);
-      board_not_ready_latch.afc_board = 0;
-    }
-  }  
-
+  } 
 
   if (_COOLING_NOT_READY) {
-    if (!board_not_ready_latch.cooling_interface_board) {
-      // There is a NEW COOLING Fault
-      //SendToEventLog(LOG_ID_NOT_READY_COOLING_INTERFACE_BOARD);
-      //LogModuleFault(ETM_CAN_ADDR_COOLING_INTERFACE_BOARD);
-      board_not_ready_latch.cooling_interface_board = 1;
-    }
     _FAULT_COOLING_NOT_OPERATE = 1;
 #ifndef __IGNORE_COOLING_MODULE
     fault = 1;
 #endif
-  } else {
-    if (board_not_ready_latch.cooling_interface_board) {
-      //SendToEventLog(LOG_ID_READY_COOLING_INTERFACE_BOARD);
-      board_not_ready_latch.cooling_interface_board = 0;
-    }
-  }  
-
+  } 
 
   if (_GUN_DRIVER_NOT_READY) {
-    if (!board_not_ready_latch.gun_driver_board) {
-      // There is a NEW COOLING Fault
-      //SendToEventLog(LOG_ID_NOT_READY_GUN_DRIVER_BOARD);
-      //LogModuleFault(ETM_CAN_ADDR_GUN_DRIVER_BOARD);
-      board_not_ready_latch.gun_driver_board = 1;
-    }
     _FAULT_GUN_DVR_NOT_OPERATE = 1;
 #ifndef __IGNORE_GUN_DRIVER_MODULE
     fault = 1;
 #endif
-  } else {
-    if (board_not_ready_latch.gun_driver_board) {
-      //SendToEventLog(LOG_ID_READY_GUN_DRIVER_BOARD);
-      board_not_ready_latch.gun_driver_board = 0;
-    }
-  }  
-
+  } 
 
   if (_PULSE_SYNC_NOT_READY) {
-    if (!board_not_ready_latch.pulse_sync_board) {
-      // There is a NEW COOLING Fault
-      //SendToEventLog(LOG_ID_NOT_READY_PULSE_SYNC_BOARD);
-      //LogModuleFault(ETM_CAN_ADDR_PULSE_SYNC_BOARD);
-      board_not_ready_latch.pulse_sync_board = 1;
-    }
     _FAULT_PULSE_SYNC_NOT_OPERATE = 1;
 #ifndef __IGNORE_PULSE_SYNC_MODULE
     fault = 1;
 #endif
-  } else {
-    if (board_not_ready_latch.pulse_sync_board) {
-      //SendToEventLog(LOG_ID_READY_PULSE_SYNC_BOARD);
-      board_not_ready_latch.pulse_sync_board = 0;
-    }
-  }  
-
+  } 
 
   if (_PULSE_MON_NOT_READY) {
-    if (!board_not_ready_latch.magnetron_current_board) {
-      // There is a NEW COOLING Fault
-      //SendToEventLog(LOG_ID_NOT_READY_PULSE_MONITOR_BOARD);
-      //LogModuleFault(ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD);
-      board_not_ready_latch.magnetron_current_board = 1;
-    }
     _FAULT_PULSE_MON_NOT_OPERATE = 1;
 #ifndef __IGNORE_PULSE_CURRENT_MODULE
     fault = 1;
 #endif
-  } else {
-    if (board_not_ready_latch.magnetron_current_board) {
-      //SendToEventLog(LOG_ID_READY_PULSE_MONITOR_BOARD);
-      board_not_ready_latch.magnetron_current_board = 0;
-    }
-  }  
+  } 
   
   return fault;
 }
@@ -736,106 +617,55 @@ unsigned int CheckAllModulesConfigured(void) {
   
   system_configured = 1;
 
-  if (!board_com_ok.hv_lambda_board) {
+  if (!board_com_ok.hv_lambda_board || _HV_LAMBDA_NOT_CONFIGURED) {
 #ifndef __IGNORE_HV_LAMBDA_MODULE
     system_configured = 0;
 #endif
   }
   
-  if (_HV_LAMBDA_NOT_CONFIGURED) {
-#ifndef __IGNORE_HV_LAMBDA_MODULE
-    system_configured = 0;
-#endif
-    if (!board_not_configured_latch.hv_lambda_board) {
-      //SendToEventLog(LOG_ID_NOT_CONFIGURED_HV_LAMBDA_BOARD);
-    }
-    board_not_configured_latch.hv_lambda_board = 1;
-  } else {
-    if (board_not_configured_latch.hv_lambda_board) {
-      //SendToEventLog(LOG_ID_CONFIGURED_HV_LAMBDA_BOARD);
-    }
-    board_not_configured_latch.hv_lambda_board = 0;
-  } 
-  
-  
-  if (!board_com_ok.ion_pump_board) {
+  if (!board_com_ok.ion_pump_board || _ION_PUMP_NOT_CONFIGURED) {
 #ifndef __IGNORE_ION_PUMP_MODULE
     system_configured = 0;
 #endif
   }
-  
-  if (_ION_PUMP_NOT_CONFIGURED) {
-#ifndef __IGNORE_ION_PUMP_MODULE
-    system_configured = 0;
-#endif
-    if (!board_not_configured_latch.ion_pump_board) {
-      //SendToEventLog(LOG_ID_NOT_CONFIGURED_ION_PUMP_BOARD);
-    }
-    board_not_configured_latch.ion_pump_board = 1;
-  } else {
-    if (board_not_configured_latch.ion_pump_board) {
-      //SendToEventLog(LOG_ID_CONFIGURED_ION_PUMP_BOARD);
-    }
-    board_not_configured_latch.ion_pump_board = 0;
-  }
 
-
-  if (!board_com_ok.afc_board) {
+  if (!board_com_ok.afc_board || _AFC_NOT_CONFIGURED) {
 #ifndef __IGNORE_AFC_MODULE
     system_configured = 0;
 #endif  
   }
-    
-  if (_AFC_NOT_CONFIGURED) {
-#ifndef __IGNORE_AFC_MODULE
-    system_configured = 0;
-#endif  
-    if (!board_not_configured_latch.afc_board) {
-      //SendToEventLog(LOG_ID_NOT_CONFIGURED_AFC_BOARD);
-    }
-    board_not_configured_latch.afc_board = 1;
-  } else {
-    if (board_not_configured_latch.afc_board) {
-      //SendToEventLog(LOG_ID_CONFIGURED_AFC_BOARD);
-    }
-    board_not_configured_latch.afc_board = 0;
-  }
 
-
-
-
-#ifndef __IGNORE_COOLING_INTERFACE_MODULE
   if ((!board_com_ok.cooling_interface_board) || (_COOLING_NOT_CONFIGURED)) {
+#ifndef __IGNORE_COOLING_INTERFACE_MODULE
     system_configured = 0;
-  }
 #endif  
+  }
 
-#ifndef __IGNORE_HEATER_MAGNET_MODULE
   if ((!board_com_ok.heater_magnet_board) || (_HEATER_MAGNET_NOT_CONFIGURED)) {
+#ifndef __IGNORE_HEATER_MAGNET_MODULE
     system_configured = 0;
-  }
 #endif
-
-#ifndef __IGNORE_GUN_DRIVER_MODULE
+  }
+  
   if ((!board_com_ok.gun_driver_board) || (_GUN_DRIVER_NOT_CONFIGURED)) {
+#ifndef __IGNORE_GUN_DRIVER_MODULE
     system_configured = 0;
-  }
 #endif
+  }
 
-#ifndef __IGNORE_PULSE_CURRENT_MODULE
   if ((!board_com_ok.magnetron_current_board) || (_PULSE_MON_NOT_CONFIGURED)) {
+#ifndef __IGNORE_PULSE_CURRENT_MODULE
     system_configured = 0;
-  }
 #endif
+  }
 
-#ifndef __IGNORE_PULSE_SYNC_MODULE
   if ((!board_com_ok.pulse_sync_board) || (_PULSE_SYNC_NOT_CONFIGURED)) {
+#ifndef __IGNORE_PULSE_SYNC_MODULE
     system_configured = 0;
-  }
 #endif
-
+  }
+  
   return system_configured;
-
 }
 
 
@@ -1913,118 +1743,6 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
   ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
   ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
 }
-
-
-void LogBoardReadyStatus(void) {
-
-
-}
-
-
-
-// DPARKER need to update all the logging functionality
-void LogModuleFault(unsigned int board_address) {
-  /* 
-     Faults are numbered as = 0x10bf
-     b = Board Address as defined in P1395_CAN_CORE.h
-     f = Fault bit that is set (0 -> F)
-  */
-  /*
-  ETMCanStatusRegisterFaultBits fault_bits;
-
-
-  switch (board_address) 
-    {
-    case ETM_CAN_ADDR_ION_PUMP_BOARD:
-      fault_bits = etm_can_ion_pump_mirror.status_data.fault_bits;
-      break;
-
-    case ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD:
-      fault_bits = etm_can_magnetron_current_mirror.status_data.fault_bits;
-      break;
-
-    case ETM_CAN_ADDR_PULSE_SYNC_BOARD:
-      fault_bits = etm_can_pulse_sync_mirror.status_data.fault_bits;
-      break;
-
-    case ETM_CAN_ADDR_HV_LAMBDA_BOARD:
-      fault_bits = etm_can_hv_lambda_mirror.status_data.fault_bits;
-      break;
-
-    case ETM_CAN_ADDR_AFC_CONTROL_BOARD:
-      fault_bits = etm_can_afc_mirror.status_data.fault_bits;
-      break;
-
-    case ETM_CAN_ADDR_COOLING_INTERFACE_BOARD:
-      fault_bits = etm_can_afc_mirror.status_data.fault_bits;
-      break;
-
-    case ETM_CAN_ADDR_HEATER_MAGNET_BOARD:
-      fault_bits = etm_can_heater_magnet_mirror.status_data.fault_bits;
-      break;
-
-    case ETM_CAN_ADDR_GUN_DRIVER_BOARD:
-      fault_bits = etm_can_gun_driver_mirror.status_data.fault_bits;
-      break;
-      
-    default:
-      break;
-    }
-  
-
-  //SendToEventLog(0x1100 + (board_address << 4));
-
-  if (fault_bits.fault_0) {
-    SendToEventLog(0x1000 + (board_address << 4) + 0);
-  }
-  if (fault_bits.fault_1) {
-    SendToEventLog(0x1000 + (board_address << 4) + 1);
-  }
-  if (fault_bits.fault_2) {
-    SendToEventLog(0x1000 + (board_address << 4) + 2);
-  }
-  if (fault_bits.fault_3) {
-    SendToEventLog(0x1000 + (board_address << 4) + 3);
-  }
-  if (fault_bits.fault_4) {
-    SendToEventLog(0x1000 + (board_address << 4) + 4);
-  }
-  if (fault_bits.fault_5) {
-    SendToEventLog(0x1000 + (board_address << 4) + 5);
-  }
-  if (fault_bits.fault_6) {
-    SendToEventLog(0x1000 + (board_address << 4) + 6);
-  }
-  if (fault_bits.fault_7) {
-    SendToEventLog(0x1000 + (board_address << 4) + 7);
-  }
-  if (fault_bits.fault_8) {
-    SendToEventLog(0x1000 + (board_address << 4) + 8);
-  }
-  if (fault_bits.fault_9) {
-    SendToEventLog(0x1000 + (board_address << 4) + 9);
-  }
-  if (fault_bits.fault_A) {
-    SendToEventLog(0x1000 + (board_address << 4) + 10);
-  }
-  if (fault_bits.fault_B) {
-    SendToEventLog(0x1000 + (board_address << 4) + 11);
-  }
-  if (fault_bits.fault_C) {
-    SendToEventLog(0x1000 + (board_address << 4) + 12);
-  }
-  if (fault_bits.fault_D) {
-    SendToEventLog(0x1000 + (board_address << 4) + 13);
-  }
-  if (fault_bits.fault_E) {
-    SendToEventLog(0x1000 + (board_address << 4) + 14);
-  }
-  if (fault_bits.fault_F) {
-    SendToEventLog(0x1000 + (board_address << 4) + 15);
-  }
-  */
-}
-
 
 
 
