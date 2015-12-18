@@ -259,15 +259,16 @@ void DoStateMachine(void) {
     break;
 
   case STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC:
+    SendToEventLog(LOG_ID_ENTERED_STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC);
     _SYNC_CONTROL_RESET_ENABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    _STATUS_PERSONALITY_LOADED = 0;
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
-    SendToEventLog(LOG_ID_ENTERED_STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC);
+    _STATUS_PERSONALITY_LOADED = 0;
     while (global_data_A36507.control_state == STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC) {
       DoA36507();
       FlashLeds();
@@ -292,18 +293,19 @@ void DoStateMachine(void) {
     }
 
   case STATE_WAITING_FOR_INITIALIZATION:
+    SendToEventLog(LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION);
     _SYNC_CONTROL_RESET_ENABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    _STATUS_PERSONALITY_LOADED = 1;
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _STATUS_PERSONALITY_LOADED = 1;
     ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
     // Calculate all of the warmup counters based on previous warmup completed
     CalculateHeaterWarmupTimers();
-    SendToEventLog(LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION);
     while (global_data_A36507.control_state == STATE_WAITING_FOR_INITIALIZATION) {
       DoA36507();
       FlashLeds();
@@ -317,16 +319,17 @@ void DoStateMachine(void) {
 
   case STATE_WARMUP:
     // Note that the warmup timers start counting in "Waiting for Initialization"
+    SendToEventLog(LOG_ID_ENTERED_STATE_WARMUP);
     _SYNC_CONTROL_CLEAR_DEBUG_DATA = 0;
     _SYNC_CONTROL_RESET_ENABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    _FAULT_REGISTER = 0;
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
-    SendToEventLog(LOG_ID_ENTERED_STATE_WARMUP);
+    _FAULT_REGISTER = 0;
     while (global_data_A36507.control_state == STATE_WARMUP) {
       DoA36507();
       if (global_data_A36507.warmup_done) {
@@ -341,10 +344,11 @@ void DoStateMachine(void) {
     
         
   case STATE_STANDBY:
+    SendToEventLog(LOG_ID_ENTERED_STATE_STANDBY);
     _SYNC_CONTROL_RESET_ENABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    SendToEventLog(LOG_ID_ENTERED_STATE_STANDBY);
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
@@ -362,19 +366,20 @@ void DoStateMachine(void) {
 
 
   case STATE_DRIVE_UP:
+    SendToEventLog(LOG_ID_ENTERED_STATE_DRIVE_UP);
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    global_data_A36507.drive_up_timer = 0;
-    SendToEventLog(LOG_ID_ENTERED_STATE_DRIVE_UP);
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    global_data_A36507.drive_up_timer = 0;
     while (global_data_A36507.control_state == STATE_DRIVE_UP) {
       DoA36507();
       // Check to see if the HV Lambda is ready, if it is check all faults and move to ready or fault hold
-      if (!_HV_LAMBDA_NOT_READY) {
+      if (!_HV_LAMBDA_NOT_READY && !_GUN_DRIVER_NOT_READY) {
 	if (CheckFault()) {
 	  global_data_A36507.control_state = STATE_FAULT_HOLD;
 	} else {
@@ -382,14 +387,17 @@ void DoStateMachine(void) {
 	  SendToEventLog(LOG_ID_DRIVEUP_COMPLETE);
 	}
       }
+
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
       }
+
       if (global_data_A36507.drive_up_timer >= DRIVE_UP_TIMEOUT) {
 	_FAULT_DRIVE_UP_TIMEOUT = 1;
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
 	SendToEventLog(LOG_ID_DRIVE_UP_TIMEOUT);
       }
+
       if (CheckHVOffFault()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
       }
@@ -399,10 +407,11 @@ void DoStateMachine(void) {
 
   case STATE_READY:
     // Enable XRAYs to Pulse Sync Board
+    SendToEventLog(LOG_ID_ENTERED_STATE_READY);
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 0;
-    SendToEventLog(LOG_ID_ENTERED_STATE_READY);
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
@@ -423,10 +432,11 @@ void DoStateMachine(void) {
 
 
   case STATE_XRAY_ON:
+    SendToEventLog(LOG_ID_ENTERED_STATE_XRAY_ON);
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
-    _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 0;    
-    SendToEventLog(LOG_ID_ENTERED_STATE_XRAY_ON);
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 0;
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
@@ -447,10 +457,11 @@ void DoStateMachine(void) {
 
 
   case STATE_FAULT_HOLD:
+    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_HOLD);
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_HOLD);
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
@@ -465,10 +476,11 @@ void DoStateMachine(void) {
 
 
   case STATE_FAULT_RESET:
+    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_RESET);
     _SYNC_CONTROL_RESET_ENABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_RESET);
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
@@ -489,10 +501,11 @@ void DoStateMachine(void) {
 
     
   case STATE_FAULT_SYSTEM:
+    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_SYSTEM);
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_SYSTEM);
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
     _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
@@ -537,7 +550,7 @@ unsigned int CheckHVOffFault(void) {
 #endif
   }
   
-  if (_GUN_HEATER_OFF) {
+  if (!_GUN_HEATER_RAMP_COMPLETE) {
     _FAULT_GUN_HEATER_OFF = 1;
 #ifndef __IGNORE_GUN_DRIVER_MODULE
     fault = 1;
@@ -851,7 +864,7 @@ void DoA36507(void) {
 	}
       }
 	
-      if (board_com_ok.gun_driver_board && !_GUN_HEATER_OFF) {
+      if (board_com_ok.gun_driver_board && _GUN_HEATER_RAMP_COMPLETE) {
 	// The gun heater is on
 	if (gun_driver_heater_warmup_counter_seconds > 0) {
 	  gun_driver_heater_warmup_counter_seconds--;
@@ -1529,9 +1542,13 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
     
     case REGISTER_SPECIAL_ECB_RESET_SLAVE:
+      // DPARKER modified for testing reset while running
+      SendSlaveReset(next_message.data_2);
+      /*
       if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
 	SendSlaveReset(next_message.data_2);
       }
+      */
       break;
 
     /*

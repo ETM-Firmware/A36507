@@ -5,9 +5,9 @@
 
 //#define __IGNORE_ION_PUMP_MODULE
 //#define __IGNORE_AFC_MODULE
-#define __IGNORE_GUN_DRIVER_MODULE
-#define __IGNORE_COOLING_INTERFACE_MODULE
-#define __IGNORE_HEATER_MAGNET_MODULE
+//#define __IGNORE_GUN_DRIVER_MODULE
+//#define __IGNORE_COOLING_INTERFACE_MODULE
+//#define __IGNORE_HEATER_MAGNET_MODULE
 //#define __IGNORE_HV_LAMBDA_MODULE
 //#define __IGNORE_PULSE_CURRENT_MODULE
 //#define __IGNORE_PULSE_SYNC_MODULE
@@ -309,7 +309,7 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 
 #define _GUN_DRIVER_NOT_READY              mirror_gun_drv.status.control_notice_bits.control_not_ready
 #define _GUN_DRIVER_NOT_CONFIGURED         mirror_gun_drv.status.control_notice_bits.control_not_configured
-#define _GUN_HEATER_OFF                    0 // DPARKER point to correct warning bit
+#define _GUN_HEATER_RAMP_COMPLETE          mirror_gun_drv.status.warning_bits.warning_5
 
 #define _PULSE_MON_NOT_READY               mirror_pulse_mon.status.control_notice_bits.control_not_ready
 #define _PULSE_MON_NOT_CONFIGURED          mirror_pulse_mon.status.control_notice_bits.control_not_configured
@@ -438,7 +438,9 @@ extern ETMCanSyncMessage    etm_can_master_sync_message;
 #define _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV   etm_can_master_sync_message.sync_0_control_word.sync_2_pulse_sync_disable_hv
 #define _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY etm_can_master_sync_message.sync_0_control_word.sync_3_pulse_sync_disable_xray
 #define _SYNC_CONTROL_COOLING_FAULT           etm_can_master_sync_message.sync_0_control_word.sync_4_cooling_fault
+#define _SYNC_CONTROL_SYSTEM_HV_DISABLE       etm_can_master_sync_message.sync_0_control_word.sync_5_system_hv_disable
 #define _SYNC_CONTROL_CLEAR_DEBUG_DATA        etm_can_master_sync_message.sync_0_control_word.sync_F_clear_debug_data
+
 
 #define _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED   etm_can_master_sync_message.sync_0_control_word.sync_A_pulse_sync_warmup_led_on
 #define _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED  etm_can_master_sync_message.sync_0_control_word.sync_B_pulse_sync_standby_led_on
