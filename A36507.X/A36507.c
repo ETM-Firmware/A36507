@@ -1065,7 +1065,7 @@ void InitializeA36507(void) {
 
   // Initialize the Can module
   ETMCanMasterInitialize(CAN_PORT_1, FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
-  ETMCanMasterLoadConfiguration(36507, 0, AGILE_REV, FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, SERIAL_NUMBER);
+  ETMCanMasterLoadConfiguration(36507, 251, AGILE_REV, FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, SERIAL_NUMBER);
   
   // Initialize TCPmodbus Module
   ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168.70.15
