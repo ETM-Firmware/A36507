@@ -1172,7 +1172,6 @@ void GenericTCPClient(void)
             	modbus_command_request = (data_buffer[8] << 8) | data_buffer[9];
             }
     
-	  		modbus_cmd_need_repeat = 0;
 			etm_can_active_debugging_board_id = data_buffer[10];
 			switch (data_buffer[10]) 
 			  {
@@ -1215,6 +1214,7 @@ void GenericTCPClient(void)
        //    GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
 		} // if (data_buffer[0] == (modbus_array_index + 1))
     
+	  		modbus_cmd_need_repeat = 0;
 
          GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
 

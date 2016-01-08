@@ -1265,8 +1265,8 @@ void ETMCanMasterProcessLogData(void) {
 	  break;
 	  
 	case ETM_CAN_DATA_LOG_REGISTER_MAGNETRON_MON_FAST_LOG_0:
-	  ptr_high_speed_data->magmon_internal_adc_reading = next_message.word2;  // Internal DAC Reading
-	  ptr_high_speed_data->magmon_external_adc_reading = next_message.word1; // External DAC Reading
+	  ptr_high_speed_data->magmon_internal_adc_reading = next_message.word1;
+	  ptr_high_speed_data->magmon_external_adc_reading = next_message.word2;
 	  if (next_message.word0) {
 	    ptr_high_speed_data->status_bits.arc_this_pulse = 1;
 	  }
