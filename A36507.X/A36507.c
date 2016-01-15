@@ -1509,8 +1509,11 @@ void ExecuteEthernetCommand(unsigned int personality) {
 
 
     case REGISTER_SPECIAL_ECB_RESET_ARC_AND_PULSE_COUNT:
-      // DPARKER the command to do this is not yet part of the CAN library
-      // This will require an extension of the can library to impliment
+      ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD << 2)),
+			  0x2200, // DPARKER ADD THIS TO CAN CORE WITH APPROPRIATE NAME
+			  0,
+			  0,
+			  0);
       break;
 
     case REGISTER_SPECIAL_ECB_RESET_SECONDS_POWERED_HV_ON_XRAY_ON:
