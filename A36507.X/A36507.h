@@ -195,8 +195,10 @@ typedef struct {
   unsigned int buffer_a_sent;
   unsigned int buffer_b_sent;
 
-
+  unsigned int reset_requested;
+  
   //unsigned int personality_select_from_pulse_sync;
+
 
   
 } A36507GlobalVars;

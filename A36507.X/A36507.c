@@ -466,9 +466,10 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    global_data_A36507.reset_requested = 0;
     while (global_data_A36507.control_state == STATE_FAULT_HOLD) {
       DoA36507();
-      if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
+      if (global_data_A36507.reset_requested) {
 	global_data_A36507.control_state = STATE_FAULT_RESET;
       }
     }
@@ -1266,6 +1267,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_SPECIAL_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS                        0xE084
 #define REGISTER_SPECIAL_ECB_SAVE_SETTINGS_TO_EEPROM_MIRROR                                0xE085
 #define REGISTER_SPECIAL_ECB_LOAD_SETTINGS_FROM_EEPROM_MIRROR_AND_REBOOT                   0xE086
+#define REGISTER_CMD_ECB_RESET_FAULTS                                                      0xE087
 
 
 #define REGISTER_DEBUG_TOGGLE_RESET                                                        0xEF00
@@ -1543,6 +1545,11 @@ void ExecuteEthernetCommand(unsigned int personality) {
 	SendSlaveLoadDefaultEEpromData(next_message.data_2);
       }
       break;
+
+    case REGISTER_CMD_ECB_RESET_FAULTS:
+      global_data_A36507.reset_requested = 1;
+      break;
+
     
     case REGISTER_SPECIAL_ECB_RESET_SLAVE:
       // DPARKER modified for testing reset while running
