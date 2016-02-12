@@ -536,6 +536,12 @@ void DoStateMachine(void) {
 */
 
 
+unsigned int CheckWarmupFault(void) {
+  
+  
+}
+
+
 
 unsigned int CheckHVOffFault(void) {
   unsigned int fault = 0;
@@ -851,7 +857,7 @@ void DoA36507(void) {
 	global_data_A36507.thyratron_heater_last_warm_seconds = mem_time_seconds_now;
       }
       
-      if ((board_com_ok.heater_magnet_board) && (!_HEATER_MAGNET_NOT_READY)) {
+      if ((board_com_ok.heater_magnet_board) && (_HEATER_MAGNET_HEATER_OK)) {
 	// The Magnetron heater is on
 	if (magnetron_heater_warmup_counter_seconds > 0) {
 	  magnetron_heater_warmup_counter_seconds--;

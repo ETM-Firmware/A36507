@@ -306,6 +306,7 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 
 #define _HEATER_MAGNET_NOT_READY           mirror_htr_mag.status.control_notice_bits.control_not_ready
 #define _HEATER_MAGNET_NOT_CONFIGURED      mirror_htr_mag.status.control_notice_bits.control_not_configured
+#define _HEATER_MAGNET_HEATER_OK           mirror_htr_mag.status.warning_bits.warning_1
 
 #define _GUN_DRIVER_NOT_READY              mirror_gun_drv.status.control_notice_bits.control_not_ready
 #define _GUN_DRIVER_NOT_CONFIGURED         mirror_gun_drv.status.control_notice_bits.control_not_configured
