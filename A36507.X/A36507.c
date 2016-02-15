@@ -537,8 +537,7 @@ void DoStateMachine(void) {
 
 
 unsigned int CheckWarmupFault(void) {
-  
-  
+  return 0;
 }
 
 
@@ -719,16 +718,23 @@ void DoA36507(void) {
 
   // Check to see if cooling is present
   _SYNC_CONTROL_COOLING_FAULT = 0;
+  
 #ifndef __IGNORE_COOLING_INTERFACE_MODULE
   if (!board_com_ok.cooling_interface_board) {
     _SYNC_CONTROL_COOLING_FAULT = 1;
-    _FAULT_COOLING_NOT_CONNECTED = 1;
+    //DPARKER _FAULT_COOLING_NOT_CONNECTED = 1;
   }
-  if (_COOLING_NOT_READY) {
+  if (_COOLING_FLOW_OK) {
+    _SYNC_CONTROL_COOLING_FAULT = 0;
+  } else {
     _SYNC_CONTROL_COOLING_FAULT = 1;
-    _FAULT_COOLING_NOT_READY = 1;
   }
+  
+  //if (!_COOLING_NOT_READY) {
+  //  _FAULT_COOLING_NOT_READY = 1;
+  //}
 #endif
+
   // Load log_data Memory for types that can not be mapped directly into memory
   local_data_ecb.log_data[0] = global_data_A36507.control_state;
   local_data_ecb.log_data[3] = ETMCanMasterGetPulsePRF();
@@ -827,9 +833,11 @@ void DoA36507(void) {
       global_data_A36507.startup_counter++;
     }
 
-    // DPARKER Check for cooling fault, and set the sync bit message as appropriate
+    //DPARKER check for Xray enable fault
+    if ((_SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY) && (!_PULSE_SYNC_CUSTOMER_HV_OFF)) {
+      _FAULT_X_RAY_ON_LOGIC_ERROR = 1;
+    } 
 
-    
     // Update the heater current based on Output Power
     UpdateHeaterScale();
 

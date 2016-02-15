@@ -219,8 +219,9 @@ extern A36507GlobalVars global_data_A36507;
 #define _STATUS_LAST_RESET_WAS_POWER_CYCLE              _NOT_LOGGED_0
 
 #define _FAULT_DRIVE_UP_TIMEOUT                         _FAULT_0
-#define _FAULT_COOLING_NOT_CONNECTED                    _FAULT_1
-#define _FAULT_COOLING_NOT_READY                        _FAULT_2
+#define _FAULT_X_RAY_ON_LOGIC_ERROR                     _FAULT_1
+//#define _FAULT_COOLING_NOT_CONNECTED                    _FAULT_1
+//#define _FAULT_COOLING_NOT_READY                        _FAULT_2
 
 #define _FAULT_GUN_HEATER_OFF                           _FAULT_7
 #define _FAULT_HV_LAMBDA_NOT_OPERATE                    _FAULT_8

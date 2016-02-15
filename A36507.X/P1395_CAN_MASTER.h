@@ -303,6 +303,7 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 
 #define _COOLING_NOT_READY                 mirror_cooling.status.control_notice_bits.control_not_ready
 #define _COOLING_NOT_CONFIGURED            mirror_cooling.status.control_notice_bits.control_not_configured
+#define _COOLING_FLOW_OK                   mirror_cooling.status.warning_bits.warning_6
 
 #define _HEATER_MAGNET_NOT_READY           mirror_htr_mag.status.control_notice_bits.control_not_ready
 #define _HEATER_MAGNET_NOT_CONFIGURED      mirror_htr_mag.status.control_notice_bits.control_not_configured
