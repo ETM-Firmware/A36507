@@ -294,35 +294,43 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 
 #define _HV_LAMBDA_NOT_READY               mirror_hv_lambda.status.control_notice_bits.control_not_ready
 #define _HV_LAMBDA_NOT_CONFIGURED          mirror_hv_lambda.status.control_notice_bits.control_not_configured
+#define _HV_LAMBDA_FAULT_REGISTER          *(unsigned int*)&mirror_hv_lambda.status.fault_bits
 
 #define _ION_PUMP_NOT_READY                mirror_ion_pump.status.control_notice_bits.control_not_ready
 #define _ION_PUMP_NOT_CONFIGURED           mirror_ion_pump.status.control_notice_bits.control_not_configured
+#define _ION_PUMP_FAULT_REGISTER           *(unsigned int*)&mirror_ion_pump.status.fault_bits
+#define _ION_PUMP_OVER_CURRENT_ACTIVE      mirror_ion_pump.status.warning_bits.warning_0
 
 #define _AFC_NOT_READY                     mirror_afc.status.control_notice_bits.control_not_ready
 #define _AFC_NOT_CONFIGURED                mirror_afc.status.control_notice_bits.control_not_configured
+#define _AFC_FAULT_REGISTER                *(unsigned int*)&mirror_afc.status.fault_bits
 
 #define _COOLING_NOT_READY                 mirror_cooling.status.control_notice_bits.control_not_ready
 #define _COOLING_NOT_CONFIGURED            mirror_cooling.status.control_notice_bits.control_not_configured
 #define _COOLING_FLOW_OK                   mirror_cooling.status.warning_bits.warning_6
+#define _COOLING_FAULT_REGISTER            *(unsigned int*)&mirror_cooling.status.fault_bits
 
 #define _HEATER_MAGNET_NOT_READY           mirror_htr_mag.status.control_notice_bits.control_not_ready
 #define _HEATER_MAGNET_NOT_CONFIGURED      mirror_htr_mag.status.control_notice_bits.control_not_configured
 #define _HEATER_MAGNET_HEATER_OK           mirror_htr_mag.status.warning_bits.warning_1
+#define _HEATER_MAGNET_FAULT_REGISTER      *(unsigned int*)&mirror_htr_mag.status.fault_bits
 
 #define _GUN_DRIVER_NOT_READY              mirror_gun_drv.status.control_notice_bits.control_not_ready
 #define _GUN_DRIVER_NOT_CONFIGURED         mirror_gun_drv.status.control_notice_bits.control_not_configured
-#define _GUN_HEATER_RAMP_COMPLETE          mirror_gun_drv.status.warning_bits.warning_5
+#define _GUN_DRIVER_HEATER_RAMP_COMPLETE   mirror_gun_drv.status.warning_bits.warning_5
+#define _GUN_DRIVER_FAULT_REGISTER         *(unsigned int*)&mirror_gun_drv.status.fault_bits
 
 #define _PULSE_MON_NOT_READY               mirror_pulse_mon.status.control_notice_bits.control_not_ready
 #define _PULSE_MON_NOT_CONFIGURED          mirror_pulse_mon.status.control_notice_bits.control_not_configured
+#define _PULSE_MON_FAULT_REGISTER          *(unsigned int*)&mirror_pulse_mon.status.fault_bits
 
 #define _PULSE_SYNC_NOT_READY              mirror_pulse_sync.status.control_notice_bits.control_not_ready
 #define _PULSE_SYNC_NOT_CONFIGURED         mirror_pulse_sync.status.control_notice_bits.control_not_configured
 #define _PULSE_SYNC_CUSTOMER_HV_OFF        mirror_pulse_sync.status.warning_bits.warning_0
 #define _PULSE_SYNC_CUSTOMER_XRAY_OFF      mirror_pulse_sync.status.warning_bits.warning_1
 #define _PULSE_SYNC_PERSONALITY_READY      mirror_pulse_sync.status.warning_bits.warning_4
-
 #define _PULSE_SYNC_PERSONALITY_VALUE      ((*(unsigned int*)&mirror_pulse_sync.status.not_logged_bits) & 0x000F)
+#define _PULSE_SYNC_FAULT_REGISTER          *(unsigned int*)&mirror_pulse_sync.status.fault_bits
 
 
 // PUBLIC Variables
@@ -374,6 +382,8 @@ void SendToEventLog(unsigned int log_id);
 #define LOG_ID_ENTERED_STATE_FAULT_HOLD 0x0180
 #define LOG_ID_ENTERED_STATE_FAULT_RESET 0x0190
 #define LOG_ID_ENTERED_STATE_FAULT_SYSTEM 0x01A0
+#define LOG_ID_ENTERED_STATE_FAULT_WARMUP 0x01B0
+#define LOG_ID_ENTERED_STATE_FAULT_STANDBY 0x01C0
 
 #define LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD 0x0001
 #define LOG_ID_CONNECTED_ION_PUMP_BOARD 0x0081
@@ -441,6 +451,7 @@ extern ETMCanSyncMessage    etm_can_master_sync_message;
 #define _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY etm_can_master_sync_message.sync_0_control_word.sync_3_pulse_sync_disable_xray
 #define _SYNC_CONTROL_COOLING_FAULT           etm_can_master_sync_message.sync_0_control_word.sync_4_cooling_fault
 #define _SYNC_CONTROL_SYSTEM_HV_DISABLE       etm_can_master_sync_message.sync_0_control_word.sync_5_system_hv_disable
+#define _SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR  etm_can_master_sync_message.sync_0_control_word.sync_6_gun_driver_disable_heater // DPARKER THIS REQUIRED NE CAN CORE MODULE
 #define _SYNC_CONTROL_CLEAR_DEBUG_DATA        etm_can_master_sync_message.sync_0_control_word.sync_F_clear_debug_data
 
 
