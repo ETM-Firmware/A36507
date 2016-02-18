@@ -222,23 +222,8 @@ extern A36507GlobalVars global_data_A36507;
 #define _FAULT_REPEATED_HV_ON_FAULT                     _FAULT_2
 
 // DPAKRER  - Need to evaluate how these are used under new control system
-#define _STATUS_X_RAY_DISABLED                          _LOGGED_0
-#define _STATUS_PERSONALITY_LOADED                      _LOGGED_1
-#define _STATUS_DRIVE_UP_TIMEOUT                        _LOGGED_2
-#define _FAULT_GUN_HEATER_OFF                           _FAULT_7
-#define _FAULT_HV_LAMBDA_NOT_OPERATE                    _FAULT_8
-#define _FAULT_ION_PUMP_NOT_OPERATE                     _FAULT_9
-#define _FAULT_AFC_NOT_OPERATE                          _FAULT_A
-#define _FAULT_COOLING_NOT_OPERATE                      _FAULT_B
-#define _FAULT_HTR_MAG_NOT_OPERATE                      _FAULT_C
-#define _FAULT_GUN_DVR_NOT_OPERATE                      _FAULT_D
-#define _FAULT_PULSE_MON_NOT_OPERATE                    _FAULT_E
-#define _FAULT_PULSE_SYNC_NOT_OPERATE                   _FAULT_F
-
-
-
-
-
+#define _STATUS_PERSONALITY_LOADED                      _LOGGED_0
+#define _STATUS_DRIVE_UP_TIMEOUT                        _LOGGED_1
 
 #define _STATUS_LAST_RESET_WAS_POWER_CYCLE              _NOT_LOGGED_0
 

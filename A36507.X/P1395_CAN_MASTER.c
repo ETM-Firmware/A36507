@@ -6,7 +6,8 @@
 #include "TCPmodbus.h"
 
 unsigned int can_master_millisecond_counter;
-
+unsigned int previous_disable_xray_value;
+unsigned int personality_loaded;
 
 
 void UpdateSlaveEventLog(ETMCanStatusRegister* previous_status, ETMCanStatusRegister* current_status, unsigned int slave_select);
@@ -410,7 +411,7 @@ void ETMCanMasterTimedTransmit(void) {
     The sync command and Pulse Sync enable command are each sent twice for an effecive rate of 100ms (10Hz)
   */
   
-  if ((_STATUS_X_RAY_DISABLED == 0) && (_SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY)) {
+  if ((previous_disable_xray_value == 0) && (_SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY)) {
     // We need to immediately send out a sync message
     ETMCanMasterSendSync();
   }
@@ -421,7 +422,7 @@ void ETMCanMasterTimedTransmit(void) {
     // each of the 8 cases will be true once every 200mS
     _T4IF = 0;
 
-    if (!_STATUS_PERSONALITY_LOADED) {
+    if (!personality_loaded) {
       // Just send out a sync message
       ETMCanMasterSendSync();
     } else {
@@ -523,7 +524,11 @@ void ETMCanMasterSendSync(void) {
   ETMCanTXMessage(&sync_message, CXTX1CON_ptr);
   debug_data_ecb.can_tx_1++;
 
-  _STATUS_X_RAY_DISABLED = _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY;
+  if (_SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY) {
+    previous_disable_xray_value = 1;
+  } else {
+    previous_disable_xray_value = 0;
+  }
 }
 
 void ETMCanMasterHVLambdaUpdateOutput(void) {

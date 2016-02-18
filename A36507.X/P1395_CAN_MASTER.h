@@ -176,12 +176,6 @@ extern ETMCanBoardData mirror_pulse_sync;
 #define _NOT_LOGGED_REGISTER          *(unsigned int*)&local_data_ecb.status.not_logged_bits
 
 
-// DPAKRER  - Need to evaluate how these are used under new control system
-#define _STATUS_X_RAY_DISABLED                          _LOGGED_0
-#define _STATUS_PERSONALITY_LOADED                      _LOGGED_1
-
-
-
 
 // Board Configuration data - 0x06
 #define config_agile_number_high_word      local_data_ecb.config_data[3]
@@ -472,5 +466,9 @@ unsigned int ETMCanMasterGetPulsePRF(void);
 
 
 void ETMCanMasterSendMsg(unsigned int id, unsigned int word3, unsigned int word2, unsigned int word1, unsigned int word0);
+
+
+
+extern unsigned int personality_loaded;  // DPARKER at some point this should be set with a function when the can master is cleaned up
 
 #endif

@@ -295,6 +295,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     _STATUS_PERSONALITY_LOADED = 1;
+    personality_loaded = 1;
     ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
     CalculateHeaterWarmupTimers();     // Calculate all of the warmup counters based on previous warmup completed
     while (global_data_A36507.control_state == STATE_WAITING_FOR_INITIALIZATION) {
