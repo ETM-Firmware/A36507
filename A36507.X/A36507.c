@@ -245,7 +245,7 @@ void DoStateMachine(void) {
     global_data_A36507.control_state = STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC;
     SendToEventLog(LOG_ID_ENTERED_STATE_STARTUP);
     if (_STATUS_LAST_RESET_WAS_POWER_CYCLE) {
-      _SYNC_CONTROL_CLEAR_DEBUG_DATA = 0;
+      _SYNC_CONTROL_CLEAR_DEBUG_DATA = 1;
     }
     break;
 
@@ -951,7 +951,11 @@ unsigned int CheckHVOnFault(void) {
 void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[0]  = global_data_A36507.high_voltage_on_fault_counter; 
   debug_data_ecb.debug_reg[1]  = global_data_A36507.drive_up_fault_counter;
-  debug_data_ecb.debug_reg[2]  = 2; 
+  if (_STATUS_LAST_RESET_WAS_POWER_CYCLE) {
+    debug_data_ecb.debug_reg[2]  = 1;
+  } else {
+    debug_data_ecb.debug_reg[2]  = 0;
+  }
   debug_data_ecb.debug_reg[3]  = 3; 
   
   debug_data_ecb.debug_reg[4]  = 4; 
@@ -1799,7 +1803,11 @@ void ExecuteEthernetCommand(unsigned int personality) {
     
     case REGISTER_SPECIAL_ECB_RESET_SLAVE:
       // DPARKER modified for testing reset while running
-      SendSlaveReset(next_message.data_2);
+      if (next_message.data_2 == ETM_CAN_ADDR_ETHERNET_BOARD) {
+	__asm__ ("Reset");
+      } else {
+	SendSlaveReset(next_message.data_2);
+      }
       /*
       if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
 	SendSlaveReset(next_message.data_2);
