@@ -5,17 +5,15 @@
 
 #define __SYSTEM_CONFIGURATION_2_5_MEV
 
-#define DRIVE_UP_TIMEOUT                     1000  // 10 Seconds
+#define DRIVE_UP_TIMEOUT                     400  // 4 Seconds
+#define MINIMUM_FAULT_HOLD_TIME              50   // .5 Second
+#define FAULT_RESET_HOLD_TIME                50   // .5 Second
+#define MAX_DRIVE_UP_FAULTS                  5    // Attempts to bring up high voltage before latching fault
+#define MAX_HV_ON_FAULTS                     10   // Attempts to reset faults with HV on (but Xray Off) before latching 
 
 #define MAGNETRON_HEATER_WARM_UP_TIME        300   // 5 minutes
-#define THYRATRON_WARM_UP_TIME               60 // DPARKER 900   // 15 minutes
+#define THYRATRON_WARM_UP_TIME               900   // 15 minutes
 #define GUN_DRIVER_HEATER_WARM_UP_TIME       300   // 5 minutes
-
-
-
-
-
-
 
 
 

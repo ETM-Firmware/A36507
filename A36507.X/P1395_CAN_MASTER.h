@@ -317,6 +317,7 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define _PULSE_MON_NOT_READY               mirror_pulse_mon.status.control_notice_bits.control_not_ready
 #define _PULSE_MON_NOT_CONFIGURED          mirror_pulse_mon.status.control_notice_bits.control_not_configured
 #define _PULSE_MON_FAULT_REGISTER          *(unsigned int*)&mirror_pulse_mon.status.fault_bits
+#define _PULSE_MON_FALSE_TRIGGER           mirror_pulse_mon.status.fault_bits.fault_4
 
 #define _PULSE_SYNC_NOT_READY              mirror_pulse_sync.status.control_notice_bits.control_not_ready
 #define _PULSE_SYNC_NOT_CONFIGURED         mirror_pulse_sync.status.control_notice_bits.control_not_configured
@@ -374,10 +375,13 @@ void SendToEventLog(unsigned int log_id);
 #define LOG_ID_ENTERED_STATE_READY 0x0150
 #define LOG_ID_ENTERED_STATE_XRAY_ON 0x0160
 #define LOG_ID_ENTERED_STATE_FAULT_HOLD 0x0180
-#define LOG_ID_ENTERED_STATE_FAULT_RESET 0x0190
+#define LOG_ID_ENTERED_STATE_FAULT_RESET_HOLD 0x0186
+#define LOG_ID_ENTERED_STATE_FAULT_LATCH_DECISION 0x018A
+//#define LOG_ID_ENTERED_STATE_FAULT_RESET 0x0190
 #define LOG_ID_ENTERED_STATE_FAULT_SYSTEM 0x01A0
 #define LOG_ID_ENTERED_STATE_FAULT_WARMUP 0x01B0
 #define LOG_ID_ENTERED_STATE_FAULT_STANDBY 0x01C0
+
 
 #define LOG_ID_NOT_CONNECTED_ION_PUMP_BOARD 0x0001
 #define LOG_ID_CONNECTED_ION_PUMP_BOARD 0x0081

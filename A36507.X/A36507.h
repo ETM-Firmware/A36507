@@ -201,6 +201,7 @@ typedef struct {
 
   unsigned int drive_up_fault_counter;
   unsigned int high_voltage_on_fault_counter;
+  unsigned int reset_hold_timer;
 
   
 } A36507GlobalVars;
@@ -273,6 +274,8 @@ extern A36507GlobalVars global_data_A36507;
 
 
 #define STATE_FAULT_HOLD                             0x80
+#define STATE_FAULT_RESET_HOLD                       0x86
+#define STATE_FAULT_LATCH_DECISION                   0x8A
 //#define STATE_FAULT_RESET                            0x90
 #define STATE_FAULT_SYSTEM                           0xA0
 #define STATE_FAULT_WARMUP                           0xB0

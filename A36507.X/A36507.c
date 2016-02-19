@@ -112,7 +112,7 @@ unsigned int CheckWarmupFailure(void);
 unsigned int CheckWarmupFault(void);
 unsigned int CheckConfigurationFault(void);
 unsigned int CheckStandbyFault(void);
-unsigned int CheckStandbyHoldFault(void);
+unsigned int CheckFaultLatching(void);
 unsigned int CheckHVOnFault(void);
 unsigned int CheckCoolingFault(void);
 unsigned int CheckGunHeaterOffFault(void);
@@ -389,10 +389,11 @@ void DoStateMachine(void) {
 	global_data_A36507.control_state = STATE_DRIVE_UP;
       }
       if (CheckStandbyFault()) {
-	global_data_A36507.control_state = STATE_FAULT_STANDBY;
+	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
       }
      }
     break;
+
 
   case STATE_FAULT_STANDBY:
     SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_STANDBY);
@@ -408,9 +409,6 @@ void DoStateMachine(void) {
       DoA36507();
       if (!CheckStandbyFault()) {
 	global_data_A36507.control_state = STATE_STANDBY;
-      }
-      if (CheckStandbyHoldFault()) {
-	global_data_A36507.control_state = STATE_FAULT_HOLD;
       }
       if (CheckWarmupFault()) {
 	global_data_A36507.control_state = STATE_FAULT_WARMUP;
@@ -429,24 +427,17 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
-    global_data_A36507.drive_up_timer = 0;
     while (global_data_A36507.control_state == STATE_DRIVE_UP) {
       DoA36507();
       if (!CheckHVOnFault()) {
 	global_data_A36507.control_state = STATE_READY;
-	SendToEventLog(LOG_ID_DRIVEUP_COMPLETE);
-	_STATUS_DRIVE_UP_TIMEOUT = 0;
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
       }
-      if ((global_data_A36507.drive_up_timer >= DRIVE_UP_TIMEOUT) || (CheckStandbyFault())) {
-	global_data_A36507.control_state = STATE_FAULT_STANDBY;
+      if (CheckStandbyFault()) {
 	global_data_A36507.drive_up_fault_counter++;
-	if (global_data_A36507.drive_up_timer >= DRIVE_UP_TIMEOUT) {
-	  _STATUS_DRIVE_UP_TIMEOUT = 1;
-	  SendToEventLog(LOG_ID_DRIVE_UP_TIMEOUT);
-	}
+	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
       }
     }
     break;
@@ -463,7 +454,8 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 1;
     global_data_A36507.drive_up_fault_counter = 0;
-    while (global_data_A36507.control_state == STATE_READY) {
+    _STATUS_DRIVE_UP_TIMEOUT = 0;
+     while (global_data_A36507.control_state == STATE_READY) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF == 0) {
 	global_data_A36507.control_state = STATE_XRAY_ON;
@@ -472,7 +464,7 @@ void DoStateMachine(void) {
 	global_data_A36507.control_state = STATE_DRIVE_UP;
       }
       if (CheckHVOnFault()) {
-	global_data_A36507.control_state = STATE_FAULT_HOLD;
+	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
 	global_data_A36507.high_voltage_on_fault_counter++;
       }
     }
@@ -499,6 +491,31 @@ void DoStateMachine(void) {
 	global_data_A36507.control_state = STATE_READY;
       }
       if (CheckHVOnFault()) {
+	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
+      }
+    }
+    break;
+
+
+  case STATE_FAULT_LATCH_DECISION:
+    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_LATCH_DECISION);
+    _SYNC_CONTROL_RESET_ENABLE = 0;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    global_data_A36507.reset_requested = 0;
+    global_data_A36507.reset_hold_timer = 0;
+    while (global_data_A36507.control_state == STATE_FAULT_LATCH_DECISION) {
+      DoA36507();
+      if (global_data_A36507.reset_hold_timer > MINIMUM_FAULT_HOLD_TIME) { 
+	// Need to wait in this state for X_RAY_ON status to propigate from the pulse sync board
+	global_data_A36507.control_state = STATE_FAULT_RESET_HOLD;
+      }
+      if (CheckFaultLatching()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
       }
     }
@@ -516,27 +533,43 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     global_data_A36507.reset_requested = 0;
-    while (global_data_A36507.control_state == STATE_FAULT_HOLD) {
+      while (global_data_A36507.control_state == STATE_FAULT_HOLD) {
       DoA36507();
       if (global_data_A36507.reset_requested) {
+	global_data_A36507.control_state = STATE_FAULT_RESET_HOLD;
+      }
+     }
+    break;
+    
+
+  case STATE_FAULT_RESET_HOLD:
+    SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_RESET_HOLD);
+    _SYNC_CONTROL_RESET_ENABLE = 1;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    global_data_A36507.reset_requested = 0;
+    global_data_A36507.reset_hold_timer = 0;
+    while (global_data_A36507.control_state == STATE_FAULT_RESET_HOLD) {
+      DoA36507();
+      if (global_data_A36507.reset_hold_timer > FAULT_RESET_HOLD_TIME) { 
 	global_data_A36507.control_state = STATE_FAULT_STANDBY;
-	global_data_A36507.drive_up_fault_counter = 0;
-	global_data_A36507.high_voltage_on_fault_counter = 0;
-	_FAULT_REGISTER = 0;
       }
     }
     break;
+
     
+
     
   default:
     global_data_A36507.control_state = STATE_FAULT_SYSTEM;
     break;
   }
 }
-
-
-
-
 
 
 /*
@@ -552,6 +585,8 @@ void DoStateMachine(void) {
 */
 
 unsigned int CheckWarmupFailure(void) {
+  // DPARKER need to add this
+  // Look for failure of magnetron or gun heater
   return 0;
 }
 
@@ -657,12 +692,20 @@ unsigned int CheckConfigurationFault(void) {
 
 
 // DPARKER
-#define MAX_DRIVE_UP_FAULTS   5
-#define MAX_HV_ON_FAULTS      10
-unsigned int CheckStandbyHoldFault(void) {
+unsigned int CheckFaultLatching(void) {
   if (_FAULT_REPEATED_DRIVE_UP_FAULT || _FAULT_REPEATED_HV_ON_FAULT || _FAULT_X_RAY_ON_LOGIC_ERROR) {
     return 1;
   }
+  if (_PULSE_MON_FALSE_TRIGGER) {
+    // If a false trigger is detected we must hold the fault
+    return 1;
+  }
+  if (!_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
+    // The fault happened when X-Rays were on, need to latch the fault
+    return 1;
+  }
+
+
   return 0;
 }
 
@@ -720,6 +763,12 @@ unsigned int CheckStandbyFault(void) {
     return 1;
   }
   
+  if (global_data_A36507.drive_up_timer > DRIVE_UP_TIMEOUT) {
+    _STATUS_DRIVE_UP_TIMEOUT = 1;
+    SendToEventLog(LOG_ID_DRIVE_UP_TIMEOUT);
+    return 1;
+  }
+
   return 0;
 }
 
@@ -900,8 +949,8 @@ unsigned int CheckHVOnFault(void) {
 
 
 void UpdateDebugData(void) {
-  debug_data_ecb.debug_reg[0]  = 0; 
-  debug_data_ecb.debug_reg[1]  = 1; 
+  debug_data_ecb.debug_reg[0]  = global_data_A36507.high_voltage_on_fault_counter; 
+  debug_data_ecb.debug_reg[1]  = global_data_A36507.drive_up_fault_counter;
   debug_data_ecb.debug_reg[2]  = 2; 
   debug_data_ecb.debug_reg[3]  = 3; 
   
@@ -916,32 +965,46 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[11] = 11; 
 
   debug_data_ecb.debug_reg[12] = 12; 
-  //debug_data_ecb.debug_reg[13] = etm_can_master_next_pulse_prf; 
-  //debug_data_ecb.debug_reg[14] = etm_can_master_next_pulse_level;
-  //debug_data_ecb.debug_reg[15] = etm_can_master_next_pulse_count; 
+  debug_data_ecb.debug_reg[13] = 0;
+  debug_data_ecb.debug_reg[14] = 0;
+  debug_data_ecb.debug_reg[15] = 0;
 }
 
 
 void DoA36507(void) {
 
+
+
+  etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
+  etm_can_master_sync_message.sync_2 = 0x0123;
+  etm_can_master_sync_message.sync_3 = 0x4567;
+
+  ETMCanMasterDoCan();
+  TCPmodbus_task();
+  ExecuteEthernetCommand(personality_select_from_pulse_sync);
+
+
+
+
   // Figure out if the customer has enabled XRAYs before they should have
   // If so set a fault that can only be cleared with a reset command
   if (!_PULSE_SYNC_CUSTOMER_XRAY_OFF) { 
     if ((global_data_A36507.control_state == STATE_WARMUP) ||
-	(global_data_A36507.control_state == STATE_FAULT_WARMUP)) {
-      // Customer Enabled XRAYs durring warm up
+	(global_data_A36507.control_state == STATE_FAULT_WARMUP) ||
+	(global_data_A36507.control_state == STATE_FAULT_STANDBY)) { 
+      // Customer Enabled XRAYs when not ready
       _FAULT_X_RAY_ON_LOGIC_ERROR = 1;
     }
-    if ((global_data_A36507.control_state == STATE_STANDBY) ||
-	(global_data_A36507.control_state == STATE_FAULT_STANDBY) ||
+    if ((global_data_A36507.control_state == STATE_STANDBY) || 
 	(global_data_A36507.control_state == STATE_FAULT_HOLD)) {
+      
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	// Customer Enabled XRAYS, but not High Voltage durring one of the standby states
 	_FAULT_X_RAY_ON_LOGIC_ERROR = 1;
       }
     }
-  }
-  
+  }  
+    
   if (global_data_A36507.drive_up_fault_counter > MAX_DRIVE_UP_FAULTS) {
     _FAULT_REPEATED_DRIVE_UP_FAULT = 1;
   }
@@ -982,8 +1045,13 @@ void DoA36507(void) {
   // 10ms Timer has expired -- run periodic checks and updates
   if (_T2IF) {
     _T2IF = 0;
-    global_data_A36507.drive_up_timer++;
+    if (global_data_A36507.control_state == STATE_DRIVE_UP) {
+      global_data_A36507.drive_up_timer++;
+    } else {
+      global_data_A36507.drive_up_timer = 0;
+    }
     global_data_A36507.startup_counter++;
+    global_data_A36507.reset_hold_timer++;
     
     // Update the heater current based on Output Power
     UpdateHeaterScale();
@@ -1283,9 +1351,6 @@ void InitializeA36507(void) {
   // Load System powered time from EEPROM
   ETMEEPromReadPage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&system_powered_seconds);
 
-  global_data_A36507.drive_up_fault_counter = 0;
-  global_data_A36507.high_voltage_on_fault_counter = 0;
-
 }
 
 
@@ -1455,8 +1520,8 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_DEBUG_TOGGLE_RESET_DEBUG                                                  0xEF05
 #define REGISTER_DEBUG_ENABLE_HIGH_SPEED_LOGGING                                           0xEF06
 #define REGISTER_DEBUG_DISABLE_HIGH_SPEED_LOGGING                                          0xEF07
-
 #define REGISTER_SPECIAL_SET_TIME                                                          0xEF08
+#define REGISTER_SPECIAL_TEST_PULSE_FAUL                                                   0xEF09
 
 #define REGISTER_SPECIAL_2_5_SET_GRID_START                                                0xEF40
 #define REGISTER_SPECIAL_2_5_SET_GRID_STOP                                                 0xEF41
@@ -1726,6 +1791,9 @@ void ExecuteEthernetCommand(unsigned int personality) {
 
     case REGISTER_CMD_ECB_RESET_FAULTS:
       global_data_A36507.reset_requested = 1;
+      _FAULT_REGISTER = 0;
+      global_data_A36507.drive_up_fault_counter = 0;
+      global_data_A36507.high_voltage_on_fault_counter = 0;
       break;
 
     
@@ -1760,6 +1828,14 @@ void ExecuteEthernetCommand(unsigned int personality) {
       temp_long += next_message.data_1;
       RTCSecondsToDate(temp_long, &set_time);
       SetDateAndTime(&U6_DS3231, &set_time);
+      break;
+
+    case REGISTER_SPECIAL_TEST_PULSE_FAUL:
+      ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD << 2)),
+			  0x22FF,
+			  0,
+			  0,
+			  0);
       break;
 
     case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START:
