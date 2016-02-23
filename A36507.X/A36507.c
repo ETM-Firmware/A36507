@@ -1504,6 +1504,9 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_CMD_AFC_MANUAL_TARGET_POSITION                                            0x5083
 #define REGISTER_CMD_AFC_MANUAL_MOVE                                                       0x5084
 
+#define REGISTER_CMD_GUN_DRIVER_RESET_FPGA                                                 0x8202
+
+
 #define REGISTER_CMD_COOLANT_INTERFACE_ALLOW_25_MORE_SF6_PULSES                            0x6082
 #define REGISTER_CMD_COOLANT_INTERFACE_ALLOW_SF6_PULSES_WHEN_PRESSURE_BELOW_LIMIT          0x6083
 #define REGISTER_CMD_COOLANT_INTERFACE_SET_SF6_PULSES_IN_BOTTLE                            0x6084
@@ -1720,6 +1723,15 @@ void ExecuteEthernetCommand(unsigned int personality) {
     case REGISTER_CMD_AFC_SELECT_MANUAL_MODE:
       ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
 			  ETM_CAN_REGISTER_AFC_CMD_SELECT_MANUAL_MODE,
+			  0,
+			  0,
+			  0);
+      break;
+
+
+    case REGISTER_CMD_GUN_DRIVER_RESET_FPGA:
+      ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_GUN_DRIVER_BOARD << 2)),
+			  0x8202,
 			  0,
 			  0,
 			  0);
