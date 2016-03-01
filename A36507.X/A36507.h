@@ -203,6 +203,7 @@ typedef struct {
   unsigned int high_voltage_on_fault_counter;
   unsigned int reset_hold_timer;
 
+  unsigned int system_serial_number;
   
 } A36507GlobalVars;
 
@@ -286,10 +287,12 @@ extern A36507GlobalVars global_data_A36507;
 
 
 #define EEPROM_REGISTER_HTR_MAG_HEATER_CURRENT                      0x0000
-#define EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT                      0x0001
+#define EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT_HIGH_ENERGY          0x0001
+#define EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT_LOW_ENERGY           0x000C
 #define EEPROM_REGISTER_AFC_HOME_POSITION                           0x0005
 #define EEPROM_REGISTER_AFC_OFFSET                                  0x0009
-#define EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE                     0x000A
+#define EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE_HIGH_ENERGY         0x000A
+#define EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE_LOW_ENERGY          0x000B
 
 #define EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT                0x0010
 #define EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT                 0x0011

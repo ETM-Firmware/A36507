@@ -547,8 +547,8 @@ void ETMCanMasterAFCUpdateHomeOffset(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_AFC_SET_1_HOME_POSITION_AND_OFFSET;
-  can_message.word2 = local_afc_aft_control_voltage;
-  can_message.word1 = 0;
+  can_message.word2 = local_afc_aft_control_voltage_high_energy;
+  can_message.word1 = local_afc_aft_control_voltage_low_energy;
   can_message.word0 = local_afc_home_position;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();
@@ -558,9 +558,9 @@ void ETMCanMasterHtrMagnetUpdateOutput(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_HEATER_MAGNET_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_HEATER_MAGNET_SET_1_CURRENT_SET_POINT;
-  can_message.word2 = 0;
+  can_message.word2 = local_magnet_current_set_point_low_energy;
   can_message.word1 = local_heater_current_scaled_set_point;
-  can_message.word0 = local_magnet_current_set_point;
+  can_message.word0 = local_magnet_current_set_point_high_energy;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();
 }

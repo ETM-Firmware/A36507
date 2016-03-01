@@ -223,11 +223,14 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define local_hv_lambda_low_en_set_point                mirror_hv_lambda.local_data[1]
 
 #define local_afc_home_position                         mirror_afc.local_data[0]
-#define local_afc_aft_control_voltage                   mirror_afc.local_data[1]
+#define local_afc_aft_control_voltage_high_energy       mirror_afc.local_data[1]
+#define local_afc_aft_control_voltage_low_energy        mirror_afc.local_data[2]
+
 
 #define local_heater_current_full_set_point             mirror_htr_mag.local_data[0]
 #define local_heater_current_scaled_set_point           mirror_htr_mag.local_data[1]
-#define local_magnet_current_set_point                  mirror_htr_mag.local_data[2]
+#define local_magnet_current_set_point_high_energy      mirror_htr_mag.local_data[2]
+#define local_magnet_current_set_point_low_energy       mirror_htr_mag.local_data[3]
 
 #define local_gun_drv_high_en_pulse_top_v               mirror_gun_drv.local_data[0]
 #define local_gun_drv_low_en_pulse_top_v                mirror_gun_drv.local_data[1]

@@ -86,6 +86,8 @@
 #define DEFAULT_UNUSED_EEPROM                                         0
 
 
+#define MAX_SF6_REFILL_PULSES_IN_BOTTLE                             2100
+
 
 
 #endif

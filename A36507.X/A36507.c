@@ -1042,6 +1042,8 @@ void DoA36507(void) {
   local_data_ecb.log_data[3] = ETMCanMasterGetPulsePRF();
   local_data_ecb.log_data[7] = _SYNC_CONTROL_WORD;
   local_data_ecb.log_data[16] = *(unsigned int*)&board_com_ok;
+  local_data_ecb.log_data[19] = global_data_A36507.system_serial_number;
+  mirror_cooling.local_data[0] = MAX_SF6_REFILL_PULSES_IN_BOTTLE;
 
   UpdateDebugData();  // Load the customized debugging data into the debugging registers
 
@@ -1307,13 +1309,10 @@ void InitializeA36507(void) {
   ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
   mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
   
-#define AGILE_REV 77
-#define SERIAL_NUMBER 100 
-
   // Initialize the Can module
   ETMCanMasterInitialize(CAN_PORT_1, FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
-  ETMCanMasterLoadConfiguration(36507, 251, AGILE_REV, FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, SERIAL_NUMBER);
-  
+  ETMCanMasterLoadConfiguration(36507, 251, ETMEEPromReadWord(0x0181), FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, ETMEEPromReadWord(0x0180));
+  global_data_A36507.system_serial_number = ETMEEPromReadWord(0x001F);
   // Initialize TCPmodbus Module
   ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168.70.15
   ip_config.ip_addr        = 0x6346A8C0;  // 192.168.70.99
@@ -1402,14 +1401,16 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   local_hv_lambda_high_en_set_point   = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT + (2*personality)));
 
   // Load data for AFC
-  local_afc_home_position             = ETMEEPromReadWord((EEPROM_REGISTER_AFC_HOME_POSITION + personality));
-  local_afc_aft_control_voltage       = ETMEEPromReadWord(EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE);
+  local_afc_home_position                    = ETMEEPromReadWord((EEPROM_REGISTER_AFC_HOME_POSITION + personality));
+  local_afc_aft_control_voltage_high_energy  = ETMEEPromReadWord(EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE_HIGH_ENERGY);
+  local_afc_aft_control_voltage_low_energy   = ETMEEPromReadWord(EEPROM_REGISTER_AFC_AFT_CONTROL_VOLTAGE_LOW_ENERGY);
   // etm_can_afc_mirror.afc_offset = ETMEEPromReadWord(EEPROM_REGISTER_AFC_OFFSET);
 
   // Load Data for Heater/Magnet Supply
-  local_heater_current_full_set_point = ETMEEPromReadWord(EEPROM_REGISTER_HTR_MAG_HEATER_CURRENT);
-  local_magnet_current_set_point      = ETMEEPromReadWord((EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT + personality));
-  
+  local_heater_current_full_set_point        = ETMEEPromReadWord(EEPROM_REGISTER_HTR_MAG_HEATER_CURRENT);
+  local_magnet_current_set_point_high_energy = ETMEEPromReadWord((EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT_HIGH_ENERGY + personality));
+  local_magnet_current_set_point_low_energy  = ETMEEPromReadWord((EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT_LOW_ENERGY + personality));
+
   // Load data for Gun Driver
   local_gun_drv_heater_v_set_point    = ETMEEPromReadWord(EEPROM_REGISTER_GUN_DRV_HTR_VOLTAGE);
   local_gun_drv_high_en_pulse_top_v   = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_HIGH_PULSE_TOP + (3*personality)));
@@ -1472,10 +1473,12 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 
 
 #define REGISTER_HEATER_CURRENT_AT_STANDBY                                                 0x0000
-#define REGISTER_ELECTROMAGNET_CURRENT                                                     0x0001
+#define REGISTER_ELECTROMAGNET_CURRENT_HIGH_ENERGY                                         0x0001
+#define REGISTER_ELECTROMAGNET_CURRENT_LOW_ENERGY                                          0x000C
 #define REGISTER_HOME_POSITION                                                             0x0005
 #define REGISTER_AFC_OFFSET                                                                0x0009
-#define REGISTER_AFC_AFT_CONTROL_VOLTAGE                                                   0x000A
+#define REGISTER_AFC_AFT_CONTROL_VOLTAGE_HIGH_ENERGY                                       0x000A
+#define REGISTER_AFC_AFT_CONTROL_VOLTAGE_LOW_ENERGY                                        0x000B
 #define REGISTER_HIGH_ENERGY_SET_POINT                                                     0x0010
 #define REGISTER_LOW_ENERGY_SET_POINT                                                      0x0011
 #define REGISTER_GUN_DRIVER_HEATER_VOLTAGE                                                 0x0020
@@ -1498,6 +1501,8 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_A_B                                0x0039
 #define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_C_D                                0x003A
 #define REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_LOW_ENERGY                           0x003B
+
+#define REGISTER_ECB_SYSTEM_SERIAL_NUMBER                                                  0x001F
 
 #define REGISTER_CMD_AFC_SELECT_AFC_MODE                                                   0x5081
 #define REGISTER_CMD_AFC_SELECT_MANUAL_MODE                                                0x5082
@@ -1565,13 +1570,26 @@ void ExecuteEthernetCommand(unsigned int personality) {
   
   if ((next_message.index & 0x0F00) == 0x0100) {
     // this is a calibration set message, route to appropriate board
-    if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
+    if ((next_message.index & 0xF000) == 0xE000) {
+      // It is a message for the ECB
+      eeprom_register = next_message.index & 0x0FFF;
+      ETMEEPromWriteWord(eeprom_register, next_message.data_0);
+      ETMEEPromWriteWord(eeprom_register + 1, next_message.data_1);
+    } else {
+      // It is a message for a slave
       SendCalibrationSetPointToSlave(next_message.index, next_message.data_1, next_message.data_0);
     }
   } else if ((next_message.index & 0x0F00) == 0x0900) {
     // this is a calibration requestion message, route to appropriate board
     // When the response is received, the data will be transfered to the GUI
-    ReadCalibrationSetPointFromSlave(next_message.index);
+    if ((next_message.index & 0xF000) == 0xE000) {
+      // It is a message for the ECB
+      eeprom_register = next_message.index & 0x0FFF;
+      eeprom_register -= 0x0800;
+      SendCalibrationDataToGUI(next_message.index - 0x0800, ETMEEPromReadWord(eeprom_register + 1), ETMEEPromReadWord(eeprom_register));
+    } else {
+      ReadCalibrationSetPointFromSlave(next_message.index);
+    }
   } else {
     // This message needs to be processsed by the ethernet control board
     switch (next_message.index) {
@@ -1581,11 +1599,18 @@ void ExecuteEthernetCommand(unsigned int personality) {
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
-    case REGISTER_ELECTROMAGNET_CURRENT:
-      local_magnet_current_set_point = next_message.data_2;
+    case REGISTER_ELECTROMAGNET_CURRENT_HIGH_ENERGY:
+      local_magnet_current_set_point_high_energy = next_message.data_2;
       eeprom_register = next_message.index + personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
+
+    case REGISTER_ELECTROMAGNET_CURRENT_LOW_ENERGY:
+      local_magnet_current_set_point_low_energy = next_message.data_2;
+      eeprom_register = next_message.index + personality;
+      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      break;
+
 
     case REGISTER_HOME_POSITION:
       local_afc_home_position = next_message.data_2;
@@ -1599,8 +1624,14 @@ void ExecuteEthernetCommand(unsigned int personality) {
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
       
-    case REGISTER_AFC_AFT_CONTROL_VOLTAGE:
-      local_afc_aft_control_voltage = next_message.data_2;
+    case REGISTER_AFC_AFT_CONTROL_VOLTAGE_HIGH_ENERGY:
+      local_afc_aft_control_voltage_high_energy = next_message.data_2;
+      eeprom_register = next_message.index;
+      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      break;
+
+    case REGISTER_AFC_AFT_CONTROL_VOLTAGE_LOW_ENERGY:
+      local_afc_aft_control_voltage_low_energy = next_message.data_2;
       eeprom_register = next_message.index;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
@@ -1712,6 +1743,13 @@ void ExecuteEthernetCommand(unsigned int personality) {
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
+    case REGISTER_ECB_SYSTEM_SERIAL_NUMBER:
+      ETMEEPromWriteWord(next_message.index, next_message.data_2);
+      global_data_A36507.system_serial_number = ETMEEPromReadWord(next_message.index);
+      //global_data_A36507.system_serial_number = next_message.data_2;
+      break;
+
+
     case REGISTER_CMD_AFC_SELECT_AFC_MODE:
       ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
 			  ETM_CAN_REGISTER_AFC_CMD_SELECT_AFC_MODE,
@@ -1766,7 +1804,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
 			  ETM_CAN_REGISTER_COOLING_CMD_RESET_BOTTLE_COUNT,
 			  0,
 			  0,
-			  next_message.data_2);
+			  MAX_SF6_REFILL_PULSES_IN_BOTTLE);
 
 
     case REGISTER_SPECIAL_ECB_RESET_ARC_AND_PULSE_COUNT:
@@ -1812,7 +1850,6 @@ void ExecuteEthernetCommand(unsigned int personality) {
       global_data_A36507.high_voltage_on_fault_counter = 0;
       break;
 
-    
     case REGISTER_SPECIAL_ECB_RESET_SLAVE:
       // DPARKER modified for testing reset while running
       if (next_message.data_2 == ETM_CAN_ADDR_ETHERNET_BOARD) {
