@@ -48,10 +48,10 @@
         <itemPath>TCPmodbus/TCPmodbus.c</itemPath>
       </logicalFolder>
       <itemPath>A36507.c</itemPath>
-      <itemPath>ETMmodbus.c</itemPath>
       <itemPath>P1395_CAN_MASTER.c</itemPath>
       <itemPath>P1395_CAN_CORE.s</itemPath>
       <itemPath>Buffern.c</itemPath>
+      <itemPath>ETM_CRC.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"

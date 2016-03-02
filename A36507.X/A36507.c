@@ -3,10 +3,14 @@
 #include "A36507_CONFIG.h"
 
 
+void CRCTest(void);
+
+unsigned int LookForDoseMessageFromReferenceDetector(void);
+
 void WriteConfigToMirror(void);
 void ReadConfigFromMirror(void);
 
-
+BUFFERBYTE64 uart1_input_buffer;
 
 #define FCY_CLK  20000000
 
@@ -221,6 +225,12 @@ RTC_DS3231 U6_DS3231;
 
 int main(void) {
   
+  CRCTest();
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+
   global_data_A36507.control_state = STATE_STARTUP;
   
   while (1) {
@@ -976,7 +986,7 @@ void UpdateDebugData(void) {
 
 
 void DoA36507(void) {
-
+  unsigned int fast_log_index;
 
 
   etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
@@ -986,7 +996,21 @@ void DoA36507(void) {
   ETMCanMasterDoCan();
   TCPmodbus_task();
   ExecuteEthernetCommand(personality_select_from_pulse_sync);
+  if (LookForDoseMessageFromReferenceDetector()) {
+    // the dose data was updated with a new value from the reference detector
+    /* 
+       DPARKER 
+       Calculate the index where the data should be placed
+       This should be the pulse index - 1;
+    */ 
 
+    fast_log_index = etm_can_master_next_pulse_count - 1;
+    if (fast_log_index & 0x0010) {
+      high_speed_data_buffer_a[(fast_log_index & 0x000F)].ionpump_readback_high_energy_target_current_reading = global_data_A36507.most_recent_ref_detector_reading;
+    } else {
+      high_speed_data_buffer_a[(fast_log_index & 0x000F)].ionpump_readback_high_energy_target_current_reading = global_data_A36507.most_recent_ref_detector_reading;
+    }
+  }
 
 
 
@@ -1353,6 +1377,23 @@ void InitializeA36507(void) {
 
   // Load System powered time from EEPROM
   ETMEEPromReadPage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&system_powered_seconds);
+
+#define UART1_BAUDRATE             112000        // 113K Baud Rate
+#define A36507_U1MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_NO_PAR_8BIT & UART_1STOPBIT)
+#define A36507_U1STA_VALUE         (UART_INT_TX & UART_TX_PIN_NORMAL & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
+#define A36507_U1BRG_VALUE         (((FCY_CLK/UART1_BAUDRATE)/16)-1)
+
+
+  U1MODE = A36507_U1MODE_VALUE;
+  U1BRG = A36507_U1BRG_VALUE;
+  U1STA = A36507_U1STA_VALUE;
+  
+  BufferByte64Initialize(&uart1_input_buffer);
+
+  _U1RXIF = 0;
+  _U1RXIE = 1;
+  _U1RXIP = 6;
+  U1MODEbits.UARTEN = 1;	// And turn the peripheral on
 
 }
 
@@ -2137,7 +2178,62 @@ void ReadConfigFromMirror(void) {
 
 
 
+void __attribute__((interrupt, no_auto_psv)) _U1RXInterrupt(void) {
+  _U1RXIF = 0;
+  while (U1STAbits.URXDA) {
+    BufferByte64WriteByte(&uart1_input_buffer, U1RXREG);
+  }
+}
 
+
+unsigned int LookForDoseMessageFromReferenceDetector(void) {
+  unsigned int crc_received = 0;
+  unsigned int message_received = 0;
+  // Look for messages in the UART Buffer;
+  // If multiple messages are found the old data is overwritten by the newer data
+  unsigned char message[9];
+  
+  while (BufferByte64BytesInBuffer(&uart1_input_buffer) >= 9) {
+    // Look for message
+    message[0] = BufferByte64ReadByte(&uart1_input_buffer);
+    if (message[0] != 0x01) {
+      continue;
+    }
+    message[1] = BufferByte64ReadByte(&uart1_input_buffer);
+    if (message[1] != 0x01) {
+      continue;
+    }
+    message[2] = BufferByte64ReadByte(&uart1_input_buffer);
+    if (message[2] != 0x04) {
+      continue;
+    }
+    message[3] = BufferByte64ReadByte(&uart1_input_buffer);
+    if (message[3] != 0x10) {
+      continue;
+    }
+    message[4] = BufferByte64ReadByte(&uart1_input_buffer);
+    if (message[4] != 0x18) {
+      continue;
+    }
+    message[5] = BufferByte64ReadByte(&uart1_input_buffer);
+    message[6] = BufferByte64ReadByte(&uart1_input_buffer);
+    message[7] = BufferByte64ReadByte(&uart1_input_buffer);
+    message[8] = BufferByte64ReadByte(&uart1_input_buffer);
+    
+    crc_received = message[8];
+    crc_received <<= 8;
+    crc_received += message[7];
+    if (crc_received == ETMCRC16(&message[0], 7)) {
+      // The CRC Matched
+      // Update the dose data for the previous pulse
+      global_data_A36507.most_recent_ref_detector_reading = message[6];
+      global_data_A36507.most_recent_ref_detector_reading <<= 8;
+      global_data_A36507.most_recent_ref_detector_reading += message[5];
+      message_received = 1;
+    }
+  }
+  return message_received;
+}
 
 
 
@@ -2149,5 +2245,52 @@ void __attribute__((interrupt, no_auto_psv)) _DefaultInterrupt(void) {
   __asm__ ("Reset");
 }
 
+
+
+void CRCTest(void) {
+  unsigned char uart_message[9];
+  unsigned int uart_message_int[5];
+
+  unsigned int result_1;
+  unsigned int result_2;
+  unsigned int result_3;
+
+  uart_message_int[0] = 0x0101;
+  uart_message_int[1] = 0x1004;
+  uart_message_int[2] = 0x8818;
+  uart_message_int[3] = 0x0200;
+  uart_message_int[4] = 0xFF16;
+
+  result_3 = ETMCRC16(&uart_message_int[0], 7);
+ 
+  uart_message[0] = 0x01;
+  uart_message[1] = 0x01;
+  uart_message[2] = 0x04;
+  uart_message[3] = 0x10;
+  uart_message[4] = 0x18;
+  uart_message[5] = 0x88;
+  uart_message[6] = 0x00;
+  uart_message[7] = 0x02;
+  uart_message[8] = 0x16;
+  
+  result_1 = ETMCRC16(&uart_message[0], 7);
+
+  uart_message[0] = 0x01;
+  uart_message[1] = 0x01;
+  uart_message[2] = 0x04;
+  uart_message[3] = 0x10;
+  uart_message[4] = 0x18;
+  uart_message[5] = 0x05;
+  uart_message[6] = 0xF7;
+  uart_message[7] = 0x26;
+  uart_message[8] = 0xC0;
+
+  result_2 = ETMCRC16(&uart_message[0], 7);
+
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+}
 
 

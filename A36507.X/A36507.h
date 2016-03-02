@@ -5,13 +5,14 @@
 #include <libpic30.h>
 #include <adc12.h>
 #include <timer.h>
+#include <uart.h>
 
 #include "ETM.h"
 //#include "ETM_ANALOG.h"
 #include "TCPmodbus.h"
-#include "ETMmodbus.h"
+//#include "ETMmodbus.h"
 #include "P1395_CAN_MASTER.h"
-
+#include "ETM_CRC.h"
 
 
 
@@ -204,6 +205,7 @@ typedef struct {
   unsigned int reset_hold_timer;
 
   unsigned int system_serial_number;
+  unsigned int most_recent_ref_detector_reading;
   
 } A36507GlobalVars;
 

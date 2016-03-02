@@ -465,8 +465,8 @@ extern ETMCanSyncMessage    etm_can_master_sync_message;
 
 
 
-//extern unsigned int etm_can_master_next_pulse_level;  // This value will get updated when a next pulse level command is received
-//extern unsigned int etm_can_master_next_pulse_count;  // This value will get updated when a next pulse level command is received
+extern unsigned int etm_can_master_next_pulse_level;  // This value will get updated when a next pulse level command is received
+extern unsigned int etm_can_master_next_pulse_count;  // This value will get updated when a next pulse level command is received
 
 
 unsigned int ETMCanMasterGetPulsePRF(void);
