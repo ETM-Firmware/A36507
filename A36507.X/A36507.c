@@ -998,12 +998,6 @@ void DoA36507(void) {
   ExecuteEthernetCommand(personality_select_from_pulse_sync);
   if (LookForDoseMessageFromReferenceDetector()) {
     // the dose data was updated with a new value from the reference detector
-    /* 
-       DPARKER 
-       Calculate the index where the data should be placed
-       This should be the pulse index - 1;
-    */ 
-
     fast_log_index = etm_can_master_next_pulse_count - 1;
     if (fast_log_index & 0x0010) {
       high_speed_data_buffer_a[(fast_log_index & 0x000F)].ionpump_readback_high_energy_target_current_reading = global_data_A36507.most_recent_ref_detector_reading;
@@ -1066,6 +1060,7 @@ void DoA36507(void) {
   local_data_ecb.log_data[3] = ETMCanMasterGetPulsePRF();
   local_data_ecb.log_data[7] = _SYNC_CONTROL_WORD;
   local_data_ecb.log_data[16] = *(unsigned int*)&board_com_ok;
+  local_data_ecb.log_data[17] = global_data_A36507.most_recent_ref_detector_reading;
   local_data_ecb.log_data[19] = global_data_A36507.system_serial_number;
   mirror_cooling.local_data[0] = MAX_SF6_REFILL_PULSES_IN_BOTTLE;
 
@@ -2188,6 +2183,7 @@ void __attribute__((interrupt, no_auto_psv)) _U1RXInterrupt(void) {
 
 unsigned int LookForDoseMessageFromReferenceDetector(void) {
   unsigned int crc_received = 0;
+  unsigned int crc_calc = 0;
   unsigned int message_received = 0;
   // Look for messages in the UART Buffer;
   // If multiple messages are found the old data is overwritten by the newer data
@@ -2223,7 +2219,10 @@ unsigned int LookForDoseMessageFromReferenceDetector(void) {
     crc_received = message[8];
     crc_received <<= 8;
     crc_received += message[7];
-    if (crc_received == ETMCRC16(&message[0], 7)) {
+
+    crc_calc = ETMCRC16(&message[0], 7);
+
+    if (crc_received == crc_calc) {
       // The CRC Matched
       // Update the dose data for the previous pulse
       global_data_A36507.most_recent_ref_detector_reading = message[6];
