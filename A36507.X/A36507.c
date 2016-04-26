@@ -1506,8 +1506,63 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
   ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, (unsigned int*)&eeprom_default_values_p_sync_per_1);
 }
 
+#define REGISTER_HEATER_CURRENT_AT_STANDBY 0x0000
+#define REGISTER_ELECTROMAGNET_CURRENT_HIGH_ENERGY 0x0001
+#define REGISTER_ELECTROMAGNET_CURRENT_LOW_ENERGY 0x000C
+#define REGISTER_HOME_POSITION 0x0005
+#define REGISTER_AFC_OFFSET 0x0009
+#define REGISTER_AFC_AFT_CONTROL_VOLTAGE_HIGH_ENERGY 0x000A
+#define REGISTER_AFC_AFT_CONTROL_VOLTAGE_LOW_ENERGY 0x000B
 
+#define REGISTER_HIGH_ENERGY_SET_POINT 0x0010
+#define REGISTER_LOW_ENERGY_SET_POINT 0x0011
+#define REGISTER_ECB_SYSTEM_SERIAL_NUMBER 0x001F
 
+#define REGISTER_GUN_DRIVER_HEATER_VOLTAGE 0x0020
+#define REGISTER_GUN_DRIVER_HIGH_ENERGY_PULSE_TOP_VOLTAGE 0x0021
+#define REGISTER_GUN_DRIVER_LOW_ENERGY_PULSE_TOP_VOLTAGE 0x0022
+#define REGISTER_GUN_DRIVER_CATHODE_VOLTAGE 0x0023
+
+#define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_A_B 0x0030
+#define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_C_D 0x0031
+#define REGISTER_PULSE_SYNC_RF_TRIGGER_AND_THYRATRON_PULSE_DELAY_HIGH_ENERGY 0x0032
+#define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_HIGH_ENERGY_A_B 0x0033
+#define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_HIGH_ENERGY_C_D 0x0034
+#define REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_HIGH_ENERGY 0x0035
+#define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_A_B 0x0036
+#define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_C_D 0x0037
+#define REGISTER_PULSE_SYNC_RF_TRIGGER_AND_THYRATRON_PULSE_DELAY_LOW_ENERGY 0x0038
+#define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_A_B 0x0039
+#define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_C_D 0x003A
+#define REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_LOW_ENERGY 0x003B
+
+#define REGISTER_CMD_AFC_SELECT_AFC_MODE 0x5202
+#define REGISTER_CMD_AFC_SELECT_MANUAL_MODE 0x5203
+#define REGISTER_CMD_AFC_MANUAL_TARGET_POSITION 0x5204
+
+#define REGISTER_CMD_COOLANT_INTERFACE_ALLOW_25_MORE_SF6_PULSES 0x6200
+#define REGISTER_CMD_COOLANT_INTERFACE_ALLOW_SF6_PULSES_WHEN_PRESSURE_BELOW_LIMIT 0x6201
+#define REGISTER_CMD_COOLANT_INTERFACE_SET_SF6_PULSES_IN_BOTTLE 0x6202
+
+#define REGISTER_CMD_ECB_RESET_FAULTS 0xE200
+
+#define REGISTER_SYSTEM_SET_TIME 0xE300
+#define REGISTER_SYSTEM_ENABLE_HIGH_SPEED_LOGGING 0xE301
+#define REGISTER_SYSTEM_DISABLE_HIGH_SPEED_LOGGING 0xE302
+#define REGISTER_SYSTEM_ECB_LOAD_FACTORY_SETTINGS_FROM_EEPROM_MIRROR_AND_REBOOT 0xE303
+
+#define REGISTER_ETM_ECB_RESET_ARC_AND_PULSE_COUNT 0xE400
+#define REGISTER_ETM_ECB_RESET_SECONDS_POWERED_HV_ON_XRAY_ON 0xE401
+#define REGISTER_ETM_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS 0xE402
+#define REGISTER_ETM_ECB_LOAD_DEFAULT_SYSTEM_SETTINGS_AND_REBOOT 0xE403
+#define REGISTER_ETM_ECB_SAVE_FACTORY_SETTINGS_TO_EEPROM_MIRROR 0xE404
+
+#define REGISTER_DEBUG_TOGGLE_RESET_DEBUG 0xE500
+#define REGISTER_DEBUG_GUN_DRIVER_RESET_FPGA 0xE501
+#define REGISTER_DEBUG_RESET_MCU 0xE502
+#define REGISTER_DEBUG_TEST_PULSE_FAULT 0xE503
+
+/*
 #define REGISTER_HEATER_CURRENT_AT_STANDBY                                                 0x0000
 #define REGISTER_ELECTROMAGNET_CURRENT_HIGH_ENERGY                                         0x0001
 #define REGISTER_ELECTROMAGNET_CURRENT_LOW_ENERGY                                          0x000C
@@ -1580,14 +1635,14 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_SPECIAL_2_5_SET_HV_LAMBDA_VOLTAGE                                         0xEF46
 #define REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START                                        0xEF47
 #define REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_STOP                                         0xEF48
-
+*/
 
 
 void ExecuteEthernetCommand(unsigned int personality) {
   ETMEthernetMessageFromGUI next_message;
   unsigned int eeprom_register;
-  unsigned int temp;
-  unsigned int temp_array[16];
+  //unsigned int temp;
+  //unsigned int temp_array[16];
 
 
   unsigned long temp_long;
@@ -1803,7 +1858,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
 
 
-    case REGISTER_CMD_GUN_DRIVER_RESET_FPGA:
+    case REGISTER_DEBUG_GUN_DRIVER_RESET_FPGA:
       ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_GUN_DRIVER_BOARD << 2)),
 			  0x8202,
 			  0,
@@ -1843,7 +1898,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
 			  MAX_SF6_REFILL_PULSES_IN_BOTTLE);
 
 
-    case REGISTER_SPECIAL_ECB_RESET_ARC_AND_PULSE_COUNT:
+    case REGISTER_ETM_ECB_RESET_ARC_AND_PULSE_COUNT:
       ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD << 2)),
 			  0x2200, // DPARKER ADD THIS TO CAN CORE WITH APPROPRIATE NAME
 			  0,
@@ -1851,29 +1906,27 @@ void ExecuteEthernetCommand(unsigned int personality) {
 			  0);
       break;
 
-    case REGISTER_SPECIAL_ECB_RESET_SECONDS_POWERED_HV_ON_XRAY_ON:
+    case REGISTER_ETM_ECB_RESET_SECONDS_POWERED_HV_ON_XRAY_ON:
       ZeroSystemPoweredTime();      
       break;
 
-    case REGISTER_SPECIAL_ECB_LOAD_DEFAULT_SETTINGS_TO_EEPROM_AND_REBOOT:
-      if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
-	LoadDefaultSystemCalibrationToEEProm();
-      }
+    case REGISTER_ETM_ECB_LOAD_DEFAULT_SYSTEM_SETTINGS_AND_REBOOT:
+      LoadDefaultSystemCalibrationToEEProm();
       __delay32(1000000);
       __asm__ ("Reset");
       break;
 
-    case REGISTER_SPECIAL_ECB_SAVE_SETTINGS_TO_EEPROM_MIRROR:
+    case REGISTER_ETM_ECB_SAVE_FACTORY_SETTINGS_TO_EEPROM_MIRROR:
       WriteConfigToMirror();
       break;
 
-    case REGISTER_SPECIAL_ECB_LOAD_SETTINGS_FROM_EEPROM_MIRROR_AND_REBOOT:
+    case REGISTER_SYSTEM_ECB_LOAD_FACTORY_SETTINGS_FROM_EEPROM_MIRROR_AND_REBOOT:
       ReadConfigFromMirror();
       __delay32(1000000);
       __asm__ ("Reset");
       break;
 
-    case REGISTER_SPECIAL_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS:
+    case REGISTER_ETM_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS:
       if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
 	SendSlaveLoadDefaultEEpromData(next_message.data_2);
       }
@@ -1886,7 +1939,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
       global_data_A36507.high_voltage_on_fault_counter = 0;
       break;
 
-    case REGISTER_SPECIAL_ECB_RESET_SLAVE:
+    case REGISTER_DEBUG_RESET_MCU:
       // DPARKER modified for testing reset while running
       if (next_message.data_2 == ETM_CAN_ADDR_ETHERNET_BOARD) {
 	__asm__ ("Reset");
@@ -1907,6 +1960,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
     */
 
+      /*
     case REGISTER_DEBUG_TOGGLE_RESET:
       if (_SYNC_CONTROL_RESET_ENABLE) {
 	_SYNC_CONTROL_RESET_ENABLE = 0;
@@ -1914,8 +1968,9 @@ void ExecuteEthernetCommand(unsigned int personality) {
 	_SYNC_CONTROL_RESET_ENABLE = 1;
       }
       break;
+      */
 
-    case REGISTER_SPECIAL_SET_TIME:
+    case REGISTER_SYSTEM_SET_TIME:
       temp_long = next_message.data_2;
       temp_long <<= 16;
       temp_long += next_message.data_1;
@@ -1923,14 +1978,14 @@ void ExecuteEthernetCommand(unsigned int personality) {
       SetDateAndTime(&U6_DS3231, &set_time);
       break;
 
-    case REGISTER_SPECIAL_TEST_PULSE_FAUL:
+    case REGISTER_DEBUG_TEST_PULSE_FAULT:
       ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD << 2)),
 			  0x22FF,
 			  0,
 			  0,
 			  0);
       break;
-
+      /*
     case REGISTER_SPECIAL_2_5_SET_DOSE_DYNAMIC_START:
       CalculatePulseSyncParams(next_message.data_2, psync_grid_stop_high_intensity_3);
       break;
@@ -2008,16 +2063,17 @@ void ExecuteEthernetCommand(unsigned int personality) {
       eeprom_register = REGISTER_LOW_ENERGY_SET_POINT + 2 * personality;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
+      */
 
-
-    case REGISTER_DEBUG_ENABLE_HIGH_SPEED_LOGGING:
+    case REGISTER_SYSTEM_ENABLE_HIGH_SPEED_LOGGING:
       _SYNC_CONTROL_HIGH_SPEED_LOGGING = 1;
       break;
       
-    case REGISTER_DEBUG_DISABLE_HIGH_SPEED_LOGGING:
+    case REGISTER_SYSTEM_DISABLE_HIGH_SPEED_LOGGING:
       _SYNC_CONTROL_HIGH_SPEED_LOGGING = 0;
       break;
-      
+
+      /*
     case REGISTER_DEBUG_TOGGLE_HV_ENABLE:
       if (_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV) {
 	_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
@@ -2033,7 +2089,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
 	_SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
       }
       break;
-
+     
     case REGISTER_DEBUG_TOGGLE_COOLING_FAULT:
       if (_SYNC_CONTROL_COOLING_FAULT) {
 	_SYNC_CONTROL_COOLING_FAULT = 0;
@@ -2041,6 +2097,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
 	_SYNC_CONTROL_COOLING_FAULT = 1;
       }
       break;
+      */
 
     case REGISTER_DEBUG_TOGGLE_RESET_DEBUG:
       if (_SYNC_CONTROL_CLEAR_DEBUG_DATA) {
