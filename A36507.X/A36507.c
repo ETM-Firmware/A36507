@@ -2,6 +2,11 @@
 #include "FIRMWARE_VERSION.h"
 #include "A36507_CONFIG.h"
 
+unsigned int test_uart_data_recieved;
+unsigned int test_ref_det_recieved;
+unsigned int test_ref_det_good_message;
+
+
 
 void CRCTest(void);
 
@@ -966,11 +971,11 @@ void UpdateDebugData(void) {
   } else {
     debug_data_ecb.debug_reg[2]  = 0;
   }
-  debug_data_ecb.debug_reg[3]  = 3; 
+  debug_data_ecb.debug_reg[3]  = test_ref_det_recieved; 
   
-  debug_data_ecb.debug_reg[4]  = 4; 
-  debug_data_ecb.debug_reg[5]  = 5; 
-  debug_data_ecb.debug_reg[6]  = 6; 
+  debug_data_ecb.debug_reg[4]  = test_ref_det_good_message; 
+  debug_data_ecb.debug_reg[5]  = global_data_A36507.most_recent_ref_detector_reading; 
+  debug_data_ecb.debug_reg[6]  = test_uart_data_recieved; 
   debug_data_ecb.debug_reg[7]  = 7; 
 
   debug_data_ecb.debug_reg[8]  = 8; 
@@ -1002,7 +1007,7 @@ void DoA36507(void) {
     if (fast_log_index & 0x0010) {
       high_speed_data_buffer_a[(fast_log_index & 0x000F)].ionpump_readback_high_energy_target_current_reading = global_data_A36507.most_recent_ref_detector_reading;
     } else {
-      high_speed_data_buffer_a[(fast_log_index & 0x000F)].ionpump_readback_high_energy_target_current_reading = global_data_A36507.most_recent_ref_detector_reading;
+      high_speed_data_buffer_b[(fast_log_index & 0x000F)].ionpump_readback_high_energy_target_current_reading = global_data_A36507.most_recent_ref_detector_reading;
     }
   }
 
@@ -2237,7 +2242,6 @@ void __attribute__((interrupt, no_auto_psv)) _U1RXInterrupt(void) {
   }
 }
 
-
 unsigned int LookForDoseMessageFromReferenceDetector(void) {
   unsigned int crc_received = 0;
   unsigned int crc_calc = 0;
@@ -2248,6 +2252,7 @@ unsigned int LookForDoseMessageFromReferenceDetector(void) {
   
   while (BufferByte64BytesInBuffer(&uart1_input_buffer) >= 9) {
     // Look for message
+    test_uart_data_recieved++;
     message[0] = BufferByte64ReadByte(&uart1_input_buffer);
     if (message[0] != 0x01) {
       continue;
@@ -2278,8 +2283,9 @@ unsigned int LookForDoseMessageFromReferenceDetector(void) {
     crc_received += message[7];
 
     crc_calc = ETMCRC16(&message[0], 7);
-
+    test_ref_det_recieved++;
     if (crc_received == crc_calc) {
+      test_ref_det_good_message++;
       // The CRC Matched
       // Update the dose data for the previous pulse
       global_data_A36507.most_recent_ref_detector_reading = message[6];
