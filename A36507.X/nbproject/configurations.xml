@@ -78,7 +78,6 @@
         <linkerTool>
           <linkerLibItems>
             <linkerLibFileItem>../../ETM_LIBRARY/Version_02/lib/ETM_CORE_30F6014A.a</linkerLibFileItem>
-            <linkerLibFileItem>../../ETM_LIBRARY/Version_01/lib/ETM_EEPROM_EXTERNAL.a</linkerLibFileItem>
           </linkerLibItems>
         </linkerTool>
         <archiverTool>

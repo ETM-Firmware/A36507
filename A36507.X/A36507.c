@@ -1264,7 +1264,7 @@ void InitializeA36507(void) {
     _LATG2 = 1;
     __delay32(25);
   }
-
+  ETMEEPromUseExternal();
   ETMEEPromConfigureExternalDevice(EEPROM_SIZE_8K_BYTES, FCY_CLK, ETM_I2C_400K_BAUD, EEPROM_I2C_ADDRESS_0, 1);
   ConfigureDS3231(&U6_DS3231, I2C_PORT, RTC_DEFAULT_CONFIG, FCY_CLK, ETM_I2C_400K_BAUD);
   

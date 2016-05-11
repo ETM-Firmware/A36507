@@ -102,8 +102,8 @@ const unsigned int eeprom_default_values_hv_lambda[16]   = {DEFAULT_HV_LAMBDA_SE
 							    DEFAULT_UNUSED_EEPROM,
 							    DEFAULT_UNUSED_EEPROM,
 							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
 							    DEFAULT_EEPROM_OK,
+							    DEFAULT_UNUSED_EEPROM,
 							    DEFAULT_TOP_LEVEL_SERIAL_NUMBER};
 
 const unsigned int eeprom_default_values_gun_driver[16]  = {DEFAULT_GUN_DRIVER_HEATER_CURRENT,
