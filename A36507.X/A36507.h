@@ -12,7 +12,7 @@
 #include "TCPmodbus.h"
 //#include "ETMmodbus.h"
 #include "P1395_CAN_MASTER.h"
-#include "ETM_CRC.h"
+//#include "ETM_CRC.h"
 
 
 
@@ -206,6 +206,8 @@ typedef struct {
 
   unsigned int system_serial_number;
   unsigned int most_recent_ref_detector_reading;
+
+  unsigned int eeprom_failure;
   
 } A36507GlobalVars;
 
@@ -224,6 +226,7 @@ extern A36507GlobalVars global_data_A36507;
 #define _FAULT_X_RAY_ON_LOGIC_ERROR                     _FAULT_0
 #define _FAULT_REPEATED_DRIVE_UP_FAULT                  _FAULT_1
 #define _FAULT_REPEATED_HV_ON_FAULT                     _FAULT_2
+#define _FAULT_EEPROM_FAILURE                           _FAULT_3
 
 // DPAKRER  - Need to evaluate how these are used under new control system
 #define _STATUS_PERSONALITY_LOADED                      _LOGGED_0
@@ -298,6 +301,8 @@ extern A36507GlobalVars global_data_A36507;
 
 #define EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT                0x0010
 #define EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT                 0x0011
+#define EEPROM_REGISTER_EEPROM_OK_CHECK                             0x001D
+#define EEPROM_REGISTER_TOP_LEVEL_SERIAL_NUMBER                     0x001F
 
 #define EEPROM_REGISTER_GUN_DRV_HTR_VOLTAGE                         0x0020
 #define EEPROM_REGISTER_GUN_DRV_HIGH_PULSE_TOP                      0x0021

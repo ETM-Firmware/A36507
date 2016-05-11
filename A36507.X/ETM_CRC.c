@@ -1,5 +1,14 @@
 #include "ETM_CRC.h"
 
+unsigned int ETMDoCRC(const void *c_ptr, unsigned int len, unsigned int initial_value, const unsigned int *value_ptr);
+/*
+  This is a generic CRC handling function
+*/
+
+
+#define ETM_CRC_16_SEED                      0x0000
+#define ETM_CRC_MODBUS_SEED                  0xFFFF
+
 const unsigned int crc_lookup_table_A001[256] = {
   0x0000, 0xc0c1, 0xc181, 0x0140, 0xc301, 0x03c0, 0x0280, 0xc241,
   0xc601, 0x06c0, 0x0780, 0xc741, 0x0500, 0xc5c1, 0xc481, 0x0440,
@@ -34,17 +43,25 @@ const unsigned int crc_lookup_table_A001[256] = {
   0x4400, 0x84c1, 0x8581, 0x4540, 0x8701, 0x47c0, 0x4680, 0x8641,
   0x8201, 0x42c0, 0x4380, 0x8341, 0x4100, 0x81c1, 0x8081, 0x4040
 };
-  
-#define CRC_SEED_VALUE 0x0000
 
+
+  
 unsigned int ETMCRC16(const void *c_ptr, unsigned int len) {
-  unsigned int crc = CRC_SEED_VALUE;
+  return ETMDoCRC(c_ptr, len, ETM_CRC_16_SEED, crc_lookup_table_A001);
+}
+
+unsigned int ETMCRCModbus(const void *c_ptr, unsigned int len) {
+  return ETMDoCRC(c_ptr, len, ETM_CRC_MODBUS_SEED, crc_lookup_table_A001);
+}
+
+unsigned int ETMDoCRC(const void *c_ptr, unsigned int len, unsigned int initial_value, const unsigned int *value_ptr) {
+  unsigned int crc = initial_value;
   const unsigned char *data_ptr = c_ptr;
   unsigned int crc_comb_val;
 
   while (len--) {
     crc_comb_val = crc ^ *data_ptr++;
-    crc = (crc >> 8) ^ crc_lookup_table_A001[crc_comb_val & 0x00ff];
+    crc = (crc >> 8) ^ value_ptr[crc_comb_val & 0x00ff];
   }
-  return crc;
+  return crc;  
 }

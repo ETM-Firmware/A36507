@@ -16,74 +16,133 @@
 #define GUN_DRIVER_HEATER_WARM_UP_TIME       300   // 5 minutes
 
 
-
-// Default Control Parameters to load into EEPROM For 2.5 MeV System
-
-#define DEFAULT_MAGNITRON_HEATER_CURRENT                           8000
-#define DEFAULT_MAGNET_CURRENT_PER_1                              15200
-#define DEFAULT_MAGNET_CURRENT_PER_2                              15200
-#define DEFAULT_MAGNET_CURRENT_PER_3                              15200
-#define DEFAULT_MAGNET_CURRENT_PER_4                              15200
-#define DEFAULT_AFC_HOME_PER_1                                    23000
-#define DEFAULT_AFC_HOME_PER_2                                    23000
-#define DEFAULT_AFC_HOME_PER_3                                    23000
-#define DEFAULT_AFC_HOME_PER_4                                    23000
+// Page 0
+#define DEFAULT_MAGNETRON_HEATER_CURRENT                           8000
+#define DEFAULT_ELECTROMAGNET_CURRENT                             15200
+#define DEFAULT_ELECTROMAGNET_CURRENT_LOW                         15200
+#define DEFAULT_AFC_HOME_POSITION                                 23000
+#define DEFAULT_AFT_CONTROL_VOLTAGE                                2000
+#define DEFAULT_AFT_CONTROL_VOLTAGE_LOW                            2000
 
 
-#define DEFAULT_HV_LAMBDA_HIGH_PER_1                              14000
-#define DEFAULT_HV_LAMBDA_LOW_PER_1                               14000
-#define DEFAULT_HV_LAMBDA_HIGH_PER_2                              14000
-#define DEFAULT_HV_LAMBDA_LOW_PER_2                               14000
-#define DEFAULT_HV_LAMBDA_HIGH_PER_3                              14000
-#define DEFAULT_HV_LAMBDA_LOW_PER_3                               14000
-#define DEFAULT_HV_LAMBDA_HIGH_PER_4                              14000
-#define DEFAULT_HV_LAMBDA_LOW_PER_4                               14000
+// Page 1
+#define DEFAULT_HV_LAMBDA_SET_POINT                               14000
+#define DEFAULT_HV_LAMBDA_SET_POINT_LOW                           14000
+#define DEFAULT_TOP_LEVEL_SERIAL_NUMBER                               1
+#define DEFAULT_EEPROM_OK                                        0xACAC
 
 
-#define DEFAULT_GUN_DRV_HEATER_VOLT                                6300
-#define DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_1                        840
-#define DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_1                         840
-#define DEFAULT_GUN_DRV_CATHODE_PER_1                             20000
-#define DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_2                        840
-#define DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_2                         840
-#define DEFAULT_GUN_DRV_CATHODE_PER_2                             20000
-#define DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_3                        840
-#define DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_3                         840
-#define DEFAULT_GUN_DRV_CATHODE_PER_3                             20000
-#define DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_4                        840
-#define DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_4                         840
-#define DEFAULT_GUN_DRV_CATHODE_PER_4                             20000
+// Page 2
+#define DEFAULT_GUN_DRIVER_HEATER_CURRENT                          1450
+#define DEFAULT_GUN_DRIVER_PULSE_TOP                                840
+#define DEFAULT_GUN_DRIVER_PULSE_TOP_LOW                            840
+#define DEFAULT_GUN_DRIVER_CATHODE_VOLTAGE                        20000
 
 
-#define DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_A                  76
-#define DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_B                  76
-#define DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_C                  76
-#define DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_D                  76
-#define DEFAULT_P_SYNC_HIGH_THYRATRON_DELAY_PER_1                     0
-#define DEFAULT_P_SYNC_HIGH_DOSE_SAMPLE_DELAY_PER_1                 100
+// Page 3,4,5,6
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_3                         25
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_2                         50
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_1                         75
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_0                         100
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_3_LOW                     25
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_2_LOW                     50
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_1_LOW                     75
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_0_LOW                     100
 
-#define DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_A                 196
-#define DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_B                 196
-#define DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_C                 196
-#define DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_D                 196
-#define DEFAULT_P_SYNC_HIGH_AFC_SAMPLE_DELAY_PER_1                  150
-#define DEFAULT_P_SYNC_HIGH_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1    175
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_3                          200
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_2                          150
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_1                          125
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_0                          105
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_3_LOW                      200
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_2_LOW                      150
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_1_LOW                      125
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_0_LOW                      105
 
-#define DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_A                   76
-#define DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_B                   76
-#define DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_C                   76
-#define DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_D                   76
-#define DEFAULT_P_SYNC_LOW_THYRATRON_DELAY_PER_1                      0
-#define DEFAULT_P_SYNC_LOW_DOSE_SAMPLE_DELAY_PER_1                  100
+#define DEFAULT_PULSE_SYNC_THYRATRON_DELAY                            0
+#define DEFAULT_PULSE_SYNC_THYRATRON_DELAY_LOW                        0
+#define DEFAULT_PULSE_SYNC_HV_LAMBDA_TRIGGER_DELAY                    0
+#define DEFAULT_PULSE_SYNC_HV_LAMBDA_TRIGGER_DELAY_LOW                0
+#define DEFAULT_PULSE_SYNC_AFC_SAMPLE_DELAY                         150                        
+#define DEFAULT_PULSE_SYNC_AFC_SAMPLE_DELAY_LOW                     150
+#define DEFAULT_PULSE_SYNC_MAGNETRON_SAMPLE_DELAY                   150
+#define DEFAULT_PULSE_SYNC_MAGNETRON_SAMPLE_DELAY_LOW               150
 
-#define DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_A                  196
-#define DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_B                  196
-#define DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_C                  196
-#define DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_D                  196
-#define DEFAULT_P_SYNC_LOW_AFC_SAMPLE_DELAY_PER_1                   150
-#define DEFAULT_P_SYNC_LOW_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1     175
 
 #define DEFAULT_UNUSED_EEPROM                                         0
+
+
+const unsigned int eeprom_default_values_htr_mag_afc[16] = {DEFAULT_MAGNETRON_HEATER_CURRENT,
+							    DEFAULT_ELECTROMAGNET_CURRENT,
+							    DEFAULT_ELECTROMAGNET_CURRENT,
+							    DEFAULT_ELECTROMAGNET_CURRENT,
+							    DEFAULT_ELECTROMAGNET_CURRENT,
+							    DEFAULT_AFC_HOME_POSITION,
+							    DEFAULT_AFC_HOME_POSITION,
+							    DEFAULT_AFC_HOME_POSITION,
+							    DEFAULT_AFC_HOME_POSITION,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_AFT_CONTROL_VOLTAGE,
+							    DEFAULT_AFT_CONTROL_VOLTAGE_LOW,
+							    DEFAULT_ELECTROMAGNET_CURRENT_LOW,
+							    DEFAULT_ELECTROMAGNET_CURRENT_LOW,
+							    DEFAULT_ELECTROMAGNET_CURRENT_LOW,
+							    DEFAULT_ELECTROMAGNET_CURRENT_LOW};
+
+
+const unsigned int eeprom_default_values_hv_lambda[16]   = {DEFAULT_HV_LAMBDA_SET_POINT,
+							    DEFAULT_HV_LAMBDA_SET_POINT_LOW,
+							    DEFAULT_HV_LAMBDA_SET_POINT,
+							    DEFAULT_HV_LAMBDA_SET_POINT_LOW,
+							    DEFAULT_HV_LAMBDA_SET_POINT,
+							    DEFAULT_HV_LAMBDA_SET_POINT_LOW,
+							    DEFAULT_HV_LAMBDA_SET_POINT,
+							    DEFAULT_HV_LAMBDA_SET_POINT_LOW,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_EEPROM_OK,
+							    DEFAULT_TOP_LEVEL_SERIAL_NUMBER};
+
+const unsigned int eeprom_default_values_gun_driver[16]  = {DEFAULT_GUN_DRIVER_HEATER_CURRENT,
+							    DEFAULT_GUN_DRIVER_PULSE_TOP,
+							    DEFAULT_GUN_DRIVER_PULSE_TOP_LOW,
+							    DEFAULT_GUN_DRIVER_CATHODE_VOLTAGE,
+							    DEFAULT_GUN_DRIVER_PULSE_TOP,
+							    DEFAULT_GUN_DRIVER_PULSE_TOP_LOW,
+							    DEFAULT_GUN_DRIVER_CATHODE_VOLTAGE,
+							    DEFAULT_GUN_DRIVER_PULSE_TOP,
+							    DEFAULT_GUN_DRIVER_PULSE_TOP_LOW,
+							    DEFAULT_GUN_DRIVER_CATHODE_VOLTAGE,
+							    DEFAULT_GUN_DRIVER_PULSE_TOP,
+							    DEFAULT_GUN_DRIVER_PULSE_TOP_LOW,
+							    DEFAULT_GUN_DRIVER_CATHODE_VOLTAGE,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_UNUSED_EEPROM};
+
+const unsigned int eeprom_default_values_p_sync_per_1[16]= {((DEFAULT_PULSE_SYNC_PULSE_START_VAL_2 << 8) + DEFAULT_PULSE_SYNC_PULSE_START_VAL_3),
+							    ((DEFAULT_PULSE_SYNC_PULSE_START_VAL_0 << 8) + DEFAULT_PULSE_SYNC_PULSE_START_VAL_1),
+							    ((DEFAULT_PULSE_SYNC_HV_LAMBDA_TRIGGER_DELAY << 8) + DEFAULT_PULSE_SYNC_THYRATRON_DELAY),
+							    DEFAULT_UNUSED_EEPROM,
+							    ((DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_2 << 8) + DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_3),
+							    ((DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_0 << 8) + DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_1),
+							    ((DEFAULT_PULSE_SYNC_MAGNETRON_SAMPLE_DELAY << 8) + DEFAULT_PULSE_SYNC_AFC_SAMPLE_DELAY),
+							    DEFAULT_UNUSED_EEPROM,
+							    ((DEFAULT_PULSE_SYNC_PULSE_START_VAL_2_LOW << 8) + DEFAULT_PULSE_SYNC_PULSE_START_VAL_3_LOW),
+							    ((DEFAULT_PULSE_SYNC_PULSE_START_VAL_0_LOW << 8) + DEFAULT_PULSE_SYNC_PULSE_START_VAL_1_LOW),
+							    ((DEFAULT_PULSE_SYNC_HV_LAMBDA_TRIGGER_DELAY_LOW << 8) + DEFAULT_PULSE_SYNC_THYRATRON_DELAY_LOW),
+							    DEFAULT_UNUSED_EEPROM,	
+							    ((DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_2_LOW << 8) + DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_3_LOW),
+							    ((DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_0_LOW << 8) + DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_1_LOW),
+							    ((DEFAULT_PULSE_SYNC_MAGNETRON_SAMPLE_DELAY_LOW << 8) + DEFAULT_PULSE_SYNC_AFC_SAMPLE_DELAY_LOW),
+							    DEFAULT_UNUSED_EEPROM};
+
+
+
+
 
 
 #define MAX_SF6_REFILL_PULSES_IN_BOTTLE                             2100

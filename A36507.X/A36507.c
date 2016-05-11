@@ -39,74 +39,6 @@ _FICD(PGD);                                                               //
 
 const unsigned int FilamentLookUpTable[64] = {FILAMENT_LOOK_UP_TABLE_VALUES_FOR_MG5193};
 
-const unsigned int eeprom_default_values_htr_mag_afc[16] = {DEFAULT_MAGNITRON_HEATER_CURRENT,
-							    DEFAULT_MAGNET_CURRENT_PER_1,
-							    DEFAULT_MAGNET_CURRENT_PER_2,
-							    DEFAULT_MAGNET_CURRENT_PER_3,
-							    DEFAULT_MAGNET_CURRENT_PER_4,
-							    DEFAULT_AFC_HOME_PER_1,
-							    DEFAULT_AFC_HOME_PER_2,
-							    DEFAULT_AFC_HOME_PER_3,
-							    DEFAULT_AFC_HOME_PER_4,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM};
-
-const unsigned int eeprom_default_values_hv_lambda[16]   = {DEFAULT_HV_LAMBDA_HIGH_PER_1,
-							    DEFAULT_HV_LAMBDA_LOW_PER_1,
-							    DEFAULT_HV_LAMBDA_HIGH_PER_2,
-							    DEFAULT_HV_LAMBDA_LOW_PER_2,
-							    DEFAULT_HV_LAMBDA_HIGH_PER_3,
-							    DEFAULT_HV_LAMBDA_LOW_PER_3,
-							    DEFAULT_HV_LAMBDA_HIGH_PER_4,
-							    DEFAULT_HV_LAMBDA_LOW_PER_4,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM};
-
-const unsigned int eeprom_default_values_gun_driver[16]  = {DEFAULT_GUN_DRV_HEATER_VOLT,
-							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_1,
-							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_1,
-							    DEFAULT_GUN_DRV_CATHODE_PER_1,
-							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_2,
-							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_2,
-							    DEFAULT_GUN_DRV_CATHODE_PER_2,
-							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_3,
-							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_3,
-							    DEFAULT_GUN_DRV_CATHODE_PER_3,
-							    DEFAULT_GUN_DRV_HIGH_PULSE_TOP_PER_4,
-							    DEFAULT_GUN_DRV_LOW_PULSE_TOP_PER_4,
-							    DEFAULT_GUN_DRV_CATHODE_PER_4,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM};
-
-const unsigned int eeprom_default_values_p_sync_per_1[16]= {((DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_A),
-							    ((DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_HIGH_GRID_DELAY_PER_1_DOSE_C),
-							    ((DEFAULT_P_SYNC_HIGH_DOSE_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_HIGH_THYRATRON_DELAY_PER_1),
-							    DEFAULT_UNUSED_EEPROM,
-							    ((DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_A),
-							    ((DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_HIGH_GRID_WIDTH_PER_1_DOSE_C),
-							    ((DEFAULT_P_SYNC_HIGH_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_HIGH_AFC_SAMPLE_DELAY_PER_1),
-							    DEFAULT_UNUSED_EEPROM,
-							    ((DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_A),
-							    ((DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_LOW_GRID_DELAY_PER_1_DOSE_C),
-							    ((DEFAULT_P_SYNC_LOW_DOSE_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_LOW_THYRATRON_DELAY_PER_1),
-							    DEFAULT_UNUSED_EEPROM,	
-							    ((DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_B << 8) + DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_A),
-							    ((DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_D << 8) + DEFAULT_P_SYNC_LOW_GRID_WIDTH_PER_1_DOSE_C),
-							    ((DEFAULT_P_SYNC_LOW_MAGNETRON_CURRENT_SAMPLE_DELAY_PER_1 << 8) + DEFAULT_P_SYNC_LOW_AFC_SAMPLE_DELAY_PER_1),
-							    DEFAULT_UNUSED_EEPROM};
-
 
 
 // ---------------------- Control Functions ---------------------------- //
@@ -312,6 +244,9 @@ void DoStateMachine(void) {
     _STATUS_PERSONALITY_LOADED = 1;
     personality_loaded = 1;
     ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
+    if (global_data_A36507.eeprom_failure) {
+      global_data_A36507.control_state = STATE_FAULT_SYSTEM;
+    }
     CalculateHeaterWarmupTimers();     // Calculate all of the warmup counters based on previous warmup completed
     while (global_data_A36507.control_state == STATE_WAITING_FOR_INITIALIZATION) {
       DoA36507();
@@ -1012,6 +947,10 @@ void DoA36507(void) {
   }
 
 
+  if (global_data_A36507.eeprom_failure) {
+    _FAULT_EEPROM_FAILURE = 1;
+  }
+
 
   // Figure out if the customer has enabled XRAYs before they should have
   // If so set a fault that can only be cleared with a reset command
@@ -1336,7 +1275,7 @@ void InitializeA36507(void) {
   // Initialize the Can module
   ETMCanMasterInitialize(CAN_PORT_1, FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
   ETMCanMasterLoadConfiguration(36507, 251, ETMEEPromReadWord(0x0181), FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, ETMEEPromReadWord(0x0180));
-  global_data_A36507.system_serial_number = ETMEEPromReadWord(0x001F);
+  global_data_A36507.system_serial_number = ETMEEPromReadWord(EEPROM_REGISTER_TOP_LEVEL_SERIAL_NUMBER);
   // Initialize TCPmodbus Module
   ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168.70.15
   ip_config.ip_addr        = 0x6346A8C0;  // 192.168.70.99
@@ -1437,6 +1376,19 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   }
   // Personality is a register offset
   
+  // Check the status of the EEPROM
+  if (ETMEEPromReadWord(EEPROM_REGISTER_EEPROM_OK_CHECK) != 0xACAC) {
+    // DPARKER consider doing more error checking here
+    LoadDefaultSystemCalibrationToEEProm();
+    __delay32(1000000);
+  }
+  
+  global_data_A36507.eeprom_failure = 0;
+  if (ETMEEPromReadWord(EEPROM_REGISTER_EEPROM_OK_CHECK) != 0xACAC) {
+    // There is a EEPROM failure
+    global_data_A36507.eeprom_failure = 1;
+  }
+
   // Load data for HV Lambda
   local_hv_lambda_low_en_set_point    = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT + (2*personality)));
   local_hv_lambda_high_en_set_point   = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT + (2*personality)));
@@ -2323,7 +2275,9 @@ void CRCTest(void) {
   uart_message_int[3] = 0x0200;
   uart_message_int[4] = 0xFF16;
 
-  result_3 = ETMCRC16(&uart_message_int[0], 7);
+  result_1 = ETMCRC16(&uart_message_int[0], 6);
+  result_2 = ETMCRCModbus(&uart_message_int[0], 6);
+
  
   uart_message[0] = 0x01;
   uart_message[1] = 0x01;
@@ -2335,7 +2289,11 @@ void CRCTest(void) {
   uart_message[7] = 0x02;
   uart_message[8] = 0x16;
   
-  result_1 = ETMCRC16(&uart_message[0], 7);
+  result_1 = ETMCRC16(&uart_message[0], 6);
+  result_2 = ETMCRCModbus(&uart_message[0], 6);
+  Nop();
+  Nop();
+  Nop();
 
   uart_message[0] = 0x01;
   uart_message[1] = 0x01;
