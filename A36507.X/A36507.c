@@ -1002,6 +1002,9 @@ void DoA36507(void) {
   // Load log_data Memory for types that can not be mapped directly into memory
   local_data_ecb.log_data[0] = global_data_A36507.control_state;
   local_data_ecb.log_data[3] = ETMCanMasterGetPulsePRF();
+  local_data_ecb.log_data[4] = global_data_A36507.thyratron_warmup_remaining;
+  local_data_ecb.log_data[5] = global_data_A36507.magnetron_warmup_remaining;
+  local_data_ecb.log_data[6] = global_data_A36507.gun_warmup_remaining;
   local_data_ecb.log_data[7] = _SYNC_CONTROL_WORD;
   local_data_ecb.log_data[16] = *(unsigned int*)&board_com_ok;
   local_data_ecb.log_data[17] = global_data_A36507.most_recent_ref_detector_reading;
@@ -1056,50 +1059,53 @@ void DoA36507(void) {
       mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
 
       // Update the warmup counters
-      if (thyratron_warmup_counter_seconds > 0) {
-	thyratron_warmup_counter_seconds--;
+      if (!_PULSE_SYNC_PFN_FAN_FAULT) {
+	if (global_data_A36507.thyratron_warmup_remaining > 0) {
+	  global_data_A36507.thyratron_warmup_remaining--;
+	}
       } else {
-	global_data_A36507.thyratron_heater_last_warm_seconds = mem_time_seconds_now;
+	global_data_A36507.thyratron_warmup_remaining += 2;
       }
+      if (global_data_A36507.thyratron_warmup_remaining >= THYRATRON_WARM_UP_TIME) {
+	global_data_A36507.thyratron_warmup_remaining = THYRATRON_WARM_UP_TIME;
+      }
+      
       
       if ((board_com_ok.heater_magnet_board) && (_HEATER_MAGNET_HEATER_OK)) {
 	// The Magnetron heater is on
-	if (magnetron_heater_warmup_counter_seconds > 0) {
-	  magnetron_heater_warmup_counter_seconds--;
-	} else {
-	  global_data_A36507.magnetron_heater_last_warm_seconds = mem_time_seconds_now;
+	if (global_data_A36507.magnetron_warmup_remaining > 0) {
+	  global_data_A36507.magnetron_warmup_remaining--;
 	}
       } else {
-	magnetron_heater_warmup_counter_seconds += 2;
-	if (magnetron_heater_warmup_counter_seconds >= MAGNETRON_HEATER_WARM_UP_TIME) {
-	  magnetron_heater_warmup_counter_seconds = MAGNETRON_HEATER_WARM_UP_TIME;
-	}
+	global_data_A36507.magnetron_warmup_remaining += 2;
       }
-	
+      if (global_data_A36507.magnetron_warmup_remaining >= MAGNETRON_HEATER_WARM_UP_TIME) {
+	global_data_A36507.magnetron_warmup_remaining = MAGNETRON_HEATER_WARM_UP_TIME;
+      }
+
+      
       if (board_com_ok.gun_driver_board && _GUN_DRIVER_HEATER_RAMP_COMPLETE) {
 	// The gun heater is on
-	if (gun_driver_heater_warmup_counter_seconds > 0) {
-	  gun_driver_heater_warmup_counter_seconds--;
-	} else {
-	  global_data_A36507.gun_driver_heater_last_warm_seconds = mem_time_seconds_now;
+	if (global_data_A36507.gun_warmup_remaining > 0) {
+	  global_data_A36507.gun_warmup_remaining--;
 	}
       } else {
-	gun_driver_heater_warmup_counter_seconds += 2;
-	if (gun_driver_heater_warmup_counter_seconds >= GUN_DRIVER_HEATER_WARM_UP_TIME) {
-	  gun_driver_heater_warmup_counter_seconds = GUN_DRIVER_HEATER_WARM_UP_TIME;
-	}
+	global_data_A36507.gun_warmup_remaining += 2;
       }
-      // Check for warmup done
+      if (global_data_A36507.gun_warmup_remaining >= GUN_DRIVER_HEATER_WARM_UP_TIME) {
+	global_data_A36507.gun_warmup_remaining = GUN_DRIVER_HEATER_WARM_UP_TIME;
+      }
+      
       
 #ifdef __IGNORE_HEATER_MAGNET_MODULE
-      magnetron_heater_warmup_counter_seconds = 0;
+      global_data_A36507.magnetron_warmup_remaining = 0;
 #endif
       
 #ifdef __IGNORE_GUN_DRIVER_MODULE
-      gun_driver_heater_warmup_counter_seconds = 0;
+      global_data_A36507.gun_warmup_remaining = 0;
 #endif
       
-      if ((thyratron_warmup_counter_seconds) || (magnetron_heater_warmup_counter_seconds) || (gun_driver_heater_warmup_counter_seconds)) {
+      if ((global_data_A36507.thyratron_warmup_remaining) || (global_data_A36507.magnetron_warmup_remaining) || (global_data_A36507.gun_warmup_remaining)) {
 	global_data_A36507.warmup_done = 0;
       } else {
 	global_data_A36507.warmup_done = 1;
@@ -1110,9 +1116,8 @@ void DoA36507(void) {
     // Run once a second at 250 milliseconds
     if (can_master_millisecond_counter == 250) {
       // Write Warmup Done Timers to EEPROM
-      if (global_data_A36507.thyratron_heater_last_warm_seconds > 10) {
-	ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 6, (unsigned int*)&global_data_A36507.magnetron_heater_last_warm_seconds);
-      }
+      global_data_A36507.last_recorded_warmup_seconds = mem_time_seconds_now;
+      ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 5, (unsigned int*)&global_data_A36507.last_recorded_warmup_seconds);
     } // End of tasks that happen when millisecond = 250
     
 
@@ -1335,38 +1340,26 @@ void InitializeA36507(void) {
   U1MODEbits.UARTEN = 1;	// And turn the peripheral on
 
 }
-
-
+ 
+ 
 void CalculateHeaterWarmupTimers(void) {
   unsigned long difference;
   // Read the warmup timers stored in EEPROM
-  ETMEEPromReadPage(EEPROM_PAGE_HEATER_TIMERS, 6, (unsigned int*)&global_data_A36507.magnetron_heater_last_warm_seconds);
+  ETMEEPromReadPage(EEPROM_PAGE_HEATER_TIMERS, 5, (unsigned int*)&global_data_A36507.last_recorded_warmup_seconds);
   ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
   mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
 
-  // Calculate new magnetron heater warm up time remaining
-  difference = mem_time_seconds_now - global_data_A36507.magnetron_heater_last_warm_seconds;
-  if (difference > (MAGNETRON_HEATER_WARM_UP_TIME >> 1)) {
-    magnetron_heater_warmup_counter_seconds = MAGNETRON_HEATER_WARM_UP_TIME;    
-  } else {
-    magnetron_heater_warmup_counter_seconds = (difference << 1);
+  // Calculate new warm up time remaining
+  difference = mem_time_seconds_now - global_data_A36507.last_recorded_warmup_seconds;
+  if (difference >= 0x0E00) {
+    difference = 0x0E00;
   }
+  difference *= 2;
 
-  // Calculate new thyratron warm up time remaining
-  difference = mem_time_seconds_now - global_data_A36507.thyratron_heater_last_warm_seconds;
-  if (difference > (THYRATRON_WARM_UP_TIME >> 1)) {
-    thyratron_warmup_counter_seconds = THYRATRON_WARM_UP_TIME;    
-  } else {
-    thyratron_warmup_counter_seconds = (difference << 1);
-  }
-  
-  // Calculate new gun driver heater warm up time remaining
-  difference = mem_time_seconds_now - global_data_A36507.gun_driver_heater_last_warm_seconds;
-  if (difference > (GUN_DRIVER_HEATER_WARM_UP_TIME >> 1)) {
-    gun_driver_heater_warmup_counter_seconds = GUN_DRIVER_HEATER_WARM_UP_TIME;
-  } else {
-    gun_driver_heater_warmup_counter_seconds = (difference << 1);
-  }
+  global_data_A36507.thyratron_warmup_remaining += difference;
+  global_data_A36507.magnetron_warmup_remaining += difference;
+  global_data_A36507.gun_warmup_remaining += difference;
+
 }
 
 
@@ -2267,7 +2260,6 @@ void CRCTest(void) {
 
   unsigned int result_1;
   unsigned int result_2;
-  unsigned int result_3;
 
   uart_message_int[0] = 0x0101;
   uart_message_int[1] = 0x1004;

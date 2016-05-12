@@ -160,10 +160,10 @@ typedef struct {
   unsigned int warmup_timer_stage;
   unsigned int warmup_done;
 
-  unsigned long magnetron_heater_last_warm_seconds;
-  unsigned long thyratron_heater_last_warm_seconds;
-  unsigned long gun_driver_heater_last_warm_seconds;
-
+  unsigned long last_recorded_warmup_seconds;
+  unsigned int  thyratron_warmup_remaining;
+  unsigned int  magnetron_warmup_remaining;
+  unsigned int  gun_warmup_remaining;
 
   //unsigned long system_powered_seconds;
   //unsigned long system_hv_on_seconds;
@@ -211,9 +211,9 @@ typedef struct {
   
 } A36507GlobalVars;
 
-#define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[4]
-#define magnetron_heater_warmup_counter_seconds              local_data_ecb.log_data[5]
-#define gun_driver_heater_warmup_counter_seconds             local_data_ecb.log_data[6]
+//#define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[4]
+//#define magnetron_heater_warmup_counter_seconds              local_data_ecb.log_data[5]
+//#define gun_driver_heater_warmup_counter_seconds             local_data_ecb.log_data[6]
 #define system_powered_seconds                               (*(unsigned long*)&local_data_ecb.log_data[8])
 #define system_hv_on_seconds                                 (*(unsigned long*)&local_data_ecb.log_data[10])
 #define system_xray_on_seconds                               (*(unsigned long*)&local_data_ecb.log_data[12])
