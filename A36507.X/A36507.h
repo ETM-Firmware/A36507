@@ -159,6 +159,7 @@ typedef struct {
   //unsigned int millisecond_counter;
   unsigned int warmup_timer_stage;
   unsigned int warmup_done;
+  unsigned int gun_heater_holdoff_timer;
 
   unsigned long last_recorded_warmup_seconds;
   unsigned int  thyratron_warmup_remaining;

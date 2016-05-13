@@ -452,7 +452,7 @@ extern ETMCanSyncMessage    etm_can_master_sync_message;
 #define _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY etm_can_master_sync_message.sync_0_control_word.sync_3_pulse_sync_disable_xray
 #define _SYNC_CONTROL_COOLING_FAULT           etm_can_master_sync_message.sync_0_control_word.sync_4_cooling_fault
 #define _SYNC_CONTROL_SYSTEM_HV_DISABLE       etm_can_master_sync_message.sync_0_control_word.sync_5_system_hv_disable
-#define _SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR  etm_can_master_sync_message.sync_0_control_word.sync_6_gun_driver_disable_heater // DPARKER THIS REQUIRED NE CAN CORE MODULE
+#define _SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR  etm_can_master_sync_message.sync_0_control_word.sync_6_gun_driver_disable_heater
 #define _SYNC_CONTROL_CLEAR_DEBUG_DATA        etm_can_master_sync_message.sync_0_control_word.sync_F_clear_debug_data
 
 

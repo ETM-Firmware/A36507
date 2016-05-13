@@ -15,6 +15,7 @@
 #define THYRATRON_WARM_UP_TIME               900   // 15 minutes
 #define GUN_DRIVER_HEATER_WARM_UP_TIME       300   // 5 minutes
 
+#define GUN_HEATER_HOLDOFF_AT_STARTUP        500   // 5 seconds
 
 // Page 0
 #define DEFAULT_MAGNETRON_HEATER_CURRENT                           8000

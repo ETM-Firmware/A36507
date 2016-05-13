@@ -189,6 +189,8 @@ void DoStateMachine(void) {
     
   case STATE_STARTUP:
     InitializeA36507();
+    global_data_A36507.gun_heater_holdoff_timer = 0;
+    _SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR = 1;
     global_data_A36507.control_state = STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC;
     SendToEventLog(LOG_ID_ENTERED_STATE_STARTUP);
     if (_STATUS_LAST_RESET_WAS_POWER_CYCLE) {
@@ -739,9 +741,21 @@ unsigned int CheckCoolingFault(void) {
 
 unsigned int CheckGunHeaterOffFault(void) {
   // Check to see if there is an active over current condition in the ion pump
+
+  //#ifndef __IGNORE_ION_PUMP_MODULE
   if (_ION_PUMP_OVER_CURRENT_ACTIVE) {
     return 1;
   }
+  if (!board_com_ok.ion_pump_board) {
+    return 1;
+  }
+  if (_ION_PUMP_NOT_CONFIGURED) {
+    return 1;
+  }
+  if (global_data_A36507.gun_heater_holdoff_timer < GUN_HEATER_HOLDOFF_AT_STARTUP) {
+    return 1;
+  }
+
   return 0;
 }
 
@@ -989,9 +1003,9 @@ void DoA36507(void) {
   // Update the Gun Driver Heater Enable sync bit
   // DPARKER need to update the libraries to use the Gun Heater Disable Bit
   if (CheckGunHeaterOffFault()) {
-    //_SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR = 1;
+    _SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR = 1;
   } else {
-    //_SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR = 0;
+    _SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR = 0;
   }
 
   // Update the SYNC message with the control state
@@ -1027,6 +1041,10 @@ void DoA36507(void) {
     
     // Update the heater current based on Output Power
     UpdateHeaterScale();
+
+    if (global_data_A36507.gun_heater_holdoff_timer <= GUN_HEATER_HOLDOFF_AT_STARTUP) {
+      global_data_A36507.gun_heater_holdoff_timer++;
+    }
 
 
 
