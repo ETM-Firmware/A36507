@@ -365,6 +365,12 @@ void DoStateMachine(void) {
       if (CheckWarmupFault()) {
 	global_data_A36507.control_state = STATE_FAULT_WARMUP;
       }
+      if ((global_data_A36507.thyratron_warmup_remaining > 0) ||
+	  (global_data_A36507.magnetron_warmup_remaining > 0) ||
+	  (global_data_A36507.gun_warmup_remaining > 0)) {
+	global_data_A36507.control_state = STATE_FAULT_WARMUP;
+      }
+
      }
     break;
 
@@ -744,6 +750,7 @@ unsigned int CheckGunHeaterOffFault(void) {
 
   //#ifndef __IGNORE_ION_PUMP_MODULE
   if (_ION_PUMP_OVER_CURRENT_ACTIVE) {
+    global_data_A36507.gun_heater_holdoff_timer = 0;
     return 1;
   }
   if (!board_com_ok.ion_pump_board) {
@@ -754,6 +761,11 @@ unsigned int CheckGunHeaterOffFault(void) {
   }
   if (global_data_A36507.gun_heater_holdoff_timer < GUN_HEATER_HOLDOFF_AT_STARTUP) {
     return 1;
+  }
+  if (global_data_A36507.thyratron_warmup_remaining > global_data_A36507.gun_warmup_remaining) {
+    if (global_data_A36507.gun_heater_holdoff_timer < (GUN_HEATER_HOLDOFF_AT_STARTUP + GUN_HEATER_ADDITONAL_HOLDOFF_COLD)) {
+      return 1;
+    }
   }
 
   return 0;
@@ -1042,7 +1054,7 @@ void DoA36507(void) {
     // Update the heater current based on Output Power
     UpdateHeaterScale();
 
-    if (global_data_A36507.gun_heater_holdoff_timer <= GUN_HEATER_HOLDOFF_AT_STARTUP) {
+    if (global_data_A36507.gun_heater_holdoff_timer <= (GUN_HEATER_HOLDOFF_AT_STARTUP + GUN_HEATER_ADDITONAL_HOLDOFF_COLD)) {
       global_data_A36507.gun_heater_holdoff_timer++;
     }
 

@@ -16,6 +16,7 @@
 #define GUN_DRIVER_HEATER_WARM_UP_TIME       300   // 5 minutes
 
 #define GUN_HEATER_HOLDOFF_AT_STARTUP        500   // 5 seconds
+#define GUN_HEATER_ADDITONAL_HOLDOFF_COLD   2500   // 25 seconds
 
 // Page 0
 #define DEFAULT_MAGNETRON_HEATER_CURRENT                           8000
