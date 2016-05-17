@@ -1312,8 +1312,27 @@ void InitializeA36507(void) {
   ETMCanMasterLoadConfiguration(36507, 251, ETMEEPromReadWord(0x0181), FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, ETMEEPromReadWord(0x0180));
   global_data_A36507.system_serial_number = ETMEEPromReadWord(EEPROM_REGISTER_TOP_LEVEL_SERIAL_NUMBER);
   // Initialize TCPmodbus Module
-  ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168.70.15
-  ip_config.ip_addr        = 0x6346A8C0;  // 192.168.70.99
+  ip_config.remote_ip_addr   = ETMEEPromReadWord(EEPROM_REGISTER_REMOTE_IP_ADDRESS);
+  ip_config.remote_ip_addr <<= 16;
+  ip_config.remote_ip_addr  += ETMEEPromReadWord(EEPROM_REGISTER_REMOTE_IP_ADDRESS + 1);
+  ip_config.ip_addr          = ETMEEPromReadWord(EEPROM_REGISTER_IP_ADDRESS);
+  ip_config.ip_addr        <<= 16;
+  ip_config.ip_addr         += ETMEEPromReadWord(EEPROM_REGISTER_IP_ADDRESS + 1);
+
+  Nop();
+  Nop();
+
+  //ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168.70.15
+  //ip_config.ip_addr        = 0x6346A8C0;  // 192.168.70.99
+
+
+  if ((ip_config.remote_ip_addr == 0xFFFFFFFF) || (ip_config.remote_ip_addr == 0x00000000)) {
+    ip_config.remote_ip_addr = DEFAULT_REMOTE_IP_ADDRESS;
+  }
+  if ((ip_config.ip_addr == 0xFFFFFFFF) || (ip_config.ip_addr == 0x00000000)) {
+    ip_config.ip_addr = DEFAULT_IP_ADDRESS;
+  }
+
   TCPmodbus_init(&ip_config);
   
 #ifndef __IGNORE_TCU
@@ -1496,6 +1515,8 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 
 #define REGISTER_HIGH_ENERGY_SET_POINT 0x0010
 #define REGISTER_LOW_ENERGY_SET_POINT 0x0011
+#define REGISTER_REMOTE_IP_ADDRESS 0x0018
+#define REGISTER_IP_ADDRESS 0x001A
 #define REGISTER_ECB_SYSTEM_SERIAL_NUMBER 0x001F
 
 #define REGISTER_GUN_DRIVER_HEATER_VOLTAGE 0x0020
@@ -1818,6 +1839,16 @@ void ExecuteEthernetCommand(unsigned int personality) {
       ETMEEPromWriteWord(next_message.index, next_message.data_2);
       global_data_A36507.system_serial_number = ETMEEPromReadWord(next_message.index);
       //global_data_A36507.system_serial_number = next_message.data_2;
+      break;
+
+    case REGISTER_REMOTE_IP_ADDRESS:
+      ETMEEPromWriteWord(next_message.index, next_message.data_2);
+      ETMEEPromWriteWord(next_message.index + 1, next_message.data_1);
+      break;
+      
+    case REGISTER_IP_ADDRESS:
+      ETMEEPromWriteWord(next_message.index, next_message.data_2);
+      ETMEEPromWriteWord(next_message.index + 1, next_message.data_1);
       break;
 
 

@@ -302,6 +302,8 @@ extern A36507GlobalVars global_data_A36507;
 
 #define EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT                0x0010
 #define EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT                 0x0011
+#define EEPROM_REGISTER_REMOTE_IP_ADDRESS                           0x0018
+#define EEPROM_REGISTER_IP_ADDRESS                                  0x001A
 #define EEPROM_REGISTER_EEPROM_OK_CHECK                             0x001D
 #define EEPROM_REGISTER_TOP_LEVEL_SERIAL_NUMBER                     0x001F
 

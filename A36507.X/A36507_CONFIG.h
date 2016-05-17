@@ -30,6 +30,8 @@
 // Page 1
 #define DEFAULT_HV_LAMBDA_SET_POINT                               14000
 #define DEFAULT_HV_LAMBDA_SET_POINT_LOW                           14000
+#define DEFAULT_REMOTE_IP_ADDRESS                            0x0F46A8C0  // 192.168.70.15
+#define DEFAULT_IP_ADDRESS                                   0x6346A8C0  // 192.168.70.99
 #define DEFAULT_TOP_LEVEL_SERIAL_NUMBER                               1
 #define DEFAULT_EEPROM_OK                                        0xACAC
 
@@ -99,10 +101,10 @@ const unsigned int eeprom_default_values_hv_lambda[16]   = {DEFAULT_HV_LAMBDA_SE
 							    DEFAULT_HV_LAMBDA_SET_POINT_LOW,
 							    DEFAULT_HV_LAMBDA_SET_POINT,
 							    DEFAULT_HV_LAMBDA_SET_POINT_LOW,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
-							    DEFAULT_UNUSED_EEPROM,
+							    0x0F46,
+							    0xA8C0,
+							    0x6346,
+							    0xA8C0,
 							    DEFAULT_UNUSED_EEPROM,
 							    DEFAULT_EEPROM_OK,
 							    DEFAULT_UNUSED_EEPROM,
