@@ -579,9 +579,6 @@ unsigned int CheckWarmupFault(void) {
 
 
 #ifndef __IGNORE_GUN_DRIVER_MODULE
-  if (!_GUN_DRIVER_HEATER_RAMP_COMPLETE) {
-    return 1;
-  }
   if (!board_com_ok.gun_driver_board) {
     return 1;
   }
