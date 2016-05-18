@@ -330,6 +330,8 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define _PULSE_SYNC_PERSONALITY_VALUE      ((*(unsigned int*)&mirror_pulse_sync.status.not_logged_bits) & 0x000F)
 #define _PULSE_SYNC_FAULT_REGISTER          *(unsigned int*)&mirror_pulse_sync.status.fault_bits
 #define _PULSE_SYNC_PFN_FAN_FAULT          mirror_pulse_sync.status.fault_bits.fault_3
+#define _PULSE_SYNC_FAULT_X_RAY_MISMATCH   mirror_pulse_sync.status.fault_bits.fault_0
+
 
 // PUBLIC Variables
 #define HIGH_SPEED_DATA_BUFFER_SIZE   16

@@ -362,6 +362,9 @@ void DoStateMachine(void) {
       if (!CheckStandbyFault()) {
 	global_data_A36507.control_state = STATE_STANDBY;
       }
+      if (_FAULT_X_RAY_ON_LOGIC_ERROR) {
+	global_data_A36507.control_state = STATE_FAULT_HOLD;
+      }
       if (CheckWarmupFault()) {
 	global_data_A36507.control_state = STATE_FAULT_WARMUP;
       }
@@ -449,7 +452,8 @@ void DoStateMachine(void) {
 	global_data_A36507.control_state = STATE_READY;
       }
       if (CheckHVOnFault()) {
-	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
+	//global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
+	global_data_A36507.control_state = STATE_FAULT_HOLD;  // Why would you ever need to make this decision if X-Rays were on
       }
     }
     break;
@@ -656,6 +660,9 @@ unsigned int CheckFaultLatching(void) {
   }
   if (_PULSE_MON_FALSE_TRIGGER) {
     // If a false trigger is detected we must hold the fault
+    return 1;
+  }
+  if (_PULSE_SYNC_FAULT_X_RAY_MISMATCH) {
     return 1;
   }
   if (!_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
