@@ -962,7 +962,7 @@ void DoA36507(void) {
 
   etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
   etm_can_master_sync_message.sync_2 = 0x0123;
-  etm_can_master_sync_message.sync_3 = 0x4567;
+  etm_can_master_sync_message.sync_3 = mirror_ion_pump.log_data[3];  // this is ion pump current
 
   ETMCanMasterDoCan();
   TCPmodbus_task();
@@ -981,8 +981,8 @@ void DoA36507(void) {
   if (global_data_A36507.eeprom_failure) {
     _FAULT_EEPROM_FAILURE = 1;
   }
-
-
+  
+#ifndef __IGNORE_PULSE_SYNC_MODULE
   // Figure out if the customer has enabled XRAYs before they should have
   // If so set a fault that can only be cleared with a reset command
   if (!_PULSE_SYNC_CUSTOMER_XRAY_OFF) { 
@@ -1001,7 +1001,8 @@ void DoA36507(void) {
       }
     }
   }  
-    
+#endif  
+  
   if (global_data_A36507.drive_up_fault_counter > MAX_DRIVE_UP_FAULTS) {
     _FAULT_REPEATED_DRIVE_UP_FAULT = 1;
   }
