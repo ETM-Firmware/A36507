@@ -1691,6 +1691,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
       local_gun_drv_cathode_set_point = next_message.data_2;
       eeprom_register = next_message.index + personality * 3;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_A_B:
       local_pulse_sync_timing_reg_0_word_0 = next_message.data_2;
