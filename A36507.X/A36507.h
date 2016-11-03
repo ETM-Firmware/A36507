@@ -14,7 +14,7 @@
 #include "P1395_CAN_MASTER.h"
 //#include "ETM_CRC.h"
 
-
+#define __ENABLE_POWER_CYCLE_TESTING
 
 
 
@@ -288,6 +288,17 @@ extern A36507GlobalVars global_data_A36507;
 #define STATE_FAULT_WARMUP                           0xB0
 #define STATE_FAULT_STANDBY                          0xC0
 
+#ifdef __ENABLE_POWER_CYCLE_TESTING
+#define STATE_POWER_CYCLE_TEST                       0xD1
+
+typedef struct {
+  unsigned int unit_timer;
+  unsigned int faults;
+  unsigned int power_cycle_counter;
+  unsigned int start_power_cycle_test;
+} TYPE_POWER_CYCLE_TEST;
+
+#endif
 
 
 
