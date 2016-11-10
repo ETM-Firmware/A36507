@@ -289,7 +289,7 @@ void DoStateMachine(void) {
 	// Turn The high voltage supply on
 	_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
 	_SYNC_CONTROL_SYSTEM_HV_DISABLE = 0;
-	power_cycle_test.power_cycle_counter++;
+
 	
 	// wait 10 seconds
 	power_cycle_test.unit_timer = 0;
@@ -298,7 +298,10 @@ void DoStateMachine(void) {
 	}
 	
 	// Check to see that the lambda reached EOC
-	if (_HV_LAMBDA_NOT_READY) {
+	if (mirror_hv_lambda.status.not_logged_bits.not_logged_0) {
+	  // Lambda is at EOC
+	  power_cycle_test.power_cycle_counter++;
+	} else {
 	  power_cycle_test.faults++;
 	}
 
