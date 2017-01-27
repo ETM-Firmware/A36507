@@ -284,6 +284,7 @@ void DoStateMachine(void) {
     power_cycle_test.faults = 0;
     power_cycle_test.power_cycle_counter = 0;
     while (global_data_A36507.control_state == STATE_POWER_CYCLE_TEST) {
+      DoA36507();
       while ((power_cycle_test.power_cycle_counter < 400) & (power_cycle_test.faults < 10)) { 
 	
 	// Turn The high voltage supply on
