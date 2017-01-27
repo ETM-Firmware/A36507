@@ -1270,8 +1270,8 @@ void ETMCanMasterProcessLogData(void) {
 	  break;
 	  
 	case ETM_CAN_DATA_LOG_REGISTER_MAGNETRON_MON_FAST_LOG_0:
-	  ptr_high_speed_data->magmon_internal_adc_reading = next_message.word1;
 	  ptr_high_speed_data->magmon_external_adc_reading = next_message.word2;
+	  ptr_high_speed_data->magmon_internal_adc_reading = next_message.word1;
 	  if (next_message.word0) {
 	    ptr_high_speed_data->status_bits.arc_this_pulse = 1;
 	  }
@@ -1670,6 +1670,55 @@ void SendSlaveReset(unsigned int board_id) {
   MacroETMCanCheckTXBuffer();
 }
 
+void ETMCanMasterClearHighSpeedLogging(void) {
+  unsigned int n;
+  n = 0;
+  while (n < HIGH_SPEED_DATA_BUFFER_SIZE) {
+    high_speed_data_buffer_a[n].pulse_count = 0;
+    high_speed_data_buffer_a[n].status_bits.high_energy_pulse = 0;
+    high_speed_data_buffer_a[n].status_bits.arc_this_pulse = 0;
+    high_speed_data_buffer_a[n].x_ray_on_seconds_lsw = 0;
+    high_speed_data_buffer_a[n].x_ray_on_milliseconds = 0;
+    high_speed_data_buffer_a[n].hvlambda_vmon_at_eoc_period = 0;
+    high_speed_data_buffer_a[n].hvlambda_vmon_at_trigger = 0;
+    high_speed_data_buffer_a[n].hvlambda_vpeak_at_eoc_period = 0;
+    high_speed_data_buffer_a[n].afc_readback_current_position= 0;
+    high_speed_data_buffer_a[n].afc_readback_target_position= 0;
+    high_speed_data_buffer_a[n].afc_readback_a_input = 0;
+    high_speed_data_buffer_a[n].afc_readback_b_input = 0;
+    high_speed_data_buffer_a[n].afc_readback_filtered_error_reading = 0;
+    high_speed_data_buffer_a[n].ionpump_readback_high_energy_target_current_reading = 0;
+    high_speed_data_buffer_a[n].ionpump_readback_low_energy_target_current_reading = 0;
+    high_speed_data_buffer_a[n].magmon_internal_adc_reading = 0;
+    high_speed_data_buffer_a[n].magmon_external_adc_reading = 0;
+    high_speed_data_buffer_a[n].psync_trigger_width_and_filtered_trigger_width = 0;
+    high_speed_data_buffer_a[n].psync_grid_width_and_delay = 0;
+    high_speed_data_buffer_a[n].psync_period = 0;
+
+    high_speed_data_buffer_b[n].pulse_count = 0;
+    high_speed_data_buffer_b[n].status_bits.high_energy_pulse = 0;
+    high_speed_data_buffer_b[n].status_bits.arc_this_pulse = 0;
+    high_speed_data_buffer_b[n].x_ray_on_seconds_lsw = 0;
+    high_speed_data_buffer_b[n].x_ray_on_milliseconds = 0;
+    high_speed_data_buffer_b[n].hvlambda_vmon_at_eoc_period = 0;
+    high_speed_data_buffer_b[n].hvlambda_vmon_at_trigger = 0;
+    high_speed_data_buffer_b[n].hvlambda_vpeak_at_eoc_period = 0;
+    high_speed_data_buffer_b[n].afc_readback_current_position= 0;
+    high_speed_data_buffer_b[n].afc_readback_target_position= 0;
+    high_speed_data_buffer_b[n].afc_readback_a_input = 0;
+    high_speed_data_buffer_b[n].afc_readback_b_input = 0;
+    high_speed_data_buffer_b[n].afc_readback_filtered_error_reading = 0;
+    high_speed_data_buffer_b[n].ionpump_readback_high_energy_target_current_reading = 0;
+    high_speed_data_buffer_b[n].ionpump_readback_low_energy_target_current_reading = 0;
+    high_speed_data_buffer_b[n].magmon_internal_adc_reading = 0;
+    high_speed_data_buffer_b[n].magmon_external_adc_reading = 0;
+    high_speed_data_buffer_b[n].psync_trigger_width_and_filtered_trigger_width = 0;
+    high_speed_data_buffer_b[n].psync_grid_width_and_delay = 0;
+    high_speed_data_buffer_b[n].psync_period = 0;
+    n++;
+  }
+}
+
 
 void ETMCanMasterClearDebug(void) {
   debug_data_ecb.debug_reg[0]        = 0;
@@ -1826,9 +1875,9 @@ void DoCanInterrupt(void) {
 	if (etm_can_master_next_pulse_count & 0x0010) {
 	  // We are putting data into buffer A
 	  global_data_can_master.buffer_a_ready_to_send = 0;
-	  global_data_can_master.buffer_a_sent = 0;
 	  if (fast_log_buffer_index >= 3) {
 	    global_data_can_master.buffer_b_ready_to_send = 1;
+	    global_data_can_master.buffer_a_sent = 0;
 	  }
 	  
 	  *(unsigned int*)&high_speed_data_buffer_a[fast_log_buffer_index].status_bits = 0; // clear the status bits register
@@ -1863,9 +1912,9 @@ void DoCanInterrupt(void) {
 	} else {
 	  // We are putting data into buffer B
 	  global_data_can_master.buffer_b_ready_to_send = 0;
-	  global_data_can_master.buffer_b_sent = 0;
 	  if (fast_log_buffer_index >= 3) {
 	    global_data_can_master.buffer_a_ready_to_send = 1;
+	    global_data_can_master.buffer_b_sent = 0;
 	  }
 	  
 	  *(unsigned int*)&high_speed_data_buffer_b[fast_log_buffer_index].status_bits = 0; // Clear the status bits register

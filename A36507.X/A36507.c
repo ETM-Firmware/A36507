@@ -2007,6 +2007,8 @@ void ExecuteEthernetCommand(unsigned int personality) {
       */
 
     case REGISTER_SYSTEM_ENABLE_HIGH_SPEED_LOGGING:
+      // Clear the Logging registers
+      ETMCanMasterClearHighSpeedLogging();
       _SYNC_CONTROL_HIGH_SPEED_LOGGING = 1;
       break;
       
