@@ -289,7 +289,7 @@ void DoStateMachine(void) {
 	// Turn The high voltage supply on
 	_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
 	_SYNC_CONTROL_SYSTEM_HV_DISABLE = 0;
-
+	
 	
 	// wait 10 seconds
 	power_cycle_test.unit_timer = 0;
@@ -304,11 +304,11 @@ void DoStateMachine(void) {
 	} else {
 	  power_cycle_test.faults++;
 	}
-
+	
 	// Turn The high voltage supply off
 	_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
 	_SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
-
+	
 	// wait 7.5 minutes
 	power_cycle_test.unit_timer = 0;
 	while(power_cycle_test.unit_timer < 45000) {
@@ -2081,6 +2081,8 @@ void ExecuteEthernetCommand(unsigned int personality) {
       */
 
     case REGISTER_SYSTEM_ENABLE_HIGH_SPEED_LOGGING:
+      // Clear the Logging registers
+      ETMCanMasterClearHighSpeedLogging();
       _SYNC_CONTROL_HIGH_SPEED_LOGGING = 1;
       break;
       
