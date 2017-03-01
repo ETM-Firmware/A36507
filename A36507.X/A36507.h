@@ -15,7 +15,7 @@
 //#include "ETM_CRC.h"
 
 
-
+#define __NDT_LINAC
 
 
 /*
@@ -209,7 +209,9 @@ typedef struct {
   unsigned int most_recent_ref_detector_reading;
 
   unsigned int eeprom_failure;
-  
+
+  unsigned int timer_flash;
+  unsigned int timer_flash_counter;
 } A36507GlobalVars;
 
 //#define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[4]
@@ -220,6 +222,9 @@ typedef struct {
 #define system_xray_on_seconds                               (*(unsigned long*)&local_data_ecb.log_data[12])
 #define average_output_power_watts                           local_data_ecb.log_data[14]
 #define personality_select_from_pulse_sync                   local_data_ecb.log_data[15]
+#define x_ray_on_time_set_point                              (*(unsigned long*)&local_data_ecb.log_data[20])
+#define x_ray_on_time_counter                                (*(unsigned long*)&local_data_ecb.log_data[22])
+
 
 extern A36507GlobalVars global_data_A36507;
 
@@ -278,6 +283,7 @@ extern A36507GlobalVars global_data_A36507;
 #define STATE_DRIVE_UP                               0x40
 #define STATE_READY                                  0x50
 #define STATE_XRAY_ON                                0x60
+#define STATE_X_RAY_TIME_EXCEEDED                    0x70
 
 
 #define STATE_FAULT_HOLD                             0x80
@@ -304,13 +310,26 @@ extern A36507GlobalVars global_data_A36507;
 #define EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT                 0x0011
 #define EEPROM_REGISTER_REMOTE_IP_ADDRESS                           0x0018
 #define EEPROM_REGISTER_IP_ADDRESS                                  0x001A
-#define EEPROM_REGISTER_EEPROM_OK_CHECK                             0x001D
+#define EEPROM_REGISTER_X_RAY_ON_TIME                               0x001C
+#define EEPROM_REGISTER_EEPROM_OK_CHECK                             0x001E
 #define EEPROM_REGISTER_TOP_LEVEL_SERIAL_NUMBER                     0x001F
 
 #define EEPROM_REGISTER_GUN_DRV_HTR_VOLTAGE                         0x0020
 #define EEPROM_REGISTER_GUN_DRV_HIGH_PULSE_TOP                      0x0021
 #define EEPROM_REGISTER_GUN_DRV_LOW_PULSE_TOP                       0x0022
 #define EEPROM_REGISTER_GUN_DRV_CATHODE                             0x0023
+
+
+#define _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED                   etm_can_master_sync_message.sync_0_control_word.sync_8_unused
+
+#ifdef __NDT_LINAC
+// Redfine the warmup and X RAY led pins
+#undef _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED
+#undef _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED
+#define _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED                         etm_can_master_sync_message.sync_0_control_word.sync_8_unused
+#define _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED                   etm_can_master_sync_message.sync_0_control_word.sync_A_pulse_sync_warmup_led_on
+
+#endif
 
 
 #endif

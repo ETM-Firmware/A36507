@@ -33,7 +33,10 @@
 #define DEFAULT_REMOTE_IP_ADDRESS                            0x0F46A8C0  // 192.168.70.15
 #define DEFAULT_IP_ADDRESS                                   0x6346A8C0  // 192.168.70.99
 #define DEFAULT_TOP_LEVEL_SERIAL_NUMBER                               1
+#define DEFAULT_RUN_TIME_HIGH_WORD                                    0
+#define DEFAULT_RUN_TIME_LOW_WORD                                  1000 
 #define DEFAULT_EEPROM_OK                                        0xACAC
+
 
 
 // Page 2
@@ -48,19 +51,19 @@
 #define DEFAULT_PULSE_SYNC_PULSE_START_VAL_2                         50
 #define DEFAULT_PULSE_SYNC_PULSE_START_VAL_1                         75
 #define DEFAULT_PULSE_SYNC_PULSE_START_VAL_0                         100
-#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_3_LOW                     25
-#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_2_LOW                     50
-#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_1_LOW                     75
-#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_0_LOW                     100
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_3_LOW                     100
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_2_LOW                     110
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_1_LOW                     120
+#define DEFAULT_PULSE_SYNC_PULSE_START_VAL_0_LOW                     130
 
 #define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_3                          200
 #define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_2                          150
 #define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_1                          125
 #define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_0                          105
-#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_3_LOW                      200
-#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_2_LOW                      150
-#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_1_LOW                      125
-#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_0_LOW                      105
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_3_LOW                      150
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_2_LOW                      145
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_1_LOW                      140
+#define DEFAULT_PULSE_SYNC_PULSE_STOP_VAL_0_LOW                      140
 
 #define DEFAULT_PULSE_SYNC_THYRATRON_DELAY                            0
 #define DEFAULT_PULSE_SYNC_THYRATRON_DELAY_LOW                        0
@@ -105,9 +108,9 @@ const unsigned int eeprom_default_values_hv_lambda[16]   = {DEFAULT_HV_LAMBDA_SE
 							    0xA8C0,
 							    0x6346,
 							    0xA8C0,
-							    DEFAULT_UNUSED_EEPROM,
+							    DEFAULT_RUN_TIME_HIGH_WORD,
+							    DEFAULT_RUN_TIME_LOW_WORD,
 							    DEFAULT_EEPROM_OK,
-							    DEFAULT_UNUSED_EEPROM,
 							    DEFAULT_TOP_LEVEL_SERIAL_NUMBER};
 
 const unsigned int eeprom_default_values_gun_driver[16]  = {DEFAULT_GUN_DRIVER_HEATER_CURRENT,

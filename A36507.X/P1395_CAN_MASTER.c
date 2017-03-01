@@ -142,13 +142,13 @@ void ETMCanMasterSendSync();                          // This gets sent out 1 ti
 void ETMCanMasterHVLambdaUpdateOutput(void);          // This gets sent out 1 time every 200ms
 void ETMCanMasterHtrMagnetUpdateOutput(void);         // This gets sent out 1 time every 200ms 
 void ETMCanMasterGunDriverUpdatePulseTop(void);       // This gets sent out 1 time every 200ms
-void ETMCanMasterAFCUpdateHomeOffset(void);           // This gets sent out at 200ms / 6 = 1.2 Seconds
-void ETMCanMasterGunDriverUpdateHeaterCathode(void);  // This gets sent out at 200ms / 6 = 1.2 Seconds
-void ETMCanMasterPulseSyncUpdateHighRegZero(void);    // This gets sent out at 200ms / 6 = 1.2 Seconds
-void ETMCanMasterPulseSyncUpdateHighRegOne(void);     // This gets sent out at 200ms / 6 = 1.2 Seconds
-void ETMCanMasterPulseSyncUpdateLowRegZero(void);     // This gets sent out at 200ms / 6 = 1.2 Seconds
-void ETMCanMasterPulseSyncUpdateLowRegOne(void);      // This gets sent out at 200ms / 6 = 1.2 Seconds
-
+void ETMCanMasterAFCUpdateHomeOffset(void);           // This gets sent out at 200ms / 7 = 1.4 Seconds
+void ETMCanMasterGunDriverUpdateHeaterCathode(void);  // This gets sent out at 200ms / 7 = 1.4 Seconds
+void ETMCanMasterPulseSyncUpdateHighRegZero(void);    // This gets sent out at 200ms / 7 = 1.4Seconds
+void ETMCanMasterPulseSyncUpdateHighRegOne(void);     // This gets sent out at 200ms / 7 = 1.4 Seconds
+void ETMCanMasterPulseSyncUpdateLowRegZero(void);     // This gets sent out at 200ms / 7 = 1.4 Seconds
+void ETMCanMasterPulseSyncUpdateLowRegOne(void);      // This gets sent out at 200ms / 7 = 1.4 Seconds
+void ETMCanMasterPulseSyncUpdatePRF(void);            // This gets sent out at 200ms / 7 = 1.4 Seconds
 // DPARKER how are the LEDs set on Pulse Sync Board?? Missing that command
 
 void ETMCanMasterDataReturnFromSlave(ETMCanMessage* message_ptr);
@@ -477,7 +477,7 @@ void ETMCanMasterTimedTransmit(void) {
 	  */
 
 	  master_low_speed_update_index++;
-	  if (master_low_speed_update_index >= 6) {
+	  if (master_low_speed_update_index >= 7) {
 	    master_low_speed_update_index = 0;
 	  } 
 	  
@@ -504,6 +504,11 @@ void ETMCanMasterTimedTransmit(void) {
 	  if (master_low_speed_update_index == 5) {
 	    ETMCanMasterPulseSyncUpdateLowRegOne();	   
 	  }
+
+	  if (master_low_speed_update_index == 6) {
+	    ETMCanMasterPulseSyncUpdatePRF();	   
+	  }
+	  
 	  break;
 	}
     }
@@ -631,7 +636,18 @@ void ETMCanMasterPulseSyncUpdateLowRegOne(void) {
   MacroETMCanCheckTXBuffer();
 }
 
+#define ETM_CAN_REGISTER_PULSE_SYNC_SET_1_INTERNAL_PRF ETM_CAN_REGISTER_PULSE_SYNC_SET_1_CUSTOMER_LED_OUTPUT
 
+void ETMCanMasterPulseSyncUpdatePRF(void) {
+  ETMCanMessage can_message;
+  can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 2));
+  can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_INTERNAL_PRF;
+  can_message.word2 = local_pulse_sync_trigger_prf_decihertz_high;
+  can_message.word1 = local_pulse_sync_trigger_prf_decihertz_low;
+  can_message.word0 = 0;
+  ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
+  MacroETMCanCheckTXBuffer();
+}
 
 
 

@@ -7,7 +7,6 @@ unsigned int test_ref_det_recieved;
 unsigned int test_ref_det_good_message;
 
 
-
 void CRCTest(void);
 
 unsigned int LookForDoseMessageFromReferenceDetector(void);
@@ -208,6 +207,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     _STATUS_PERSONALITY_LOADED = 0;
     global_data_A36507.startup_counter = 0;
     while (global_data_A36507.control_state == STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC) {
@@ -243,6 +243,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     _STATUS_PERSONALITY_LOADED = 1;
     personality_loaded = 1;
     ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
@@ -273,8 +274,17 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     while (global_data_A36507.control_state == STATE_WARMUP) {
       DoA36507();
+#ifdef __NDT_LINAC
+      // Flash the standby LED during warmup 
+      if (global_data_A36507.timer_flash) {
+	_SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
+      } else {
+	_SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+      }
+#endif
       if (global_data_A36507.warmup_done) {
 	global_data_A36507.control_state = STATE_STANDBY;
 	SendToEventLog(LOG_ID_WARMUP_DONE);
@@ -297,6 +307,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     while (global_data_A36507.control_state == STATE_FAULT_WARMUP) {
       DoA36507();
       if (!CheckWarmupFault()) {
@@ -319,6 +330,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     while (1) {
       DoA36507();
     }
@@ -335,6 +347,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
      while (global_data_A36507.control_state == STATE_STANDBY) {
       DoA36507();
       if (!_PULSE_SYNC_CUSTOMER_HV_OFF) {
@@ -357,6 +370,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     while (global_data_A36507.control_state == STATE_FAULT_STANDBY) {
       DoA36507();
       if (!CheckStandbyFault()) {
@@ -388,6 +402,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     while (global_data_A36507.control_state == STATE_DRIVE_UP) {
       DoA36507();
       if (!CheckHVOnFault()) {
@@ -414,6 +429,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 1;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     global_data_A36507.drive_up_fault_counter = 0;
     _STATUS_DRIVE_UP_TIMEOUT = 0;
      while (global_data_A36507.control_state == STATE_READY) {
@@ -442,9 +458,16 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 1;
     global_data_A36507.high_voltage_on_fault_counter = 0;
+    x_ray_on_time_counter = 0;
     while (global_data_A36507.control_state == STATE_XRAY_ON) {
       DoA36507();
+      if (x_ray_on_time_counter > x_ray_on_time_set_point) {
+#ifdef __NDT_LINAC
+	global_data_A36507.control_state = STATE_X_RAY_TIME_EXCEEDED;
+#endif
+      }
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
 	global_data_A36507.control_state = STATE_READY;
       }
@@ -457,6 +480,39 @@ void DoStateMachine(void) {
       }
     }
     break;
+    
+  case STATE_X_RAY_TIME_EXCEEDED:
+    //SendToEventLog(LOG_ID_ENTERED_STATE_XRAY_ON); DPARKER UPDATE
+    _SYNC_CONTROL_RESET_ENABLE = 0;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 0;
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 1;
+    while (global_data_A36507.control_state == STATE_X_RAY_TIME_EXCEEDED) {
+      DoA36507();
+      // Flash the XRay ON (Warmup) LED during warmup 
+      if (global_data_A36507.timer_flash) {
+	_SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 1;
+      } else {
+	_SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
+      }
+
+      if (_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
+	global_data_A36507.control_state = STATE_READY;
+      }
+      if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
+	global_data_A36507.control_state = STATE_READY;
+      }
+      if (CheckHVOnFault()) {
+	global_data_A36507.control_state = STATE_FAULT_HOLD;
+      }
+    }
+    break;
+
 
 
   case STATE_FAULT_LATCH_DECISION:
@@ -469,6 +525,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     global_data_A36507.reset_requested = 0;
     global_data_A36507.reset_hold_timer = 0;
     while (global_data_A36507.control_state == STATE_FAULT_LATCH_DECISION) {
@@ -494,6 +551,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     global_data_A36507.reset_requested = 0;
       while (global_data_A36507.control_state == STATE_FAULT_HOLD) {
       DoA36507();
@@ -514,6 +572,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 0;
     global_data_A36507.reset_requested = 0;
     global_data_A36507.reset_hold_timer = 0;
     while (global_data_A36507.control_state == STATE_FAULT_RESET_HOLD) {
@@ -1054,7 +1113,24 @@ void DoA36507(void) {
     }
     global_data_A36507.startup_counter++;
     global_data_A36507.reset_hold_timer++;
-    
+    if ((global_data_A36507.control_state == STATE_XRAY_ON) || (global_data_A36507.control_state == STATE_X_RAY_TIME_EXCEEDED)) {
+      x_ray_on_time_counter++;
+    } else {
+      x_ray_on_time_counter = 0;
+    }
+
+
+    global_data_A36507.timer_flash_counter++;
+    if (global_data_A36507.timer_flash_counter > 34) {
+      global_data_A36507.timer_flash_counter = 0;
+    }
+    if (global_data_A36507.timer_flash_counter > 17) {
+      global_data_A36507.timer_flash = 0;
+    } else {
+      global_data_A36507.timer_flash = 1;
+    }
+
+
     // Update the heater current based on Output Power
     UpdateHeaterScale();
 
@@ -1458,6 +1534,11 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
 
   // Load data for Pulse Sync
   ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+
+  // Load data for the ECB
+  x_ray_on_time_set_point = ETMEEPromReadWord(EEPROM_REGISTER_X_RAY_ON_TIME);
+  x_ray_on_time_set_point <<= 16;
+  x_ray_on_time_set_point += ETMEEPromReadWord(EEPROM_REGISTER_X_RAY_ON_TIME + 1);
 }
 
 
@@ -1521,6 +1602,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_LOW_ENERGY_SET_POINT 0x0011
 #define REGISTER_REMOTE_IP_ADDRESS 0x0018
 #define REGISTER_IP_ADDRESS 0x001A
+#define REGISTER_X_RAY_ON_RUN_TIME 0x001C
 #define REGISTER_ECB_SYSTEM_SERIAL_NUMBER 0x001F
 
 #define REGISTER_GUN_DRIVER_HEATER_VOLTAGE 0x0020
@@ -1531,15 +1613,18 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_A_B 0x0030
 #define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_C_D 0x0031
 #define REGISTER_PULSE_SYNC_RF_TRIGGER_AND_THYRATRON_PULSE_DELAY_HIGH_ENERGY 0x0032
+#define REGISTER_PULSE_SYNC_INTERNAL_TRIGGER_PRF_DECIHERTZ_HIGH 0x0033
 #define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_HIGH_ENERGY_A_B 0x0034
 #define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_HIGH_ENERGY_C_D 0x0035
 #define REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_HIGH_ENERGY 0x0036
+#define REGISTER_PULSE_SYNC_INTERNAL_TRIGGER_PRF_DECIHERTZ_LOW 0x0037
 #define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_A_B 0x0038
 #define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_C_D 0x0039
 #define REGISTER_PULSE_SYNC_RF_TRIGGER_AND_THYRATRON_PULSE_DELAY_LOW_ENERGY 0x003A
 #define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_A_B 0x003C
 #define REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_C_D 0x003D
 #define REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_LOW_ENERGY 0x003E
+
 
 #define REGISTER_CMD_AFC_SELECT_AFC_MODE 0x5202
 #define REGISTER_CMD_AFC_SELECT_MANUAL_MODE 0x5203
@@ -1765,6 +1850,19 @@ void ExecuteEthernetCommand(unsigned int personality) {
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
+      // DPARKER Need to set the correct EEPROM -register.  Need acccess to documentation to figure this out
+    case REGISTER_PULSE_SYNC_INTERNAL_TRIGGER_PRF_DECIHERTZ_HIGH:
+      local_pulse_sync_trigger_prf_decihertz_high = next_message.data_2;
+      eeprom_register = next_message.index;
+      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      break;
+
+    case REGISTER_PULSE_SYNC_INTERNAL_TRIGGER_PRF_DECIHERTZ_LOW:
+      local_pulse_sync_trigger_prf_decihertz_low = next_message.data_2;
+      eeprom_register = next_message.index;
+      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      break;
+
     case REGISTER_ECB_SYSTEM_SERIAL_NUMBER:
       ETMEEPromWriteWord(next_message.index, next_message.data_2);
       global_data_A36507.system_serial_number = ETMEEPromReadWord(next_message.index);
@@ -1779,6 +1877,14 @@ void ExecuteEthernetCommand(unsigned int personality) {
     case REGISTER_IP_ADDRESS:
       ETMEEPromWriteWord(next_message.index, next_message.data_2);
       ETMEEPromWriteWord(next_message.index + 1, next_message.data_1);
+      break;
+
+    case REGISTER_X_RAY_ON_RUN_TIME:
+      ETMEEPromWriteWord(next_message.index, next_message.data_2);
+      ETMEEPromWriteWord(next_message.index + 1, next_message.data_1);
+      x_ray_on_time_set_point = next_message.data_2;
+      x_ray_on_time_set_point <<= 16;
+      x_ray_on_time_set_point += next_message.data_1;
       break;
 
 

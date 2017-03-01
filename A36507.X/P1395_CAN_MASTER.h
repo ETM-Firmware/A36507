@@ -3,12 +3,12 @@
 
 #include "P1395_CAN_CORE.h"
 
-//#define __IGNORE_ION_PUMP_MODULE
-//#define __IGNORE_AFC_MODULE
-//#define __IGNORE_GUN_DRIVER_MODULE
-//#define __IGNORE_COOLING_INTERFACE_MODULE
-//#define __IGNORE_HEATER_MAGNET_MODULE
-//#define __IGNORE_HV_LAMBDA_MODULE
+#define __IGNORE_ION_PUMP_MODULE
+#define __IGNORE_AFC_MODULE
+#define __IGNORE_GUN_DRIVER_MODULE
+#define __IGNORE_COOLING_INTERFACE_MODULE
+#define __IGNORE_HEATER_MAGNET_MODULE
+#define __IGNORE_HV_LAMBDA_MODULE
 //#define __IGNORE_PULSE_CURRENT_MODULE
 //#define __IGNORE_PULSE_SYNC_MODULE
 #define __IGNORE_TCU
@@ -284,8 +284,8 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define local_pulse_sync_timing_reg_3_word_0            mirror_pulse_sync.local_data[12]
 #define local_pulse_sync_timing_reg_3_word_1            mirror_pulse_sync.local_data[13]
 #define local_pulse_sync_timing_reg_3_word_2            mirror_pulse_sync.local_data[14]
-
-
+#define local_pulse_sync_trigger_prf_decihertz_high     mirror_pulse_sync.local_data[3]
+#define local_pulse_sync_trigger_prf_decihertz_low      mirror_pulse_sync.local_data[7]
 
 
 
