@@ -148,6 +148,9 @@ A36507GlobalVars global_data_A36507;
    It also find that this makes it easier to work with debugger
 */
 
+#ifdef __ENABLE_POWER_CYCLE_TESTING
+TYPE_POWER_CYCLE_TEST power_cycle_test;
+#endif
 
 // -------------------- Local Structures ----------------------------- //
 RTC_DS3231 U6_DS3231;                        
@@ -258,9 +261,65 @@ void DoStateMachine(void) {
       	global_data_A36507.control_state = STATE_WARMUP;
 	SendToEventLog(LOG_ID_ALL_MODULES_CONFIGURED);
       }
+#ifdef __ENABLE_POWER_CYCLE_TESTING
+      if (power_cycle_test.start_power_cycle_test == 1) {
+	global_data_A36507.control_state = STATE_POWER_CYCLE_TEST;
+	power_cycle_test.start_power_cycle_test = 0;
+      }
+#endif
     }
     break;
     
+#ifdef __ENABLE_POWER_CYCLE_TESTING
+  case STATE_POWER_CYCLE_TEST:
+    SendToEventLog(0x01D1);
+    _SYNC_CONTROL_CLEAR_DEBUG_DATA = 0;
+    _SYNC_CONTROL_RESET_ENABLE = 1;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    power_cycle_test.faults = 0;
+    power_cycle_test.power_cycle_counter = 0;
+    while (global_data_A36507.control_state == STATE_POWER_CYCLE_TEST) {
+      DoA36507();
+      while ((power_cycle_test.power_cycle_counter < 400) & (power_cycle_test.faults < 10)) { 
+	
+	// Turn The high voltage supply on
+	_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
+	_SYNC_CONTROL_SYSTEM_HV_DISABLE = 0;
+	
+	
+	// wait 10 seconds
+	power_cycle_test.unit_timer = 0;
+	while(power_cycle_test.unit_timer < 1000) {
+	  DoA36507();
+	}
+	
+	// Check to see that the lambda reached EOC
+	if (mirror_hv_lambda.status.not_logged_bits.not_logged_0) {
+	  // Lambda is at EOC
+	  power_cycle_test.power_cycle_counter++;
+	} else {
+	  power_cycle_test.faults++;
+	}
+	
+	// Turn The high voltage supply off
+	_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
+	_SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
+	
+	// wait 7.5 minutes
+	power_cycle_test.unit_timer = 0;
+	while(power_cycle_test.unit_timer < 45000) {
+	  DoA36507();
+	}
+      }
+    }
+    break;
+#endif    
 
   case STATE_WARMUP:
     // Note that the warmup timers start counting in "Waiting for Initialization"
@@ -1011,6 +1070,12 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[13] = 0;
   debug_data_ecb.debug_reg[14] = 0;
   debug_data_ecb.debug_reg[15] = 0;
+
+#ifdef __ENABLE_POWER_CYCLE_TESTING
+  debug_data_ecb.debug_reg[13] = power_cycle_test.power_cycle_counter;
+  debug_data_ecb.debug_reg[14] = power_cycle_test.faults;
+  debug_data_ecb.debug_reg[15] = power_cycle_test.unit_timer;
+#endif
 }
 
 
@@ -1138,7 +1203,9 @@ void DoA36507(void) {
       global_data_A36507.gun_heater_holdoff_timer++;
     }
 
-
+#ifdef __ENABLE_POWER_CYCLE_TESTING
+    power_cycle_test.unit_timer++;
+#endif
 
     /*
       The following tasks require use of the i2c bus which can hold the processor for a lot of time
@@ -1651,7 +1718,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_DEBUG_GUN_DRIVER_RESET_FPGA 0xE501
 #define REGISTER_DEBUG_RESET_MCU 0xE502
 #define REGISTER_DEBUG_TEST_PULSE_FAULT 0xE503
-
+#define REGISTER_DEBUG_POWER_CYCLE_TEST 0xE504
 
 void ExecuteEthernetCommand(unsigned int personality) {
   ETMEthernetMessageFromGUI next_message;
@@ -1999,6 +2066,14 @@ void ExecuteEthernetCommand(unsigned int personality) {
       }
       */
       break;
+
+
+    case REGISTER_DEBUG_POWER_CYCLE_TEST:
+#ifdef __ENABLE_POWER_CYCLE_TESTING
+      power_cycle_test.start_power_cycle_test = 1;
+#endif
+      break;
+
 
     /*
     case REGISTER_SPECIAL_SEND_ALL_CAL_DATA_TO_GUI:
