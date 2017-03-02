@@ -8,11 +8,9 @@
 #include <uart.h>
 
 #include "ETM.h"
-//#include "ETM_ANALOG.h"
 #include "TCPmodbus.h"
-//#include "ETMmodbus.h"
 #include "P1395_CAN_MASTER.h"
-//#include "ETM_CRC.h"
+
 
 #define __NDT_LINAC
 #define __ENABLE_POWER_CYCLE_TESTING
@@ -211,6 +209,11 @@ typedef struct {
 
   unsigned int timer_flash;
   unsigned int timer_flash_counter;
+
+  unsigned int start_power_cycle_test;
+
+  unsigned int power_cycle_timer;
+
 } A36507GlobalVars;
 
 //#define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[4]
@@ -223,6 +226,10 @@ typedef struct {
 #define personality_select_from_pulse_sync                   local_data_ecb.log_data[15]
 #define x_ray_on_time_set_point                              (*(unsigned long*)&local_data_ecb.log_data[20])
 #define x_ray_on_time_counter                                (*(unsigned long*)&local_data_ecb.log_data[22])
+#define power_cycle_faults                                   local_data_ecb.local_data[0]
+#define power_cycle_counter                                  local_data_ecb.local_data[1]
+
+
 
 
 extern A36507GlobalVars global_data_A36507;
@@ -292,18 +299,8 @@ extern A36507GlobalVars global_data_A36507;
 #define STATE_FAULT_SYSTEM                           0xA0
 #define STATE_FAULT_WARMUP                           0xB0
 #define STATE_FAULT_STANDBY                          0xC0
-
-#ifdef __ENABLE_POWER_CYCLE_TESTING
 #define STATE_POWER_CYCLE_TEST                       0xD1
 
-typedef struct {
-  unsigned int unit_timer;
-  unsigned int faults;
-  unsigned int power_cycle_counter;
-  unsigned int start_power_cycle_test;
-} TYPE_POWER_CYCLE_TEST;
-
-#endif
 
 
 

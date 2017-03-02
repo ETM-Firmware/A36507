@@ -3,15 +3,41 @@
 
 #include "P1395_CAN_CORE.h"
 
+// COMPILE CONFIGURATIONS HERE
+#define __NDT_LINAC
+#define __ENABLE_POWER_CYCLE_TESTING
+
+
+#ifdef  __ENABLE_POWER_CYCLE_TESTING
+// This is working on the bench top, ignore the modules that are not present on the bench setup
+
 #define __IGNORE_ION_PUMP_MODULE
 #define __IGNORE_AFC_MODULE
 #define __IGNORE_GUN_DRIVER_MODULE
-#define __IGNORE_COOLING_INTERFACE_MODULE
-#define __IGNORE_HEATER_MAGNET_MODULE
-#define __IGNORE_HV_LAMBDA_MODULE
+//#define __IGNORE_COOLING_INTERFACE_MODULE
+//#define __IGNORE_HEATER_MAGNET_MODULE
+//#define __IGNORE_HV_LAMBDA_MODULE
 //#define __IGNORE_PULSE_CURRENT_MODULE
 //#define __IGNORE_PULSE_SYNC_MODULE
 #define __IGNORE_TCU
+
+
+#else
+// This is normal operation, Do not ignore any of the standard CAN modules
+
+//#define __IGNORE_ION_PUMP_MODULE
+//#define __IGNORE_AFC_MODULE
+//#define __IGNORE_GUN_DRIVER_MODULE
+//#define __IGNORE_COOLING_INTERFACE_MODULE
+//#define __IGNORE_HEATER_MAGNET_MODULE
+//#define __IGNORE_HV_LAMBDA_MODULE
+//#define __IGNORE_PULSE_CURRENT_MODULE
+//#define __IGNORE_PULSE_SYNC_MODULE
+#define __IGNORE_TCU
+
+#endif
+
+
 
 
 

@@ -7,8 +7,6 @@ unsigned int test_ref_det_recieved;
 unsigned int test_ref_det_good_message;
 
 
-void CRCTest(void);
-
 unsigned int LookForDoseMessageFromReferenceDetector(void);
 
 void WriteConfigToMirror(void);
@@ -148,10 +146,6 @@ A36507GlobalVars global_data_A36507;
    It also find that this makes it easier to work with debugger
 */
 
-#ifdef __ENABLE_POWER_CYCLE_TESTING
-TYPE_POWER_CYCLE_TEST power_cycle_test;
-#endif
-
 // -------------------- Local Structures ----------------------------- //
 RTC_DS3231 U6_DS3231;                        
 /* 
@@ -164,12 +158,6 @@ RTC_DS3231 U6_DS3231;
 
 int main(void) {
   
-  CRCTest();
-  Nop();
-  Nop();
-  Nop();
-  Nop();
-
   global_data_A36507.control_state = STATE_STARTUP;
   
   while (1) {
@@ -236,6 +224,7 @@ void DoStateMachine(void) {
       }
     }
 
+
   case STATE_WAITING_FOR_INITIALIZATION:
     SendToEventLog(LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION);
     _SYNC_CONTROL_RESET_ENABLE = 1;
@@ -261,16 +250,17 @@ void DoStateMachine(void) {
       	global_data_A36507.control_state = STATE_WARMUP;
 	SendToEventLog(LOG_ID_ALL_MODULES_CONFIGURED);
       }
+
+      if (global_data_A36507.start_power_cycle_test == 1) {
 #ifdef __ENABLE_POWER_CYCLE_TESTING
-      if (power_cycle_test.start_power_cycle_test == 1) {
 	global_data_A36507.control_state = STATE_POWER_CYCLE_TEST;
-	power_cycle_test.start_power_cycle_test = 0;
-      }
 #endif
+	global_data_A36507.start_power_cycle_test = 0;
+      }
     }
     break;
+
     
-#ifdef __ENABLE_POWER_CYCLE_TESTING
   case STATE_POWER_CYCLE_TEST:
     SendToEventLog(0x01D1);
     _SYNC_CONTROL_CLEAR_DEBUG_DATA = 0;
@@ -282,11 +272,11 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
-    power_cycle_test.faults = 0;
-    power_cycle_test.power_cycle_counter = 0;
+    power_cycle_faults = 0;
+    power_cycle_counter = 0;
     while (global_data_A36507.control_state == STATE_POWER_CYCLE_TEST) {
       DoA36507();
-      while ((power_cycle_test.power_cycle_counter < 400) & (power_cycle_test.faults < 10)) { 
+      while ((power_cycle_counter < 400) & (power_cycle_faults < 10)) { 
 	
 	// Turn The high voltage supply on
 	_SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
@@ -294,17 +284,17 @@ void DoStateMachine(void) {
 	
 	
 	// wait 10 seconds
-	power_cycle_test.unit_timer = 0;
-	while(power_cycle_test.unit_timer < 1000) {
+	global_data_A36507.power_cycle_timer = 0;
+	while(global_data_A36507.power_cycle_timer < 1000) {
 	  DoA36507();
 	}
 	
 	// Check to see that the lambda reached EOC
 	if (mirror_hv_lambda.status.not_logged_bits.not_logged_0) {
 	  // Lambda is at EOC
-	  power_cycle_test.power_cycle_counter++;
+	  power_cycle_counter++;
 	} else {
-	  power_cycle_test.faults++;
+	  power_cycle_faults++;
 	}
 	
 	// Turn The high voltage supply off
@@ -312,14 +302,14 @@ void DoStateMachine(void) {
 	_SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
 	
 	// wait 7.5 minutes
-	power_cycle_test.unit_timer = 0;
-	while(power_cycle_test.unit_timer < 45000) {
+	global_data_A36507.power_cycle_timer = 0;
+	while(global_data_A36507.power_cycle_timer < 45000) {
 	  DoA36507();
 	}
       }
     }
     break;
-#endif    
+
 
   case STATE_WARMUP:
     // Note that the warmup timers start counting in "Waiting for Initialization"
@@ -1071,11 +1061,9 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[14] = 0;
   debug_data_ecb.debug_reg[15] = 0;
 
-#ifdef __ENABLE_POWER_CYCLE_TESTING
-  debug_data_ecb.debug_reg[13] = power_cycle_test.power_cycle_counter;
-  debug_data_ecb.debug_reg[14] = power_cycle_test.faults;
-  debug_data_ecb.debug_reg[15] = power_cycle_test.unit_timer;
-#endif
+  debug_data_ecb.debug_reg[13] = power_cycle_counter;
+  debug_data_ecb.debug_reg[14] = power_cycle_faults;
+  debug_data_ecb.debug_reg[15] = global_data_A36507.power_cycle_timer;
 }
 
 
@@ -1203,9 +1191,7 @@ void DoA36507(void) {
       global_data_A36507.gun_heater_holdoff_timer++;
     }
 
-#ifdef __ENABLE_POWER_CYCLE_TESTING
-    power_cycle_test.unit_timer++;
-#endif
+    global_data_A36507.power_cycle_timer++;
 
     /*
       The following tasks require use of the i2c bus which can hold the processor for a lot of time
@@ -2069,9 +2055,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
 
 
     case REGISTER_DEBUG_POWER_CYCLE_TEST:
-#ifdef __ENABLE_POWER_CYCLE_TESTING
-      power_cycle_test.start_power_cycle_test = 1;
-#endif
+      global_data_A36507.start_power_cycle_test = 1;
       break;
 
 
@@ -2426,57 +2410,5 @@ void __attribute__((interrupt, no_auto_psv)) _DefaultInterrupt(void) {
   __asm__ ("Reset");
 }
 
-
-
-void CRCTest(void) {
-  unsigned char uart_message[9];
-  unsigned int uart_message_int[5];
-
-  unsigned int result_1;
-  unsigned int result_2;
-
-  uart_message_int[0] = 0x0101;
-  uart_message_int[1] = 0x1004;
-  uart_message_int[2] = 0x8818;
-  uart_message_int[3] = 0x0200;
-  uart_message_int[4] = 0xFF16;
-
-  result_1 = ETMCRC16(&uart_message_int[0], 6);
-  result_2 = ETMCRCModbus(&uart_message_int[0], 6);
-
- 
-  uart_message[0] = 0x01;
-  uart_message[1] = 0x01;
-  uart_message[2] = 0x04;
-  uart_message[3] = 0x10;
-  uart_message[4] = 0x18;
-  uart_message[5] = 0x88;
-  uart_message[6] = 0x00;
-  uart_message[7] = 0x02;
-  uart_message[8] = 0x16;
-  
-  result_1 = ETMCRC16(&uart_message[0], 6);
-  result_2 = ETMCRCModbus(&uart_message[0], 6);
-  Nop();
-  Nop();
-  Nop();
-
-  uart_message[0] = 0x01;
-  uart_message[1] = 0x01;
-  uart_message[2] = 0x04;
-  uart_message[3] = 0x10;
-  uart_message[4] = 0x18;
-  uart_message[5] = 0x05;
-  uart_message[6] = 0xF7;
-  uart_message[7] = 0x26;
-  uart_message[8] = 0xC0;
-
-  result_2 = ETMCRC16(&uart_message[0], 7);
-
-  Nop();
-  Nop();
-  Nop();
-  Nop();
-}
 
 
