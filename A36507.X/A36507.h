@@ -12,9 +12,6 @@
 #include "P1395_CAN_MASTER.h"
 
 
-#define __NDT_LINAC
-#define __ENABLE_POWER_CYCLE_TESTING
-
 /*
   Hardware Module Resource Usage
 
