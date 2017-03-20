@@ -509,7 +509,6 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_NDT_X_RAY_ON_LED = 1;
     global_data_A36507.high_voltage_on_fault_counter = 0;
-    x_ray_on_time_counter = 0;
     while (global_data_A36507.control_state == STATE_XRAY_ON) {
       DoA36507();
       if (x_ray_on_time_counter > x_ray_on_time_set_point) {
@@ -552,12 +551,15 @@ void DoStateMachine(void) {
 
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
 	global_data_A36507.control_state = STATE_READY;
+      	x_ray_on_time_counter = 0;
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_READY;
+      	x_ray_on_time_counter = 0;
       }
       if (CheckHVOnFault()) {
 	global_data_A36507.control_state = STATE_FAULT_HOLD;
+      	x_ray_on_time_counter = 0;
       }
     }
     break;
@@ -1166,12 +1168,9 @@ void DoA36507(void) {
     }
     global_data_A36507.startup_counter++;
     global_data_A36507.reset_hold_timer++;
-    if ((global_data_A36507.control_state == STATE_XRAY_ON) || (global_data_A36507.control_state == STATE_X_RAY_TIME_EXCEEDED)) {
+    if (global_data_A36507.control_state == STATE_XRAY_ON) {
       x_ray_on_time_counter++;
-    } else {
-      x_ray_on_time_counter = 0;
     }
-
 
     global_data_A36507.timer_flash_counter++;
     if (global_data_A36507.timer_flash_counter > 34) {
@@ -1688,6 +1687,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_CMD_COOLANT_INTERFACE_SET_SF6_PULSES_IN_BOTTLE 0x6202
 
 #define REGISTER_CMD_ECB_RESET_FAULTS 0xE200
+#define REGISTER_CMD_ECB_RESET_X_RAY_ON_TIMER 0xE201
 
 #define REGISTER_SYSTEM_SET_TIME 0xE300
 #define REGISTER_SYSTEM_ENABLE_HIGH_SPEED_LOGGING 0xE301
@@ -1940,6 +1940,9 @@ void ExecuteEthernetCommand(unsigned int personality) {
       x_ray_on_time_set_point += next_message.data_1;
       break;
 
+    case REGISTER_CMD_ECB_RESET_X_RAY_ON_TIMER:
+      x_ray_on_time_counter = 0;
+      break;
 
     case REGISTER_CMD_AFC_SELECT_AFC_MODE:
       ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
