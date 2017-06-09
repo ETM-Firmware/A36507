@@ -49,6 +49,7 @@
       </logicalFolder>
       <itemPath>A36507.c</itemPath>
       <itemPath>P1395_CAN_MASTER.c</itemPath>
+      <itemPath>ETM_MODBUS_MASTER.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
