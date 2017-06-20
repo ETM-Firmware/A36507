@@ -311,7 +311,7 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define local_pulse_sync_timing_reg_3_word_1            mirror_pulse_sync.local_data[13]
 #define local_pulse_sync_timing_reg_3_word_2            mirror_pulse_sync.local_data[14]
 #define local_pulse_sync_trigger_prf_decihertz_high     mirror_pulse_sync.local_data[3]
-#define local_pulse_sync_trigger_prf_decihertz_low      mirror_pulse_sync.local_data[7]
+#define local_pulse_sync_trigger_prf_decihertz_low      mirror_pulse_sync.local_data[11]
 
 
 
