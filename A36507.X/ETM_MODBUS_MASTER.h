@@ -49,6 +49,8 @@ unsigned char ETMModbusMasterSendMessage(unsigned char modbus_buffer,
 
 void ETMModbusMasterDoModbus(void);
 
+void ETMModbusMasterUpdateCounterMilliSeconds(unsigned int milliseconds);
+
 void ETMModbusMasterUpdateCounter10mS(void);
 
 unsigned char ETMModbusMasterCheckMessageStatus(unsigned char modbus_buffer);

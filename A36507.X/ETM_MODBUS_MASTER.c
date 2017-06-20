@@ -75,12 +75,14 @@ typedef struct {
   unsigned int  minimum_time_28_bits;
 
   unsigned int  last_byte_recieved_time;
-  unsigned int  last_byte_recieved_counter;
+  //unsigned int  last_byte_recieved_counter;
   unsigned int  first_byte_recieved;
-  unsigned int  counter_10_ms;
 
-  unsigned int  transmit_time;
-  unsigned int  transmit_count;
+  unsigned int  message_timer_milliseconds;
+  
+  //unsigned int  counter_milliseconds;
+  //unsigned int  transmit_time;
+  //unsigned int  transmit_count;
 
 } TYPE_ETM_MODBUS_MASTER;
 
@@ -117,7 +119,7 @@ unsigned char ETMModbusMasterSendMessage(unsigned char modbus_buffer,
   } else if ((function_id == 5) || (function_id == 6)) {
     type = MESSAGE_TYPE_WRITE;
   } else {
-    return ETM_MODBUS_MMASTER_ERROR_UNKNOWN_MESSAGE_TYPE;
+    return ETM_MODBUS_MASTER_ERROR_UNKNOWN_MESSAGE_TYPE;
   }
   
   // Check that the modbus buffer is available
@@ -154,8 +156,9 @@ void ETMModbusMasterDoModbus(void) {
       etm_modbus_master_data.current_message = ETMModbusGetNextMessageToSend();
       if (etm_modbus_master_data.current_message != ALL_BUFFERS_EMPTY) {
 	etm_modbus_master_data.state = STATE_WAIT_TRANSMIT;
-	etm_modbus_master_data.transmit_count = etm_modbus_master_data.counter_10_ms;
-	etm_modbus_master_data.transmit_time = MBGetTimer();
+	etm_modbus_master_data.message_timer_milliseconds = 0;
+	//etm_modbus_master_data.transmit_count = etm_modbus_master_data.counter_milliseconds;
+	//etm_modbus_master_data.transmit_time = MBGetTimer();
       } 
       break;
       
@@ -203,10 +206,12 @@ void ETMModbusMasterDoModbus(void) {
     }
 }
 
-
+void ETMModbusMasterUpdateCounterMilliSeconds(unsigned int milliseconds) {
+  etm_modbus_master_data.message_timer_milliseconds += milliseconds;
+}
 
 void ETMModbusMasterUpdateCounter10mS(void) {
-  etm_modbus_master_data.counter_10_ms++;
+  etm_modbus_master_data.message_timer_milliseconds += 10;
 }
 
 unsigned char ETMModbusMasterCheckMessageStatus(unsigned char modbus_buffer) {
@@ -223,8 +228,7 @@ unsigned int ETMModbusMasterGetMessageReturn(unsigned char modbus_buffer) {
 
 
 void ETMModbusMasterRXISR(void) {
-  etm_modbus_master_data.last_byte_recieved_time = MBGetTimer();
-  etm_modbus_master_data.last_byte_recieved_counter = etm_modbus_master_data.counter_10_ms;
+  etm_modbus_master_data.last_byte_recieved_time = etm_modbus_master_data.message_timer_milliseconds;
   etm_modbus_master_data.first_byte_recieved = 1;
   
   if (etm_modbus_master_data.uart_port == ETM_MODBUS_MASTER_UART_2) {
@@ -316,10 +320,10 @@ unsigned int MBTransmitDone(void) {
   return 0;
 }
 
-#define TIMEOUT_1_SECOND       100
+#define TIMEOUT_1000_MS       1000
 
 unsigned int MBCheckTimeout(void) {
-  if ((etm_modbus_master_data.counter_10_ms - etm_modbus_master_data.transmit_time) > TIMEOUT_1_SECOND) {
+  if (etm_modbus_master_data.message_timer_milliseconds >= TIMEOUT_1000_MS) {
     return 1;
   }
   return 0;
@@ -327,13 +331,7 @@ unsigned int MBCheckTimeout(void) {
 
 
 unsigned int MBTransmitWaitDone(void) {
-  unsigned int current_time;
-  current_time = MBGetTimer();
-  if ((current_time - etm_modbus_master_data.transmit_time) > etm_modbus_master_data.minimum_time_28_bits) {
-    return 1;
-  }
-
-  if ((etm_modbus_master_data.counter_10_ms - etm_modbus_master_data.transmit_count) > 1) {
+  if (etm_modbus_master_data.message_timer_milliseconds > etm_modbus_master_data.minimum_time_28_bits) {
     return 1;
   }
 
@@ -491,13 +489,9 @@ unsigned int MBGetTimer(void) {
 unsigned int MBCheckMessageReceived(void) {
   unsigned int time_clear;
   
-  time_clear = MBGetTimer();
+  time_clear = etm_modbus_master_data.message_timer_milliseconds;
   time_clear -= etm_modbus_master_data.last_byte_recieved_time;
   if (time_clear >= etm_modbus_master_data.minimum_time_28_bits) {
-    return 1;
-  }
-  
-  if ((etm_modbus_master_data.counter_10_ms - etm_modbus_master_data.last_byte_recieved_counter) > 1) {
     return 1;
   }
   
@@ -521,12 +515,5 @@ void MBProcessMessage(unsigned char modbus_buffer) {
 
   // Check the CRC
   crc = ETMCRCModbus(&etm_modbus_master_data.input_buffer[0], (length-2));
-  crc -=
-  
-  
-  
-  
-  
-  
-
+  //crc -=
 }
