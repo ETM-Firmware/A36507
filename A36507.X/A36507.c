@@ -518,6 +518,7 @@ void DoStateMachine(void) {
       }
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
 	global_data_A36507.control_state = STATE_READY;
+	x_ray_on_time_counter = 0;
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_READY;
@@ -1157,6 +1158,16 @@ void DoA36507(void) {
 
   UpdateDebugData();  // Load the customized debugging data into the debugging registers
 
+#ifdef __NDT_LINAC
+  // DPARKER - This is a hack to fix wiring error on NDT interface box.
+#define _PULSE_SYNC_FAULT_PANEL_SWITCH mirror_pulse_sync.status.fault_bits.fault_5
+#define _PULSE_SYNC_FAULT_KEYLOCK      mirror_pulse_sync.status.fault_bits.fault_6
+  if (_PULSE_SYNC_FAULT_PANEL_SWITCH || _PULSE_SYNC_FAULT_KEYLOCK) {
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+  } else {
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 1;
+  }
+#endif
 
   // 10ms Timer has expired -- run periodic checks and updates
   if (_T2IF) {
@@ -1173,10 +1184,10 @@ void DoA36507(void) {
     }
 
     global_data_A36507.timer_flash_counter++;
-    if (global_data_A36507.timer_flash_counter > 34) {
+    if (global_data_A36507.timer_flash_counter > 100) {
       global_data_A36507.timer_flash_counter = 0;
     }
-    if (global_data_A36507.timer_flash_counter > 17) {
+    if (global_data_A36507.timer_flash_counter > 50) {
       global_data_A36507.timer_flash = 0;
     } else {
       global_data_A36507.timer_flash = 1;
