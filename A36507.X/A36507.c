@@ -33,9 +33,11 @@ _FSS(WR_PROT_SEC_OFF & NO_SEC_CODE & NO_SEC_EEPROM & NO_SEC_RAM);         //
 _FGS(CODE_PROT_OFF);                                                      //
 _FICD(PGD);                                                               //
 
-
+#ifdef __NDT_LINAC
+const unsigned int FilamentLookUpTable[64] = {FILAMENT_LOOK_UP_TABLE_VALUES_FOR_MG7095_V2};
+#else
 const unsigned int FilamentLookUpTable[64] = {FILAMENT_LOOK_UP_TABLE_VALUES_FOR_MG5193};
-
+#endif
 
 
 // ---------------------- Control Functions ---------------------------- //
@@ -1332,12 +1334,20 @@ unsigned int CalculatePulseEnergyMilliJoules(unsigned int lambda_voltage) {
                       = v^2/22222.22
 		      = v*v / 2^6 / 347.22
 		      = v*v / 2^6 * 47 / 2^14 (.4% fixed point error)
+
+    ON NDT System, C = 150nF
+                      = v*v / 2^6 * 79 / 2^14
+		      
 		      
   */
   power_milli_joule = lambda_voltage;
   power_milli_joule *= lambda_voltage;
   power_milli_joule >>= 6;
+#ifdef __NDT_LINAC
+  power_milli_joule *= 79;
+#else
   power_milli_joule *= 47;
+#endif
   power_milli_joule >>= 14;
 
   if (power_milli_joule >= 0xFFFF) {
@@ -1781,7 +1791,6 @@ void ExecuteEthernetCommand(unsigned int personality) {
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
-
     case REGISTER_HOME_POSITION:
       local_afc_home_position = next_message.data_2;
       eeprom_register = next_message.index + personality;
@@ -2010,7 +2019,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
 			  0,
 			  0,
 			  MAX_SF6_REFILL_PULSES_IN_BOTTLE);
-
+      break;
 
     case REGISTER_ETM_ECB_RESET_ARC_AND_PULSE_COUNT:
       ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD << 2)),
