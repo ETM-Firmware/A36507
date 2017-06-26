@@ -357,6 +357,8 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define _PULSE_SYNC_FAULT_REGISTER          *(unsigned int*)&mirror_pulse_sync.status.fault_bits
 #define _PULSE_SYNC_PFN_FAN_FAULT          mirror_pulse_sync.status.fault_bits.fault_3
 #define _PULSE_SYNC_FAULT_X_RAY_MISMATCH   mirror_pulse_sync.status.fault_bits.fault_0
+#define _PULSE_SYNC_MODE_BIT_HIGH          mirror_pulse_sync.status.warning_bits.warning_3
+#define _PULSE_SYNC_MODE_BIT_LOW           mirror_pulse_sync.status.warning_bits.warning_2
 
 
 // PUBLIC Variables

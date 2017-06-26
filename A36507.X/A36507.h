@@ -211,6 +211,9 @@ typedef struct {
 
   unsigned int power_cycle_timer;
 
+  unsigned int debug_cal_set_request;
+  unsigned int debug_cal_read_request;
+
 } A36507GlobalVars;
 
 //#define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[4]

@@ -1056,16 +1056,13 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[6]  = test_uart_data_recieved; 
   debug_data_ecb.debug_reg[7]  = 7; 
 
-  debug_data_ecb.debug_reg[8]  = 8; 
-  debug_data_ecb.debug_reg[9]  = 9; 
+  debug_data_ecb.debug_reg[8]  = global_data_A36507.debug_cal_set_request; 
+  debug_data_ecb.debug_reg[9]  = global_data_A36507.debug_cal_read_request;
   debug_data_ecb.debug_reg[10] = 10; 
   debug_data_ecb.debug_reg[11] = 11; 
 
   debug_data_ecb.debug_reg[12] = 12; 
-  debug_data_ecb.debug_reg[13] = 0;
-  debug_data_ecb.debug_reg[14] = 0;
-  debug_data_ecb.debug_reg[15] = 0;
-
+  
   debug_data_ecb.debug_reg[13] = power_cycle_counter;
   debug_data_ecb.debug_reg[14] = power_cycle_faults;
   debug_data_ecb.debug_reg[15] = global_data_A36507.power_cycle_timer;
@@ -1365,14 +1362,23 @@ void UpdateHeaterScale() {
   unsigned long temp32;
   unsigned int temp16;
 
+
   // Load the energy per pulse into temp32
   // Use the higher of High/Low Energy set point
+#ifdef __NDT_LINAC
+  if (_PULSE_SYNC_MODE_BIT_HIGH) {
+    temp32 = CalculatePulseEnergyMilliJoules(local_hv_lambda_high_en_set_point);
+  } else {
+    temp32 = CalculatePulseEnergyMilliJoules(local_hv_lambda_low_en_set_point);
+  }
+#else
   if (local_hv_lambda_high_en_set_point > local_hv_lambda_low_en_set_point) {
     temp32 = CalculatePulseEnergyMilliJoules(local_hv_lambda_high_en_set_point);
   } else {
     temp32 = CalculatePulseEnergyMilliJoules(local_hv_lambda_low_en_set_point);
   }
-  
+#endif  
+
   // Multiply the Energy per Pulse times the PRF (in deci-Hz)
   temp32 *= ETMCanMasterGetPulsePRF();
   if (global_data_A36507.control_state != STATE_XRAY_ON) {
@@ -1749,6 +1755,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
   }
   
   if ((next_message.index & 0x0F00) == 0x0100) {
+    global_data_A36507.debug_cal_set_request++;
     // this is a calibration set message, route to appropriate board
     if ((next_message.index & 0xF000) == 0xE000) {
       // It is a message for the ECB
@@ -1760,6 +1767,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
       SendCalibrationSetPointToSlave(next_message.index, next_message.data_1, next_message.data_0);
     }
   } else if ((next_message.index & 0x0F00) == 0x0900) {
+    global_data_A36507.debug_cal_read_request++;
     // this is a calibration requestion message, route to appropriate board
     // When the response is received, the data will be transfered to the GUI
     if ((next_message.index & 0xF000) == 0xE000) {
