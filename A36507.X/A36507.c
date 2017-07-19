@@ -1058,14 +1058,22 @@ void UpdateDebugData(void) {
 
   debug_data_ecb.debug_reg[8]  = global_data_A36507.debug_cal_set_request; 
   debug_data_ecb.debug_reg[9]  = global_data_A36507.debug_cal_read_request;
-  debug_data_ecb.debug_reg[10] = 10; 
-  debug_data_ecb.debug_reg[11] = 11; 
+  debug_data_ecb.debug_reg[10] = global_data_A36507.debug_cal_set_local; 
+  debug_data_ecb.debug_reg[11] = global_data_A36507.debug_cal_set_can;
+
+  debug_data_ecb.debug_reg[12]  = global_data_A36507.debug_cal_set_request; 
+  debug_data_ecb.debug_reg[13]  = global_data_A36507.debug_cal_read_request;
+  debug_data_ecb.debug_reg[14] = global_data_A36507.debug_cal_set_local; 
+  debug_data_ecb.debug_reg[15] = global_data_A36507.debug_cal_set_can;
+
+  /*
 
   debug_data_ecb.debug_reg[12] = 12; 
-  
   debug_data_ecb.debug_reg[13] = power_cycle_counter;
   debug_data_ecb.debug_reg[14] = power_cycle_faults;
   debug_data_ecb.debug_reg[15] = global_data_A36507.power_cycle_timer;
+  */
+
 }
 
 
@@ -1758,12 +1766,14 @@ void ExecuteEthernetCommand(unsigned int personality) {
     global_data_A36507.debug_cal_set_request++;
     // this is a calibration set message, route to appropriate board
     if ((next_message.index & 0xF000) == 0xE000) {
+      global_data_A36507.debug_cal_set_local++;
       // It is a message for the ECB
       eeprom_register = next_message.index & 0x0FFF;
       ETMEEPromWriteWord(eeprom_register, next_message.data_0);
       ETMEEPromWriteWord(eeprom_register + 1, next_message.data_1);
     } else {
       // It is a message for a slave
+      global_data_A36507.debug_cal_set_can++;
       SendCalibrationSetPointToSlave(next_message.index, next_message.data_1, next_message.data_0);
     }
   } else if ((next_message.index & 0x0F00) == 0x0900) {

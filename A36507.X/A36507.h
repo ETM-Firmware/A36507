@@ -212,7 +212,10 @@ typedef struct {
   unsigned int power_cycle_timer;
 
   unsigned int debug_cal_set_request;
+  unsigned int debug_cal_set_local;
+  unsigned int debug_cal_set_can;
   unsigned int debug_cal_read_request;
+
 
 } A36507GlobalVars;
 
