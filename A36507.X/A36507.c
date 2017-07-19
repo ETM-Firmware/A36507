@@ -1476,7 +1476,7 @@ void InitializeA36507(void) {
   
   // Initialize the Can module
   ETMCanMasterInitialize(CAN_PORT_1, FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
-  ETMCanMasterLoadConfiguration(36507, 251, ETMEEPromReadWord(0x0181), FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, ETMEEPromReadWord(0x0180));
+  ETMCanMasterLoadConfiguration(36507, 495, ETMEEPromReadWord(0x0181), FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, ETMEEPromReadWord(0x0180));
   global_data_A36507.system_serial_number = ETMEEPromReadWord(EEPROM_REGISTER_TOP_LEVEL_SERIAL_NUMBER);
   // Initialize TCPmodbus Module
   ip_config.remote_ip_addr   = ETMEEPromReadWord(EEPROM_REGISTER_REMOTE_IP_ADDRESS);
