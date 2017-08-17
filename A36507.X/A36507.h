@@ -216,6 +216,7 @@ typedef struct {
   unsigned int debug_cal_set_can;
   unsigned int debug_cal_read_request;
 
+  TYPE_DIGITAL_INPUT magnetron_over_power;
 
 } A36507GlobalVars;
 
@@ -242,6 +243,8 @@ extern A36507GlobalVars global_data_A36507;
 #define _FAULT_REPEATED_DRIVE_UP_FAULT                  _FAULT_1
 #define _FAULT_REPEATED_HV_ON_FAULT                     _FAULT_2
 #define _FAULT_EEPROM_FAILURE                           _FAULT_3
+#define _FAULT_MAGNETRON_OVER_POWER                     _FAULT_4
+
 
 // DPAKRER  - Need to evaluate how these are used under new control system
 #define _STATUS_PERSONALITY_LOADED                      _LOGGED_0

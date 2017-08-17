@@ -1203,6 +1203,16 @@ void DoA36507(void) {
 
     // Update the heater current based on Output Power
     UpdateHeaterScale();
+    if (average_output_power_watts > MAX_OUTPUT_POWER) {
+      ETMDigitalUpdateInput(&global_data_A36507.magnetron_over_power, 1);
+    } else {
+      ETMDigitalUpdateInput(&global_data_A36507.magnetron_over_power, 0);
+    }
+
+    if (ETMDigitalFilteredOutput(&global_data_A36507.magnetron_over_power)) {
+      _FAULT_MAGNETRON_OVER_POWER = 1;
+    }
+
 
     if (global_data_A36507.gun_heater_holdoff_timer <= (GUN_HEATER_HOLDOFF_AT_STARTUP + GUN_HEATER_ADDITONAL_HOLDOFF_COLD)) {
       global_data_A36507.gun_heater_holdoff_timer++;
@@ -1555,6 +1565,8 @@ void InitializeA36507(void) {
   _U1RXIP = 6;
   U1MODEbits.UARTEN = 1;	// And turn the peripheral on
 
+
+  ETMDigitalInitializeInput(&global_data_A36507.magnetron_over_power, 0, OVER_POWER_TRIP_TIME);
 }
  
  

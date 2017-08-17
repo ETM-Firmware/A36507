@@ -18,6 +18,10 @@
 #define GUN_HEATER_HOLDOFF_AT_STARTUP        500   // 5 seconds
 #define GUN_HEATER_ADDITONAL_HOLDOFF_COLD   2500   // 25 seconds
 
+#define MAX_OUTPUT_POWER                    6750   // 6750 watts average
+#define OVER_POWER_TRIP_TIME                 100   // 1 second
+
+
 // Page 0
 #define DEFAULT_MAGNETRON_HEATER_CURRENT                           8000
 #define DEFAULT_ELECTROMAGNET_CURRENT                             15200
