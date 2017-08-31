@@ -61,6 +61,7 @@
 
 #include "TCPIPStack/TCPIPStack/TCPIPConfig.h"
 #include "TCPIPStack/TCPIPStack/TCPIP.h"
+#include "TCPIPStack/TCPIPStack/ETM_TICK.h"
 
 #include <p30F6014a.h>
 //#include "TCPmodbus.h"
@@ -68,6 +69,9 @@
 
 
 unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id, unsigned char *data_ptr);
+
+unsigned long led_flash_holding_var;
+unsigned long timer_write_holding_var;
 
 
 // Declare AppConfig structure and some other supporting stack variables
@@ -505,7 +509,7 @@ void TCPmodbus_init(IPCONFIG* ip_config)
 #if 1  //defined(STACK_USE_UART)
   // Initialize stack-related hardware components that may be 
   // required by the UART configuration routines
-  TickInit();
+  ETMTickInitialize(20000000, ETM_TICK_USE_TIMER_1);  // DPARKER make this part of the configuration
 #endif
 
   // Initialize Stack and application related NV variables into AppConfig.
@@ -531,16 +535,13 @@ void TCPmodbus_init(IPCONFIG* ip_config)
 //
 void TCPmodbus_task(void)
 {
-  static DWORD t = 0;
   _LATB8 = 1;
 
 
 
   // Blink LED0 (right most one) every second.
-  if(TickGet() - t >= TICK_SECOND/2ul)
-    {
-      t = TickGet();
-      LEDOP_IO ^= 1;
+  if(ETMTickRunOnceEveryNMilliseconds(500, &led_flash_holding_var)) {
+      LEDOP_IO ^= 1; // DPARKER fix this horribly unsafe operation
     }
 
   // This task performs normal stack task including checking
@@ -938,14 +939,12 @@ WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count)
  
 ***************************************************************************/
 WORD BuildModbusOutput(void) {
-  static DWORD	Timer_write = 0;
   WORD total_bytes = 0;  // default: no cmd out
   unsigned char *tx_ptr = 0;
   unsigned int msg_size_bytes;
 
-  
-  if((TickGet()-Timer_write) >= TICK_100MS) {
-    Timer_write = TickGet();
+
+  if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var)) {
     if (!modbus_cmd_need_repeat) {
       modbus_refresh_index++;
       if (modbus_refresh_index > MODBUS_COMMAND_REFRESH_TOTAL) modbus_refresh_index = 1;	 // starts from 1
@@ -1106,14 +1105,14 @@ void GenericTCPClient(void)
 	break;
       
       GenericTCPExampleState = SM_SOCKET_OBTAINED;
-      Timer = TickGet();
+      Timer = ETMTickGet();
       break;
 
     case SM_SOCKET_OBTAINED:
       // Wait for the remote server to accept our connection request
       if(!TCPIsConnected(MySocket)) {
 		// Time out if too much time is spent in this state
-		if((TickGet()-Timer) > 5*TICK_SECOND) {
+	        if(ETMTickGreaterThanNMilliseconds(5000, Timer)) {
 		  // Close the socket so it can be used by other modules
 		  TCPDisconnect(MySocket);
 		  MySocket = INVALID_SOCKET;
@@ -1122,7 +1121,7 @@ void GenericTCPClient(void)
 		break;
       }
       
-      Timer = TickGet();
+      Timer = ETMTickGet();
       
       // Make certain the socket can be written to
       if (TCPIsPutReady(MySocket) < MAX_TX_SIZE) break;
@@ -1222,7 +1221,7 @@ void GenericTCPClient(void)
     else
     {
 		// Time out if too much time is spent in this state
-		if((TickGet()-Timer) > TICK_SECOND) {
+	        if(ETMTickGreaterThanNMilliseconds(1000, Timer)) {
 		  // Close the socket so it can be used by other modules
 		  TCPDisconnect(MySocket);
 		  MySocket = INVALID_SOCKET;
