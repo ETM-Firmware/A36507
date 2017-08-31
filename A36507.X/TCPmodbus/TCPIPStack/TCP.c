@@ -59,6 +59,7 @@
 #define __TCP_C
 
 #include "TCPIPStack/TCPIP.h"
+#include "TCPIPStack/ETM_TICK.h"
 
 #if defined(STACK_USE_TCP)
 
@@ -113,20 +114,29 @@
 #define TCP_MAX_SEG_SIZE_RX			(536u)
 
 // TCP Timeout and retransmit numbers
-#define TCP_START_TIMEOUT_VAL   	((DWORD)TICK_SECOND*1)	// Timeout to retransmit unacked data
-#define TCP_DELAYED_ACK_TIMEOUT		((DWORD)TICK_SECOND/10)	// Timeout for delayed-acknowledgement algorithm
-#define TCP_FIN_WAIT_2_TIMEOUT		((DWORD)TICK_SECOND*5)	// Timeout for FIN WAIT 2 state
-#define TCP_KEEP_ALIVE_TIMEOUT		((DWORD)TICK_SECOND*10)	// Timeout for keep-alive messages when no traffic is sent
-#define TCP_CLOSE_WAIT_TIMEOUT		((DWORD)TICK_SECOND/5)	// Timeout for the CLOSE_WAIT state
+//#define TCP_START_TIMEOUT_VAL   	((DWORD)TICK_SECOND*1)	// Timeout to retransmit unacked data
+//#define TCP_DELAYED_ACK_TIMEOUT		((DWORD)TICK_SECOND/10)	// Timeout for delayed-acknowledgement algorithm
+//#define TCP_FIN_WAIT_2_TIMEOUT		((DWORD)TICK_SECOND*5)	// Timeout for FIN WAIT 2 state
+//#define TCP_KEEP_ALIVE_TIMEOUT		((DWORD)TICK_SECOND*10)	// Timeout for keep-alive messages when no traffic is sent
+//#define TCP_CLOSE_WAIT_TIMEOUT		((DWORD)TICK_SECOND/5)	// Timeout for the CLOSE_WAIT state
+#define TCP_START_TIMEOUT_VAL_MILLISECONDS       1000
+#define TCP_DELAYED_ACK_TIMEOUT_MILLISECONDS      100
+#define TCP_FIN_WAIT_2_TIMEOUT_MILLISECONDS      5000
+#define TCP_KEEP_ALIVE_TIMEOUT_MILLISECONDS     10000
+#define TCP_CLOSE_WAIT_TIMEOUT_MILLISECONDS	  200
 #define TCP_MAX_RETRIES			    (5u)					// Maximum number of retransmission attempts
 #define TCP_MAX_UNACKED_KEEP_ALIVES	(6u)					// Maximum number of keep-alive messages that can be sent without receiving a response before automatically closing the connection
 #define TCP_MAX_SYN_RETRIES			(2u)	// Smaller than all other retries to reduce SYN flood DoS duration
 
-#define TCP_AUTO_TRANSMIT_TIMEOUT_VAL	(TICK_SECOND/25ull)	// Timeout before automatically transmitting unflushed data
-#define TCP_WINDOW_UPDATE_TIMEOUT_VAL	(TICK_SECOND/5ull)	// Timeout before automatically transmitting a window update due to a TCPGet() or TCPGetArray() function call
-
 #define TCP_SYN_QUEUE_MAX_ENTRIES	(3u) 					// Number of TCP RX SYN packets to save if they cannot be serviced immediately
-#define TCP_SYN_QUEUE_TIMEOUT		((DWORD)TICK_SECOND*3)	// Timeout for when SYN queue entries are deleted if unserviceable
+
+//#define TCP_AUTO_TRANSMIT_TIMEOUT_VAL	(TICK_SECOND/25ull)	// Timeout before automatically transmitting unflushed data
+//#define TCP_WINDOW_UPDATE_TIMEOUT_VAL	(TICK_SECOND/5ull)	// Timeout before automatically transmitting a window update due to a TCPGet() or TCPGetArray() function call
+//#define TCP_SYN_QUEUE_TIMEOUT		((DWORD)TICK_SECOND*3)	// Timeout for when SYN queue entries are deleted if unserviceable
+
+#define TCP_SYN_QUEUE_TIMEOUT_MILLISECONDS          3000
+#define TCP_AUTO_TRANSMIT_TIMEOUT_VAL_MILLISECONDS    40
+#define TCP_WINDOW_UPDATE_TIMEOUT_VAL_MILLISECONDS   200
 
 /****************************************************************************
   Section:
@@ -139,6 +149,11 @@
 #define PSH     (0x08)		// Push Flag as defined in RFC
 #define ACK     (0x10)		// Acknowledge Flag as defined in RFC
 #define URG     (0x20)		// Urgent Flag as defined in RFC
+
+
+unsigned int eventTime_timeout_milliseconds;
+unsigned int eventTime2_timeout_milliseconds;
+
 
 // TCP Header Data Structure
 typedef struct
@@ -194,7 +209,7 @@ typedef struct
 	WORD		wSourcePort;	// Remote TCP port number that the response SYN needs to be sent to
 	DWORD		dwSourceSEQ;	// Remote TCP SEQuence number that must be ACKnowledged when we send our response SYN
 	WORD		wDestPort;		// Local TCP port which the original SYN was destined for
-	WORD		wTimestamp;		// Timer to expire old SYN packets that can't be serviced at all
+	DWORD		wTimestamp;		// Timer to expire old SYN packets that can't be serviced at all
 } TCP_SYN_QUEUE;
 
 
@@ -640,7 +655,8 @@ TCP_SOCKET TCPOpen(DWORD dwRemoteHost, BYTE vRemoteHostType, WORD wPort, BYTE vS
 				MyTCB.remotePort.Val = wPort;
 	
 				// Flag to start the DNS, ARP, SYN processes
-				MyTCBStub.eventTime = TickGet();
+				MyTCBStub.eventTime = ETMTickGet();
+				eventTime_timeout_milliseconds = 0;
 				MyTCBStub.Flags.bTimerEnabled = 1;
 	
 				switch(vRemoteHostType)
@@ -661,7 +677,8 @@ TCP_SOCKET TCPOpen(DWORD dwRemoteHost, BYTE vRemoteHostType, WORD wPort, BYTE vS
 						MyTCBStub.remoteHash.Val = (((DWORD_VAL*)&dwRemoteHost)->w[1]+((DWORD_VAL*)&dwRemoteHost)->w[0] + wPort) ^ MyTCB.localPort.Val;
 						MyTCB.remote.niRemoteMACIP.IPAddr.Val = dwRemoteHost;
 						MyTCB.retryCount = 0;
-						MyTCB.retryInterval = (TICK_SECOND/4)/256;
+						//MyTCB.retryInterval = (TICK_SECOND/4)/256;
+						MyTCB.retryInterval = 1; // 1mS
 						MyTCBStub.smState = TCP_GATEWAY_SEND_ARP;
 						break;
 		
@@ -1204,7 +1221,8 @@ BOOL TCPPut(TCP_SOCKET hTCP, BYTE byte)
 	else if(!MyTCBStub.Flags.bTimer2Enabled)
 	{
 		MyTCBStub.Flags.bTimer2Enabled = TRUE;
-		MyTCBStub.eventTime2 = (WORD)TickGetDiv256() + TCP_AUTO_TRANSMIT_TIMEOUT_VAL/256ull;
+		MyTCBStub.eventTime2 = ETMTickGet();
+		eventTime2_timeout_milliseconds = TCP_AUTO_TRANSMIT_TIMEOUT_VAL_MILLISECONDS;
 	}
 
 	return TRUE;
@@ -1319,7 +1337,8 @@ WORD TCPPutArray(TCP_SOCKET hTCP, BYTE* data, WORD len)
 	else if(!MyTCBStub.Flags.bTimer2Enabled)
 	{
 		MyTCBStub.Flags.bTimer2Enabled = TRUE;
-		MyTCBStub.eventTime2 = (WORD)TickGetDiv256() + TCP_AUTO_TRANSMIT_TIMEOUT_VAL/256ull;
+		MyTCBStub.eventTime2 = ETMTickGet();
+		eventTime2_timeout_milliseconds = TCP_AUTO_TRANSMIT_TIMEOUT_VAL_MILLISECONDS;
 	}
 
 	return wActualLen + wRightLen;
@@ -1347,103 +1366,6 @@ WORD TCPPutArray(TCP_SOCKET hTCP, BYTE* data, WORD len)
   Remarks:
 	This function is aliased to TCPPutArray on non-PIC18 platforms.
   ***************************************************************************/
-#if defined(__18CXX)
-WORD TCPPutROMArray(TCP_SOCKET hTCP, ROM BYTE* data, WORD len)
-{
-	WORD wActualLen;
-	WORD wFreeTXSpace;
-	WORD wRightLen = 0;
-
-	if(hTCP >= TCP_SOCKET_COUNT)
-    {
-        return 0;
-    }
-    
-	SyncTCBStub(hTCP);
-
-	wFreeTXSpace = TCPIsPutReady(hTCP);
-	if(wFreeTXSpace == 0u)
-	{
-		TCPFlush(hTCP);
-		return 0;
-	}
-
-	// Send all current bytes if we are crossing half full
-	// This is required to improve performance with the delayed 
-	// acknowledgement algorithm
-	if((!MyTCBStub.Flags.bHalfFullFlush) && (wFreeTXSpace <= ((MyTCBStub.bufferRxStart-MyTCBStub.bufferTxStart)>>1)))
-	{
-		TCPFlush(hTCP);	
-		MyTCBStub.Flags.bHalfFullFlush = TRUE;
-	}
-	
-	wActualLen = wFreeTXSpace;
-	if(wFreeTXSpace > len)
-		wActualLen = len;
-	
-	#if defined(STACK_USE_SSL)
-	if(MyTCBStub.sslStubID != SSL_INVALID_ID)
-	{
-		// See if we need a two part put
-		if(MyTCBStub.sslTxHead + wActualLen >= MyTCBStub.bufferRxStart)
-		{
-			wRightLen = MyTCBStub.bufferRxStart-MyTCBStub.sslTxHead;
-			TCPRAMCopyROM(MyTCBStub.sslTxHead, MyTCBStub.vMemoryMedium, data, wRightLen);
-			data += wRightLen;
-			wActualLen -= wRightLen;
-			MyTCBStub.sslTxHead = MyTCBStub.bufferTxStart;
-		}
-	
-		TCPRAMCopyROM(MyTCBStub.sslTxHead, MyTCBStub.vMemoryMedium, data, wActualLen);
-		MyTCBStub.sslTxHead += wActualLen;
-	}
-	else
-	{
-		// See if we need a two part put
-		if(MyTCBStub.txHead + wActualLen >= MyTCBStub.bufferRxStart)
-		{
-			wRightLen = MyTCBStub.bufferRxStart-MyTCBStub.txHead;
-			TCPRAMCopyROM(MyTCBStub.txHead, MyTCBStub.vMemoryMedium, data, wRightLen);
-			data += wRightLen;
-			wActualLen -= wRightLen;
-			MyTCBStub.txHead = MyTCBStub.bufferTxStart;
-		}
-	
-		TCPRAMCopyROM(MyTCBStub.txHead, MyTCBStub.vMemoryMedium, data, wActualLen);
-		MyTCBStub.txHead += wActualLen;
-	}
-	#else
-	// See if we need a two part put
-	if(MyTCBStub.txHead + wActualLen >= MyTCBStub.bufferRxStart)
-	{
-		wRightLen = MyTCBStub.bufferRxStart-MyTCBStub.txHead;
-		TCPRAMCopyROM(MyTCBStub.txHead, MyTCBStub.vMemoryMedium, data, wRightLen);
-		data += wRightLen;
-		wActualLen -= wRightLen;
-		MyTCBStub.txHead = MyTCBStub.bufferTxStart;
-	}
-
-	TCPRAMCopyROM(MyTCBStub.txHead, MyTCBStub.vMemoryMedium, data, wActualLen);
-	MyTCBStub.txHead += wActualLen;
-	#endif
-
-	// Send these bytes right now if we are out of TX buffer space
-	if(wFreeTXSpace <= len)
-	{
-		TCPFlush(hTCP);
-	}
-	// If not already enabled, start a timer so this data will 
-	// eventually get sent even if the application doens't call
-	// TCPFlush()
-	else if(!MyTCBStub.Flags.bTimer2Enabled)
-	{
-		MyTCBStub.Flags.bTimer2Enabled = TRUE;
-		MyTCBStub.eventTime2 = (WORD)TickGetDiv256() + TCP_AUTO_TRANSMIT_TIMEOUT_VAL/256ull;
-	}
-
-	return wActualLen + wRightLen;
-}
-#endif
 
 /*****************************************************************************
   Function:
@@ -1670,7 +1592,8 @@ BOOL TCPGet(TCP_SOCKET hTCP, BYTE* byte)
 	else if(!MyTCBStub.Flags.bTimer2Enabled)
 	{
 		MyTCBStub.Flags.bTimer2Enabled = TRUE;
-		MyTCBStub.eventTime2 = (WORD)TickGetDiv256() + TCP_WINDOW_UPDATE_TIMEOUT_VAL/256ull;
+		MyTCBStub.eventTime2 = ETMTickGet();
+		eventTime2_timeout_milliseconds = TCP_WINDOW_UPDATE_TIMEOUT_VAL_MILLISECONDS;
 	}
 
 
@@ -1742,7 +1665,8 @@ WORD TCPGetArray(TCP_SOCKET hTCP, BYTE* buffer, WORD len)
 	// update will get sent to the remote node at some point
 	{
 		MyTCBStub.Flags.bTimer2Enabled = TRUE;
-		MyTCBStub.eventTime2 = (WORD)TickGetDiv256() + TCP_WINDOW_UPDATE_TIMEOUT_VAL/256ull;
+		MyTCBStub.eventTime2 = ETMTickGet();
+		eventTime2_timeout_milliseconds = TCP_WINDOW_UPDATE_TIMEOUT_VAL_MILLISECONDS;
 	}
 
 	return len;
@@ -2398,7 +2322,8 @@ void TCPTick(void)
 		if(MyTCBStub.Flags.bTimer2Enabled)
 		{
 			// See if the timeout has occured, and we need to send a new window update and pending data
-			if((SHORT)(MyTCBStub.eventTime2 - (WORD)TickGetDiv256()) <= (SHORT)0)
+			//if((SHORT)(MyTCBStub.eventTime2 - (WORD)TickGetDiv256()) <= (SHORT)0)
+		  if(ETMTickGreaterThanNMilliseconds(eventTime2_timeout_milliseconds, MyTCBStub.eventTime2))
 				vFlags = ACK;
 		}
 
@@ -2406,7 +2331,8 @@ void TCPTick(void)
 		if(MyTCBStub.Flags.bDelayedACKTimerEnabled)
 		{
 			// See if the timeout has occured and delayed ACK needs to be sent
-			if((SHORT)(MyTCBStub.OverlappedTimers.delayedACKTime - (WORD)TickGetDiv256()) <= (SHORT)0)
+			//if((SHORT)(MyTCBStub.OverlappedTimers.delayedACKTime - (WORD)TickGetDiv256()) <= (SHORT)0)
+		        if (ETMTickGreaterThanNMilliseconds(TCP_DELAYED_ACK_TIMEOUT_MILLISECONDS, MyTCBStub.OverlappedTimers.delayedACKTime))
 				vFlags = ACK;
 		}
 		
@@ -2415,7 +2341,8 @@ void TCPTick(void)
 		{
 			// Automatically close the socket on our end if the application 
 			// fails to call TCPDisconnect() is a reasonable amount of time.
-			if((SHORT)(MyTCBStub.OverlappedTimers.closeWaitTime - (WORD)TickGetDiv256()) <= (SHORT)0)
+			//if((SHORT)(MyTCBStub.OverlappedTimers.closeWaitTime - (WORD)TickGetDiv256()) <= (SHORT)0)
+		        if (ETMTickGreaterThanNMilliseconds(TCP_CLOSE_WAIT_TIMEOUT_MILLISECONDS, MyTCBStub.OverlappedTimers.closeWaitTime))
 			{
 				vFlags = FIN | ACK;
 				MyTCBStub.smState = TCP_LAST_ACK;
@@ -2478,7 +2405,8 @@ void TCPTick(void)
 				if(MyTCBStub.smState == TCP_ESTABLISHED)
 				{
 					// If timeout has not occured, do not do anything.
-					if((LONG)(TickGet() - MyTCBStub.eventTime) < (LONG)0)
+					//if((LONG)(TickGet() - MyTCBStub.eventTime) < (LONG)0)
+				        if (ETMTickGreaterThanNMilliseconds(eventTime_timeout_milliseconds, MyTCBStub.eventTime) == 0)
 						continue;
 		
 					// If timeout has occured and the connection appears to be dead (no 
@@ -2507,14 +2435,16 @@ void TCPTick(void)
 					// Otherwise, if a timeout occured, simply send a keep-alive packet
 					SyncTCB();
 					SendTCP(ACK, SENDTCP_KEEP_ALIVE);
-					MyTCBStub.eventTime = TickGet() + TCP_KEEP_ALIVE_TIMEOUT;
+					MyTCBStub.eventTime = ETMTickGet();
+					eventTime_timeout_milliseconds = TCP_KEEP_ALIVE_TIMEOUT_MILLISECONDS;
 				}
 			#endif
 			continue;
 		}
 
 		// If timeout has not occured, do not do anything.
-		if((LONG)(TickGet() - MyTCBStub.eventTime) < (LONG)0)
+		//if((LONG)(TickGet() - MyTCBStub.eventTime) < (LONG)0)
+		if (ETMTickGreaterThanNMilliseconds(eventTime_timeout_milliseconds, MyTCBStub.eventTime) == 0)
 			continue;
 
 		// Load up extended TCB information
@@ -2525,52 +2455,10 @@ void TCPTick(void)
 		switch(MyTCBStub.smState)
 		{
 			#if defined(STACK_CLIENT_MODE)
-			#if defined(STACK_USE_DNS)
-			case TCP_GET_DNS_MODULE:
-				if(DNSBeginUsage())
-				{
-					MyTCBStub.smState = TCP_DNS_RESOLVE;
-					if(MyTCB.flags.bRemoteHostIsROM)
-						DNSResolveROM((ROM BYTE*)(ROM_PTR_BASE)MyTCB.remote.dwRemoteHost, DNS_TYPE_A);
-					else
-						DNSResolve((BYTE*)(PTR_BASE)MyTCB.remote.dwRemoteHost, DNS_TYPE_A);
-				}
-				break;
-				
-			case TCP_DNS_RESOLVE:
-			{
-				IP_ADDR ipResolvedDNSIP;
-
-				// See if DNS resolution has finished.  Note that if the DNS 
-				// fails, the &ipResolvedDNSIP will be written with 0x00000000. 
-				// MyTCB.remote.dwRemoteHost is unioned with 
-				// MyTCB.remote.niRemoteMACIP.IPAddr, so we can't directly write 
-				// the DNS result into MyTCB.remote.niRemoteMACIP.IPAddr.  We 
-				// must copy it over only if the DNS is resolution step was 
-				// successful.
-				if(DNSIsResolved(&ipResolvedDNSIP))
-				{
-					if(DNSEndUsage())
-					{
-						MyTCB.remote.niRemoteMACIP.IPAddr.Val = ipResolvedDNSIP.Val;
-						MyTCBStub.smState = TCP_GATEWAY_SEND_ARP;
-						MyTCBStub.remoteHash.Val = (MyTCB.remote.niRemoteMACIP.IPAddr.w[1]+MyTCB.remote.niRemoteMACIP.IPAddr.w[0] + MyTCB.remotePort.Val) ^ MyTCB.localPort.Val;
-						MyTCB.retryCount = 0;
-						MyTCB.retryInterval = (TICK_SECOND/4)/256;
-					}
-					else
-					{
-						MyTCBStub.eventTime = TickGet() + 10*TICK_SECOND;
-						MyTCBStub.smState = TCP_GET_DNS_MODULE;
-					}
-				}
-				break;
-			}
-			#endif // #if defined(STACK_USE_DNS)
 				
 			case TCP_GATEWAY_SEND_ARP:
 				// Obtain the MAC address associated with the server's IP address (either direct MAC address on same subnet, or the MAC address of the Gateway machine)
-				MyTCBStub.eventTime2 = (WORD)TickGetDiv256();
+				MyTCBStub.eventTime2 = ETMTickGet();
 				ARPResolve(&MyTCB.remote.niRemoteMACIP.IPAddr);
 				MyTCBStub.smState = TCP_GATEWAY_GET_ARP;
 				break;
@@ -2583,7 +2471,8 @@ void TCPTick(void)
 					// Note that this will continuously send out ARP 
 					// requests for an infinite time if the Gateway 
 					// never responds
-					if((WORD)TickGetDiv256() - MyTCBStub.eventTime2 > (WORD)MyTCB.retryInterval)
+					//if((WORD)TickGetDiv256() - MyTCBStub.eventTime2 > (WORD)MyTCB.retryInterval)
+				        if (ETMTickGreaterThanNMilliseconds(MyTCB.retryInterval, MyTCBStub.eventTime2))
 					{
 						// Exponentially increase timeout until we reach 6 attempts then stay constant
 						if(MyTCB.retryCount < 6u)
@@ -2618,7 +2507,7 @@ void TCPTick(void)
 				if(MyTCB.retryCount >= (TCP_MAX_RETRIES - 1))
 				{
 					MyTCB.retryCount = TCP_MAX_RETRIES - 1;
-					MyTCB.retryInterval = TCP_START_TIMEOUT_VAL<<(TCP_MAX_RETRIES-1);
+					MyTCB.retryInterval = TCP_START_TIMEOUT_VAL_MILLISECONDS<<(TCP_MAX_RETRIES-1);
 				}
 				break;
 	
@@ -2769,7 +2658,8 @@ void TCPTick(void)
 				break;
 			
 			// See if this SYN has timed out
-			if((WORD)TickGetDiv256() - SYNQueue[w].wTimestamp > (WORD)(TCP_SYN_QUEUE_TIMEOUT/256ull))
+			//if((WORD)TickGetDiv256() - SYNQueue[w].wTimestamp > (WORD)(TCP_SYN_QUEUE_TIMEOUT/256ull))
+			if (ETMTickGreaterThanNMilliseconds(TCP_SYN_QUEUE_TIMEOUT_MILLISECONDS, SYNQueue[w].wTimestamp))
 			{
 				// Delete this SYN from the SYNQueue and compact the SYNQueue[] array
 				TCPRAMCopy((PTR_BASE)&SYNQueue[w], TCP_PIC_RAM, (PTR_BASE)&SYNQueue[w+1], TCP_PIC_RAM, (TCP_SYN_QUEUE_MAX_ENTRIES-1u-w)*sizeof(TCP_SYN_QUEUE));
@@ -3042,10 +2932,11 @@ static void SendTCP(BYTE vTCPFlags, BYTE vSendFlags)
 		if(vSendFlags & SENDTCP_RESET_TIMERS)
 		{
 			MyTCB.retryCount = 0;
-			MyTCB.retryInterval = TCP_START_TIMEOUT_VAL;
+			MyTCB.retryInterval = TCP_START_TIMEOUT_VAL_MILLISECONDS;
 		}	
 
-		MyTCBStub.eventTime = TickGet() + MyTCB.retryInterval;
+		MyTCBStub.eventTime = ETMTickGet();
+		eventTime_timeout_milliseconds = MyTCB.retryInterval;
 		MyTCBStub.Flags.bTimerEnabled = 1;
 	}
 	else if(vSendFlags & SENDTCP_KEEP_ALIVE)
@@ -3074,7 +2965,8 @@ static void SendTCP(BYTE vTCPFlags, BYTE vSendFlags)
 			}
 		}
 	
-		MyTCBStub.eventTime = TickGet() + MyTCB.retryInterval;
+		MyTCBStub.eventTime = ETMTickGet();
+		eventTime_timeout_milliseconds = MyTCB.retryInterval;
 	}
 	
 
@@ -3330,7 +3222,7 @@ static BOOL FindMatchingSocket(TCP_HEADER* h, NODE_INFO* remote)
 				continue;
 
 			// SYN matches SYN queue entry.  Update timestamp and do nothing.
-			SYNQueue[wQueueInsertPos].wTimestamp = TickGetDiv256();
+			SYNQueue[wQueueInsertPos].wTimestamp = ETMTickGet();
 			return FALSE;
 		}
 		
@@ -3356,7 +3248,7 @@ static BOOL FindMatchingSocket(TCP_HEADER* h, NODE_INFO* remote)
 			SYNQueue[wQueueInsertPos].wSourcePort = h->SourcePort;
 			SYNQueue[wQueueInsertPos].dwSourceSEQ = h->SeqNumber;
 			SYNQueue[wQueueInsertPos].wDestPort = h->DestPort;
-			SYNQueue[wQueueInsertPos].wTimestamp = TickGetDiv256();
+			SYNQueue[wQueueInsertPos].wTimestamp = ETMTickGet();
 
 			return FALSE;
 		}
@@ -3622,8 +3514,10 @@ static void HandleTCPSeg(TCP_HEADER* h, WORD len)
 	// We received a packet, reset the keep alive timer and count
 	#if defined(TCP_KEEP_ALIVE_TIMEOUT)
 		MyTCBStub.Flags.vUnackedKeepalives = 0;
-		if(!MyTCBStub.Flags.bTimerEnabled)
-			MyTCBStub.eventTime = TickGet() + TCP_KEEP_ALIVE_TIMEOUT;
+		if(!MyTCBStub.Flags.bTimerEnabled) {
+                    MyTCBStub.eventTime = ETMTickGet();
+		    eventTime_timeout_milliseconds = TCP_KEEP_ALIVE_TIMEOUT_MILLISECONDS;
+                  }
 	#endif
 
 	// Handle TCP_LISTEN and TCP_SYN_SENT states
@@ -3718,7 +3612,8 @@ static void HandleTCPSeg(TCP_HEADER* h, WORD len)
 					MyTCBStub.smState = TCP_ESTABLISHED;
 					// Set up keep-alive timer
 					#if defined(TCP_KEEP_ALIVE_TIMEOUT)
-						MyTCBStub.eventTime = TickGet() + TCP_KEEP_ALIVE_TIMEOUT;
+					    MyTCBStub.eventTime = ETMTickGet();
+					    eventTime_timeout_milliseconds = TCP_KEEP_ALIVE_TIMEOUT_MILLISECONDS;
 					#endif
 					MyTCBStub.Flags.bTimerEnabled = 0;
 				}
@@ -3939,7 +3834,8 @@ static void HandleTCPSeg(TCP_HEADER* h, WORD len)
 				{
 					// Convert retransmission timer to keep-alive timer
 					#if defined(TCP_KEEP_ALIVE_TIMEOUT)
-						MyTCBStub.eventTime = TickGet() + TCP_KEEP_ALIVE_TIMEOUT;
+                                                MyTCBStub.eventTime = ETMTickGet();
+						eventTime_timeout_milliseconds = TCP_KEEP_ALIVE_TIMEOUT_MILLISECONDS;						
 					#endif
 					MyTCBStub.Flags.bTimerEnabled = 0;
 				}
@@ -3974,7 +3870,8 @@ static void HandleTCPSeg(TCP_HEADER* h, WORD len)
 				{
 					// Reset our timer for forced closure if the remote node 
 					// doesn't send us a FIN in a timely manner.
-					MyTCBStub.eventTime = TickGet() + TCP_FIN_WAIT_2_TIMEOUT;
+					MyTCBStub.eventTime = ETMTickGet();
+					eventTime_timeout_milliseconds = TCP_FIN_WAIT_2_TIMEOUT_MILLISECONDS;
 					MyTCBStub.Flags.bTimerEnabled = 1;
 					MyTCBStub.smState = TCP_FIN_WAIT_2;
 				}
@@ -4203,7 +4100,7 @@ static void HandleTCPSeg(TCP_HEADER* h, WORD len)
 			if(!MyTCBStub.Flags.bDelayedACKTimerEnabled)
 			{
 				MyTCBStub.Flags.bDelayedACKTimerEnabled = 1;
-				MyTCBStub.OverlappedTimers.delayedACKTime = (WORD)TickGetDiv256() + (WORD)((TCP_DELAYED_ACK_TIMEOUT)>>8);
+				MyTCBStub.OverlappedTimers.delayedACKTime = ETMTickGet();
 			}
 		}
 	}
@@ -4242,7 +4139,7 @@ static void HandleTCPSeg(TCP_HEADER* h, WORD len)
 					// Stack to automatically close sockets when the 
 					// remote node sends a FIN, let's start a timer so 
 					// that we will eventually close the socket automatically
-					MyTCBStub.OverlappedTimers.closeWaitTime = (WORD)TickGetDiv256() + (WORD)((TCP_CLOSE_WAIT_TIMEOUT)>>8);
+					MyTCBStub.OverlappedTimers.closeWaitTime = ETMTickGet();
 					break;
 	
 				case TCP_FIN_WAIT_1:

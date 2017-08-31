@@ -43,7 +43,8 @@
           <itemPath>TCPmodbus/TCPIPStack/IP.c</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/StackTsk.c</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCP.c</itemPath>
-          <itemPath>TCPmodbus/TCPIPStack/Tick.c</itemPath>
+          <itemPath>TCPmodbus/TCPIPStack/ETM_TICK.c</itemPath>
+          <itemPath>TCPmodbus/TCPIPStack/ETM_TICK_ASM.s</itemPath>
         </logicalFolder>
         <itemPath>TCPmodbus/TCPmodbus.c</itemPath>
       </logicalFolder>

@@ -116,11 +116,11 @@ typedef struct
 	PTR_BASE rxHead;			// Head pointer for RX
 	PTR_BASE rxTail;			// Tail pointer for RX
     DWORD eventTime;			// Packet retransmissions, state changes
-	WORD eventTime2;			// Window updates, automatic transmission
+	DWORD eventTime2;			// Window updates, automatic transmission
 	union
 	{
-		WORD delayedACKTime;	// Delayed Acknowledgement timer
-		WORD closeWaitTime;		// TCP_CLOSE_WAIT timeout timer
+		DWORD delayedACKTime;	// Delayed Acknowledgement timer
+		DWORD closeWaitTime;		// TCP_CLOSE_WAIT timeout timer
 	} OverlappedTimers;
     TCP_STATE smState;			// State of this socket
     struct
