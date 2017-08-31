@@ -68,10 +68,15 @@
 #include "A36507.h"
 
 
-unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id, unsigned char *data_ptr);
+unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id);
 
 unsigned long led_flash_holding_var;
 unsigned long timer_write_holding_var;
+
+unsigned char buffer_header[MAX_RX_SIZE];
+
+unsigned char *data_ptr;
+unsigned int header_length;
 
 
 // Declare AppConfig structure and some other supporting stack variables
@@ -89,7 +94,7 @@ ETMEthernetCalToGUI          eth_cal_to_GUI[ ETH_CAL_TO_GUI_BUFFER_SIZE ];
 
 
 
-static BYTE         data_buffer[MAX_TX_SIZE];
+//static BYTE         data_buffer[MAX_TX_SIZE];
 static BYTE         modbus_send_index = 0;
 
 static BYTE         modbus_refresh_index = 0;
@@ -639,52 +644,22 @@ void InitModbusData(void)
 ***************************************************************************/
 void BuildModbusOutput_write_header(unsigned int total_bytes)
 {
-  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-  data_buffer[1] = transaction_number & 0xff;	 // transaction lo byte
-  data_buffer[2] = 0;	// protocol hi 
-  data_buffer[3] = 0;	// protocol lo 
+  buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  buffer_header[1] = transaction_number & 0xff;	 // transaction lo byte
+  buffer_header[2] = 0;	// protocol hi 
+  buffer_header[3] = 0;	// protocol lo 
   // byte 4 and 5 for length
-  data_buffer[4] = ((total_bytes + 7) >> 8) & 0xff;
-  data_buffer[5] = (total_bytes + 7) & 0xff;
-  data_buffer[6] = modbus_send_index;	// unit Id 
+  buffer_header[4] = ((total_bytes + 7) >> 8) & 0xff;
+  buffer_header[5] = (total_bytes + 7) & 0xff;
+  buffer_header[6] = modbus_send_index;	// unit Id 
 
-  data_buffer[7] = 0x10; // function code 
-  data_buffer[8] = 0;   // ref # hi
-  data_buffer[9] = 0;	  // ref # lo
+  buffer_header[7] = 0x10; // function code 
+  buffer_header[8] = 0;   // ref # hi
+  buffer_header[9] = 0;	  // ref # lo
 
-  data_buffer[10] = (total_bytes >> 9) & 0xff;  // data length in words hi, always 0, assume data length < 256
-  data_buffer[11] = total_bytes >> 1;     // data length in words lo
-  data_buffer[12] = total_bytes & 0xff;   // data length in bytes
-
-}
-/****************************************************************************
-  Function:
-    BuildModbusOutput_write_boards(void)
-
-  Description:
-    Build modbus command, return 0 if we don't want to send anything
- 
-***************************************************************************/
-WORD BuildModbusOutput_write_boards(unsigned char *tx_ptr)
-{
-  WORD i; 
-  WORD total_bytes = 0;  // default: no cmd out 
-    
-  if (tx_ptr) // otherwise index is wrong, don't need send any cmd out
-    {
-      total_bytes = 108 + MAX_CUSTOM_DATA_LENGTH * 2; // bytes after length byte
-      BuildModbusOutput_write_header(total_bytes);   
-
-      // data starts at offset 13
-      for (i = 0; i < total_bytes; i++, tx_ptr++)
-        {
-	  data_buffer[i + 13] = *tx_ptr;
-        }
-      total_bytes = i + 13;
-        		     
-    }
-       
-  return (total_bytes);
+  buffer_header[10] = (total_bytes >> 9) & 0xff;  // data length in words hi, always 0, assume data length < 256
+  buffer_header[11] = total_bytes >> 1;     // data length in words lo
+  buffer_header[12] = total_bytes & 0xff;   // data length in bytes
 
 }
 /****************************************************************************
@@ -695,6 +670,7 @@ WORD BuildModbusOutput_write_boards(unsigned char *tx_ptr)
     Build modbus command, return 0 if we don't want to send anything
  
 ***************************************************************************/
+// DPARKER rewrite this to use point to data instead of data buffer
 WORD BuildModbusOutput_write_commands(unsigned char index)
 {
   WORD x, i; 
@@ -714,7 +690,7 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
         {
             
 	  if (i >= 64) break;  // max transfer 64 entries at one time
-            
+	  /*    
 	  data_buffer[i * sizeof(TYPE_EVENT) + 13] = (event_log.event_data[x].event_number >> 8) & 0xff;
 	  data_buffer[i * sizeof(TYPE_EVENT) + 14] = event_log.event_data[x].event_number & 0xff;
 	  data_buffer[i * sizeof(TYPE_EVENT) + 15] = (event_log.event_data[x].event_time >> 24) & 0xff;
@@ -723,11 +699,11 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
 	  data_buffer[i * sizeof(TYPE_EVENT) + 18] = event_log.event_data[x].event_time & 0xff;
 	  data_buffer[i * sizeof(TYPE_EVENT) + 19] = (event_log.event_data[x].event_id >> 8) & 0xff;
 	  data_buffer[i * sizeof(TYPE_EVENT) + 20] = event_log.event_data[x].event_id & 0xff;
-
+      */
 	  x++;
 	  x &= 0x7F;
         }
-        
+
       event_log.gui_index = x; //  next entry
 
       total_bytes = i * sizeof(TYPE_EVENT) + 13;
@@ -772,58 +748,54 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
 }
 
 
-unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id, unsigned char *data_ptr) {
-  unsigned int i;
+unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id) {
   unsigned int total_bytes;
 
+  header_length = 13;
   total_bytes = msg_bytes + 13;
 
-  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-  data_buffer[1] = transaction_number & 0xff;	         // transaction lo byte
-  data_buffer[2] = 0;	                                 // protocol hi 
-  data_buffer[3] = 0;	                                 // protocol lo 
-  data_buffer[4] = ((msg_bytes + 7) >> 8);               // This is the length of data HB
-  data_buffer[5] = msg_bytes + 7;                        // This is the length of data LB
-  data_buffer[6] = unit_id;	                         // 
-  data_buffer[7] = 0x10;                                 // function code 
-  data_buffer[8] = 0;                                    // ref # hi
-  data_buffer[9] = 0;	                                 // ref # lo
-  data_buffer[10] = (msg_bytes >> 9);                    // msg length in words hi
-  data_buffer[11] = msg_bytes >> 1;                      // msg length in words lo
-  data_buffer[12] = total_bytes & 0xff;                  // data length in bytes // DPARKER is this used???
+  buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  buffer_header[1] = transaction_number & 0xff;	         // transaction lo byte
+  buffer_header[2] = 0;	                                 // protocol hi 
+  buffer_header[3] = 0;	                                 // protocol lo 
+  buffer_header[4] = ((msg_bytes + 7) >> 8);               // This is the length of data HB
+  buffer_header[5] = msg_bytes + 7;                        // This is the length of data LB
+  buffer_header[6] = unit_id;	                         // 
+  buffer_header[7] = 0x10;                                 // function code 
+  buffer_header[8] = 0;                                    // ref # hi
+  buffer_header[9] = 0;	                                 // ref # lo
+  buffer_header[10] = (msg_bytes >> 9);                    // msg length in words hi
+  buffer_header[11] = msg_bytes >> 1;                      // msg length in words lo
+  buffer_header[12] = total_bytes & 0xff;                  // data length in bytes // DPARKER is this used???
 
-  for (i = 0; i < msg_bytes; i++, data_ptr++) {
-    data_buffer[i + 13] = *data_ptr;
-  }
   return total_bytes;
 }
 
 unsigned int BuildModbusOutputHighSpeedDataLog(void) {
   unsigned int data_bytes;
-  unsigned int x;
   static unsigned pulse_index = 0;  // index for eash tracking
-  unsigned char *ptr;
   
   data_bytes = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData) + 2;
 
-  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-  data_buffer[1] = transaction_number & 0xff;	         // transaction lo byte
-  data_buffer[2] = 0;	                                 // protocol hi 
-  data_buffer[3] = 0;	                                 // protocol lo 
-  data_buffer[4] = ((data_bytes + 7) >> 8);              // This is the length of data HB
-  data_buffer[5] = data_bytes + 7;                       // This is the length of data LB
-  data_buffer[6] = MODBUS_WR_PULSE_LOG;                  // 
-  data_buffer[7] = 0x10;                                 // function code 
-  data_buffer[8] = 0;                                    // ref # hi
-  data_buffer[9] = 0;	                                 // ref # lo
-  data_buffer[10] = data_bytes >> 9;                     // msg length in words hi
-  data_buffer[11] = data_bytes >> 1;                     // msg length in words lo
-  data_buffer[12] = data_bytes & 0xff;                   // data length in bytes // DPARKER is this used???
-  data_buffer[13] = (pulse_index >> 8) & 0xff;           // pulse index high word
-  data_buffer[14] = pulse_index & 0xff;                  // pulse index low word
+  header_length = 15;
+  buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  buffer_header[1] = transaction_number & 0xff;	         // transaction lo byte
+  buffer_header[2] = 0;	                                 // protocol hi 
+  buffer_header[3] = 0;	                                 // protocol lo 
+  buffer_header[4] = ((data_bytes + 7) >> 8);              // This is the length of data HB
+  buffer_header[5] = data_bytes + 7;                       // This is the length of data LB
+  buffer_header[6] = MODBUS_WR_PULSE_LOG;                  // 
+  buffer_header[7] = 0x10;                                 // function code 
+  buffer_header[8] = 0;                                    // ref # hi
+  buffer_header[9] = 0;	                                 // ref # lo
+  buffer_header[10] = data_bytes >> 9;                     // msg length in words hi
+  buffer_header[11] = data_bytes >> 1;                     // msg length in words lo
+  buffer_header[12] = data_bytes & 0xff;                   // data length in bytes // DPARKER is this used???
+  buffer_header[13] = (pulse_index >> 8) & 0xff;           // pulse index high word
+  buffer_header[14] = pulse_index & 0xff;                  // pulse index low word
   
   pulse_index++;  // overflows at 65535
-
+  /*
   if (send_high_speed_data_buffer & 0x01) {
     ptr = (unsigned char *)&high_speed_data_buffer_a[0];
     send_high_speed_data_buffer = 0;
@@ -837,42 +809,42 @@ unsigned int BuildModbusOutputHighSpeedDataLog(void) {
     *ptr = 0;
     ptr++;
   }
-
+  */
   return data_bytes + 13;
 
 }
 
 
-
+/*
 unsigned int BuildModbusOutputCalibrationData(void) {
 
-  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-  data_buffer[1] = transaction_number & 0xff;	         // transaction lo byte
-  data_buffer[2] = 0;	                                 // protocol hi 
-  data_buffer[3] = 0;	                                 // protocol lo 
-  data_buffer[4] = 0;                                    // This is the length of data HB
-  data_buffer[5] = 13;                                   // This is the length of data LB
-  data_buffer[6] = MODBUS_WR_ONE_CAL_ENTRY;              // 
-  data_buffer[7] = 0x10;                                 // function code 
-  data_buffer[8] = 0;                                    // ref # hi
-  data_buffer[9] = 0;	                                 // ref # lo
-  data_buffer[10] = 0;                                   // msg length in words hi
-  data_buffer[11] = 3;                                   // msg length in words lo
-  data_buffer[12] = 6;                                   // data length in bytes // DPARKER is this used???
-  data_buffer[13] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].index >> 8) & 0xff;
-  data_buffer[14] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].index & 0xff;
-  data_buffer[15] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale >> 8) & 0xff;
-  data_buffer[16] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale & 0xff;
-  data_buffer[17] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset >> 8) & 0xff;
-  data_buffer[18] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset & 0xff;
+  buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  buffer_header[1] = transaction_number & 0xff;	         // transaction lo byte
+  buffer_header[2] = 0;	                                 // protocol hi 
+  buffer_header[3] = 0;	                                 // protocol lo 
+  buffer_header[4] = 0;                                    // This is the length of data HB
+  buffer_header[5] = 13;                                   // This is the length of data LB
+  buffer_header[6] = MODBUS_WR_ONE_CAL_ENTRY;              // 
+  buffer_header[7] = 0x10;                                 // function code 
+  buffer_header[8] = 0;                                    // ref # hi
+  buffer_header[9] = 0;	                                 // ref # lo
+  buffer_header[10] = 0;                                   // msg length in words hi
+  buffer_header[11] = 3;                                   // msg length in words lo
+  buffer_header[12] = 6;                                   // data length in bytes // DPARKER is this used???
+  buffer_header[13] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].index >> 8) & 0xff;
+  buffer_header[14] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].index & 0xff;
+  buffer_header[15] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale >> 8) & 0xff;
+  buffer_header[16] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale & 0xff;
+  buffer_header[17] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset >> 8) & 0xff;
+  buffer_header[18] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset & 0xff;
   
   eth_cal_to_GUI_get_index++;
   eth_cal_to_GUI_get_index = eth_cal_to_GUI_get_index & (ETH_CAL_TO_GUI_BUFFER_SIZE - 1);
   
   return 19;
 }
-
-
+*/
+/*
 WORD BuildModbusOutput_debug_data(unsigned char *tx_ptr)
 {
   WORD i; 
@@ -895,7 +867,7 @@ WORD BuildModbusOutput_debug_data(unsigned char *tx_ptr)
   return (total_bytes);
 
 }
-
+*/
 
 /****************************************************************************
   Function:
@@ -910,21 +882,22 @@ WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count)
   /* modbus header for read:  transaction ID(word), protocol ID(word, 0x0000), length(word, bytes to follow), 
      unit id (byte, 0xff), function code (byte, 0x03), reference number(word), word count (byte) */
 
-  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-  data_buffer[1] = transaction_number & 0xff;	 // transaction lo byte
-  data_buffer[2] = 0;	// protocol hi 
-  data_buffer[3] = 0;	// protocol lo 
+  header_length = 12;
+  buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  buffer_header[1] = transaction_number & 0xff;	 // transaction lo byte
+  buffer_header[2] = 0;	// protocol hi 
+  buffer_header[3] = 0;	// protocol lo 
   // fill the byte length    
-  data_buffer[4] = 0;
-  data_buffer[5] = 6;
-  data_buffer[6] = index;	// unit Id 
+  buffer_header[4] = 0;
+  buffer_header[5] = 6;
+  buffer_header[6] = index;	// unit Id 
 
-  data_buffer[7] = 0x3; // function code 
-  data_buffer[8] = 1;  // ref # hi
-  data_buffer[9] = index;  // ref # lo, redundant for now
+  buffer_header[7] = 0x3; // function code 
+  buffer_header[8] = 1;  // ref # hi
+  buffer_header[9] = index;  // ref # lo, redundant for now
 
-  data_buffer[10] = 0;  // data length in words hi 
-  data_buffer[11] = byte_count >> 1;  // data length in words lo
+  buffer_header[10] = 0;  // data length in words hi 
+  buffer_header[11] = byte_count >> 1;  // data length in words lo
          
               
   return (12);	// always 12 bytes for read command
@@ -938,12 +911,19 @@ WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count)
     Build modbus command, return 0 if we don't want to send anything
  
 ***************************************************************************/
+
+#define SIZE_BOARD_MIRROR    104
+#define SIZE_DEBUG_DATA      80
+#define SIZE_HIGH_SPEED_DATA TBD
+
+
 WORD BuildModbusOutput(void) {
   WORD total_bytes = 0;  // default: no cmd out
-  unsigned char *tx_ptr = 0;
+  //unsigned char *tx_ptr = 0;
   unsigned int msg_size_bytes;
 
-
+  header_length = 0;
+  
   if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var)) {
     if (!modbus_cmd_need_repeat) {
       modbus_refresh_index++;
@@ -952,64 +932,65 @@ WORD BuildModbusOutput(void) {
 	      
     modbus_send_index = modbus_refresh_index;
     
+
     if (modbus_send_index >= MODBUS_WR_HVLAMBDA && modbus_send_index <= MODBUS_WR_DEBUG_DATA) {  // write info to the GUI
       switch (modbus_send_index)
 	{
 	case MODBUS_WR_HVLAMBDA:
-	  tx_ptr = (unsigned char *)&mirror_hv_lambda;
-	  msg_size_bytes = 104;
+	  data_ptr = (unsigned char *)&mirror_hv_lambda;
+	  msg_size_bytes = SIZE_BOARD_MIRROR;
 	  break;
 	case MODBUS_WR_ION_PUMP:
-	  tx_ptr = (unsigned char *)&mirror_ion_pump;
-	  msg_size_bytes = 104;
+	  data_ptr = (unsigned char *)&mirror_ion_pump;
+	  msg_size_bytes = SIZE_BOARD_MIRROR;
 	  break;
 	case MODBUS_WR_AFC:
-	  tx_ptr = (unsigned char *)&mirror_afc;
-	  msg_size_bytes = 104;
+	  data_ptr = (unsigned char *)&mirror_afc;
+	  msg_size_bytes = SIZE_BOARD_MIRROR;
 	  break;
 	case MODBUS_WR_COOLING:
-	  tx_ptr = (unsigned char *)&mirror_cooling;
-	  msg_size_bytes = 104;
+	  data_ptr = (unsigned char *)&mirror_cooling;
+	  msg_size_bytes = SIZE_BOARD_MIRROR;
 	  break;
 	case MODBUS_WR_HTR_MAGNET:
-	  tx_ptr = (unsigned char *)&mirror_htr_mag;
-	  msg_size_bytes = 104;
+	  data_ptr = (unsigned char *)&mirror_htr_mag;
+	  msg_size_bytes = SIZE_BOARD_MIRROR;
 	  break;
 	case MODBUS_WR_GUN_DRIVER:
-	  tx_ptr = (unsigned char *)&mirror_gun_drv;
-	  msg_size_bytes = 104;
+	  data_ptr = (unsigned char *)&mirror_gun_drv;
+	  msg_size_bytes = SIZE_BOARD_MIRROR;
 	  break;
 	case MODBUS_WR_MAGNETRON_CURRENT:
-	  tx_ptr = (unsigned char *)&mirror_pulse_mon;
-	  msg_size_bytes = 104;
+	  data_ptr = (unsigned char *)&mirror_pulse_mon;
+	  msg_size_bytes = SIZE_BOARD_MIRROR;
 	  break;
 	case MODBUS_WR_PULSE_SYNC:
-	  tx_ptr = (unsigned char *)&mirror_pulse_sync;
-	  msg_size_bytes = 104;
+	  data_ptr = (unsigned char *)&mirror_pulse_sync;
+	  msg_size_bytes = SIZE_BOARD_MIRROR;
 	  break;
 	case MODBUS_WR_ETHERNET:
-	  tx_ptr = (unsigned char *)&local_data_ecb;
-	  msg_size_bytes = 104;
+	  data_ptr = (unsigned char *)&local_data_ecb;
+	  msg_size_bytes = SIZE_BOARD_MIRROR;
 	  break;
 	case MODBUS_WR_DEBUG_DATA:
 	  if (etm_can_active_debugging_board_id == ETM_CAN_ADDR_ETHERNET_BOARD) {
-	    tx_ptr = (unsigned char *)&debug_data_ecb;
+	    data_ptr = (unsigned char *)&debug_data_ecb;
 	  } else {
-	    tx_ptr = (unsigned char *)&debug_data_slave_mirror;
+	    data_ptr = (unsigned char *)&debug_data_slave_mirror;
 	  }
-	  msg_size_bytes = 80;
+	  msg_size_bytes = SIZE_DEBUG_DATA;
 	  break;
 
 	default: // move to the next for now, ignore some boards
 	  break;
 	}
-      total_bytes = BuildModbusOutputGeneric(msg_size_bytes, modbus_send_index, tx_ptr);
+      total_bytes = BuildModbusOutputGeneric(msg_size_bytes, modbus_send_index);
     } else {	 
       // special command for rd or write info
       switch (modbus_send_index)
 	{
 	case MODBUS_WR_EVENTS:
-	  total_bytes = BuildModbusOutput_write_commands(modbus_send_index);
+	  //total_bytes = BuildModbusOutput_write_commands(modbus_send_index);
 	  break;
           
 	default:
@@ -1019,16 +1000,22 @@ WORD BuildModbusOutput(void) {
   } else {  // time to send queue commands
     modbus_send_index = 0;
     if (send_high_speed_data_buffer) {
-      //modbus_send_index = MODBUS_WR_PULSE_LOG;
       total_bytes = BuildModbusOutputHighSpeedDataLog();
+      if (send_high_speed_data_buffer & 0x01) {
+	data_ptr = (unsigned char *)&high_speed_data_buffer_a[0];
+      } else {
+	data_ptr = (unsigned char *)&high_speed_data_buffer_b[0];
+      } 
+      msg_size_bytes = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData);
+      send_high_speed_data_buffer = 0;
     } else if (modbus_command_request) {
       modbus_send_index = MODBUS_RD_COMMAND_DETAIL;
       total_bytes = BuildModbusOutput_read_command(modbus_send_index, 8);
       modbus_command_request = 0; 
-    } else if (queue_is_empty(QUEUE_CAL_TO_GUI) == 0) {
+    } //else if (queue_is_empty(QUEUE_CAL_TO_GUI) == 0) {
       //modbus_send_index = MODBUS_WR_ONE_CAL_ENTRY;
-      total_bytes = BuildModbusOutputCalibrationData();
-    }    
+      //total_bytes = BuildModbusOutputCalibrationData();
+    //}    
     
     switch (modbus_send_index)
       {
@@ -1131,8 +1118,35 @@ void GenericTCPClient(void)
       
       if (len == 0) break;  // don't want to send anything for now, stay in this state
 
+      if (header_length == 0) break;  // don't want to send anything for now, stay in this state
+
       _LATB7 = 1;
-      TCPPutArray(MySocket,  data_buffer, len);
+      
+      /*
+	unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id, unsigned char *data_ptr);
+	This is used for all the boards and the debug data
+	bytes = 13 + data_bytes
+	
+	unsigned int BuildModbusOutputHighSpeedDataLog(void);
+	bytes = 15 + high_speed_data
+
+	WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count)
+	bytes = 12 
+	DPARKER why is this 12 and generic 13???
+
+
+	unsigned int BuildModbusOutputCalibrationData(void);
+	THIS IS BEING REMOVED - DO NOT NEED TO CONSIDER
+
+	generic output is 13 bytes
+	high speed output is 13 bytes, + 2 bytes pulse_index, + data
+	Calibration data is being removed and will not be supported . . .
+	debug_data is 13, + data
+	read_command is 12 bytes
+
+       */
+      TCPPutArray(MySocket, buffer_header, header_length);  // DPARKER how to figure out how much of this header to put
+      TCPPutArray(MySocket, data_ptr, (len - header_length));
       _LATB7 = 0;
       
       // Send the packet
@@ -1154,25 +1168,25 @@ void GenericTCPClient(void)
       if (w)
            
 	{
-	  if (w > (MAX_TX_SIZE-1)) {
-	    w = (MAX_TX_SIZE-1);
+	  if (w > (MAX_RX_SIZE-1)) {
+	    w = (MAX_RX_SIZE-1);
 	  }
 		
-	  len = TCPGetArray(MySocket, data_buffer, w);
+	  len = TCPGetArray(MySocket, buffer_header, w);
 	  w -= len;
 	
-	  if (data_buffer[6] == modbus_send_index) {
+	  if (buffer_header[6] == modbus_send_index) {
 	    if (modbus_send_index == MODBUS_RD_COMMAND_DETAIL)
 	      {
-		queue_put_command(&data_buffer[9]);
+		queue_put_command(&buffer_header[9]);
 	      }
 	    else /* write commands return command count in the reference field */
 	      {
-		modbus_command_request = (data_buffer[8] << 8) | data_buffer[9];
+		modbus_command_request = (buffer_header[8] << 8) | buffer_header[9];
 	      }
 	    
-	    etm_can_active_debugging_board_id = data_buffer[10];
-	    switch (data_buffer[10]) 
+	    etm_can_active_debugging_board_id = buffer_header[10];
+	    switch (buffer_header[10]) 
 	      {
 	      case MODBUS_WR_HVLAMBDA:
 		etm_can_active_debugging_board_id = ETM_CAN_ADDR_HV_LAMBDA_BOARD;

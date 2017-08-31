@@ -40,6 +40,7 @@ void SendPulseData(unsigned int buffer_select);
 //#define TEST_MODBUS	   1
 
 
+#define MAX_RX_SIZE    48
 
 #define MAX_TX_SIZE    800	 // ethernet header for TCP/modbus is 60 bytes
 #define MAX_DATA_SIZE  640	// leave some room for modbus header
