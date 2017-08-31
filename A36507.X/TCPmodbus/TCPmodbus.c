@@ -125,35 +125,35 @@ static BYTE         send_high_speed_data_buffer;  /* bit 0 high for buffer A, bi
 ***************************************************************************/
 static BYTE queue_buffer_room(BYTE q_index)
 {
-	BYTE room = 0;
-    BYTE put_index;
-    BYTE get_index;
-    BYTE size;
+  BYTE room = 0;
+  BYTE put_index;
+  BYTE get_index;
+  BYTE size;
     
-	switch (q_index) {
-	case QUEUE_MESSAGE_FROM_GUI: 
-    	put_index = eth_message_from_GUI_put_index;
-        get_index = eth_message_from_GUI_get_index;
-        size = ETH_GUI_MESSAGE_BUFFER_SIZE;
-    	break;
-	case QUEUE_CAL_TO_GUI:
-    	put_index = eth_cal_to_GUI_put_index;
-        get_index = eth_cal_to_GUI_get_index;
-        size = ETH_CAL_TO_GUI_BUFFER_SIZE;
-    	break;
-	default:
-    	room = 0xff; // not defined
-    	break;
-    }
+  switch (q_index) {
+  case QUEUE_MESSAGE_FROM_GUI: 
+    put_index = eth_message_from_GUI_put_index;
+    get_index = eth_message_from_GUI_get_index;
+    size = ETH_GUI_MESSAGE_BUFFER_SIZE;
+    break;
+  case QUEUE_CAL_TO_GUI:
+    put_index = eth_cal_to_GUI_put_index;
+    get_index = eth_cal_to_GUI_get_index;
+    size = ETH_CAL_TO_GUI_BUFFER_SIZE;
+    break;
+  default:
+    room = 0xff; // not defined
+    break;
+  }
     
-    if (room != 0xff)
+  if (room != 0xff)
     {
-    	room  = (get_index - put_index - 1) & (size - 1);        
+      room  = (get_index - put_index - 1) & (size - 1);        
     }
-    else
-    	room = 0;
+  else
+    room = 0;
         
-    return (room);
+  return (room);
 }
 /****************************************************************************
   Function:
@@ -168,37 +168,37 @@ static BYTE queue_buffer_room(BYTE q_index)
 ***************************************************************************/
 static BYTE queue_is_empty(BYTE q_index)
 {
-	BYTE is_empty = 0;
-    BYTE put_index;
-    BYTE get_index;
-    BYTE size;
+  BYTE is_empty = 0;
+  BYTE put_index;
+  BYTE get_index;
+  BYTE size;
     
-	switch (q_index) {
-	case QUEUE_MESSAGE_FROM_GUI: 
-    	put_index = eth_message_from_GUI_put_index;
-        get_index = eth_message_from_GUI_get_index;
-        size = ETH_GUI_MESSAGE_BUFFER_SIZE;
-    	break;
-	case QUEUE_CAL_TO_GUI:
-    	put_index = eth_cal_to_GUI_put_index;
-        get_index = eth_cal_to_GUI_get_index;
-        size = ETH_CAL_TO_GUI_BUFFER_SIZE;
-    	break;
-	default:
-    	is_empty = 0xff; // not defined
-    	break;
-    }
+  switch (q_index) {
+  case QUEUE_MESSAGE_FROM_GUI: 
+    put_index = eth_message_from_GUI_put_index;
+    get_index = eth_message_from_GUI_get_index;
+    size = ETH_GUI_MESSAGE_BUFFER_SIZE;
+    break;
+  case QUEUE_CAL_TO_GUI:
+    put_index = eth_cal_to_GUI_put_index;
+    get_index = eth_cal_to_GUI_get_index;
+    size = ETH_CAL_TO_GUI_BUFFER_SIZE;
+    break;
+  default:
+    is_empty = 0xff; // not defined
+    break;
+  }
     
-    if (is_empty != 0xff)
+  if (is_empty != 0xff)
     {
-    	if (put_index == get_index)
-        	is_empty = 1;
-        // else default is_empty = 0 	    
+      if (put_index == get_index)
+	is_empty = 1;
+      // else default is_empty = 0 	    
     }
-    else
-     	is_empty = 0; // not defined
+  else
+    is_empty = 0; // not defined
         
-    return (is_empty);
+  return (is_empty);
 }
 /****************************************************************************
   Function:
@@ -213,15 +213,15 @@ static BYTE queue_is_empty(BYTE q_index)
 ***************************************************************************/
 static void queue_put_command(BYTE * buffer_ptr)
 {
-    if (queue_buffer_room(QUEUE_MESSAGE_FROM_GUI) > 0)
+  if (queue_buffer_room(QUEUE_MESSAGE_FROM_GUI) > 0)
     {
-    	eth_message_from_GUI[eth_message_from_GUI_put_index].index = (*buffer_ptr << 8) | *(buffer_ptr + 1);
-    	eth_message_from_GUI[eth_message_from_GUI_put_index].data_2 = (*(buffer_ptr + 2) << 8) | *(buffer_ptr + 3);
-    	eth_message_from_GUI[eth_message_from_GUI_put_index].data_1 = (*(buffer_ptr + 4) << 8) | *(buffer_ptr + 5);
-    	eth_message_from_GUI[eth_message_from_GUI_put_index].data_0 = (*(buffer_ptr + 6) << 8) | *(buffer_ptr + 7);
+      eth_message_from_GUI[eth_message_from_GUI_put_index].index = (*buffer_ptr << 8) | *(buffer_ptr + 1);
+      eth_message_from_GUI[eth_message_from_GUI_put_index].data_2 = (*(buffer_ptr + 2) << 8) | *(buffer_ptr + 3);
+      eth_message_from_GUI[eth_message_from_GUI_put_index].data_1 = (*(buffer_ptr + 4) << 8) | *(buffer_ptr + 5);
+      eth_message_from_GUI[eth_message_from_GUI_put_index].data_0 = (*(buffer_ptr + 6) << 8) | *(buffer_ptr + 7);
 
-        eth_message_from_GUI_put_index++;
-        eth_message_from_GUI_put_index = eth_message_from_GUI_put_index & (ETH_GUI_MESSAGE_BUFFER_SIZE - 1);
+      eth_message_from_GUI_put_index++;
+      eth_message_from_GUI_put_index = eth_message_from_GUI_put_index & (ETH_GUI_MESSAGE_BUFFER_SIZE - 1);
     
     }
         
@@ -239,19 +239,19 @@ static void queue_put_command(BYTE * buffer_ptr)
 ***************************************************************************/
 ETMEthernetMessageFromGUI GetNextMessage(void)
 {
-    ETMEthernetMessageFromGUI command;
+  ETMEthernetMessageFromGUI command;
     
-    if (queue_is_empty(QUEUE_MESSAGE_FROM_GUI) == 0)
+  if (queue_is_empty(QUEUE_MESSAGE_FROM_GUI) == 0)
     {
-    	command = eth_message_from_GUI[eth_message_from_GUI_get_index]; 
-        eth_message_from_GUI_get_index++;
-        eth_message_from_GUI_get_index = eth_message_from_GUI_get_index & (ETH_GUI_MESSAGE_BUFFER_SIZE - 1);
+      command = eth_message_from_GUI[eth_message_from_GUI_get_index]; 
+      eth_message_from_GUI_get_index++;
+      eth_message_from_GUI_get_index = eth_message_from_GUI_get_index & (ETH_GUI_MESSAGE_BUFFER_SIZE - 1);
     
     }
-    else
-    	command.index = 0xffff;
+  else
+    command.index = 0xffff;
     
-    return (command);    
+  return (command);    
         
 }
 /****************************************************************************
@@ -263,25 +263,25 @@ ETMEthernetMessageFromGUI GetNextMessage(void)
     
   Description:
   Remarks:
-	// This will add  a transmit message to the Send Calibration Data queue
-	// It will return 0x0000 if the message was added to the queue or 0xFFFF if it was not (buffer full)
-***************************************************************************/
+  // This will add  a transmit message to the Send Calibration Data queue
+  // It will return 0x0000 if the message was added to the queue or 0xFFFF if it was not (buffer full)
+  ***************************************************************************/
 unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset)
 {
     
-    if (queue_buffer_room(QUEUE_CAL_TO_GUI) > 0)
+  if (queue_buffer_room(QUEUE_CAL_TO_GUI) > 0)
     {
-    	eth_cal_to_GUI[eth_cal_to_GUI_put_index].index  = index;
-        eth_cal_to_GUI[eth_cal_to_GUI_put_index].scale = scale;
-        eth_cal_to_GUI[eth_cal_to_GUI_put_index].offset = offset;
+      eth_cal_to_GUI[eth_cal_to_GUI_put_index].index  = index;
+      eth_cal_to_GUI[eth_cal_to_GUI_put_index].scale = scale;
+      eth_cal_to_GUI[eth_cal_to_GUI_put_index].offset = offset;
         
-        eth_cal_to_GUI_put_index++;
-        eth_cal_to_GUI_put_index = eth_cal_to_GUI_put_index & (ETH_CAL_TO_GUI_BUFFER_SIZE - 1);
+      eth_cal_to_GUI_put_index++;
+      eth_cal_to_GUI_put_index = eth_cal_to_GUI_put_index & (ETH_CAL_TO_GUI_BUFFER_SIZE - 1);
     
-    	return (0);
+      return (0);
     }
-    else
-    	return (0xffff);
+  else
+    return (0xffff);
         
 }
 /****************************************************************************
@@ -293,9 +293,9 @@ unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, un
     
   Description:
   Remarks:
-	// This will change a flag to indicate pulse data ready
-	// It will return 0x0000 if previous data was sent,  or 0xFFFF if it was not (buffer full)
-***************************************************************************/
+  // This will change a flag to indicate pulse data ready
+  // It will return 0x0000 if previous data was sent,  or 0xFFFF if it was not (buffer full)
+  ***************************************************************************/
 void SendPulseData(unsigned int buffer_select) {
   if (buffer_select == SEND_BUFFER_A) {
     send_high_speed_data_buffer = 0x01;
@@ -541,8 +541,8 @@ void TCPmodbus_task(void)
 
   // Blink LED0 (right most one) every second.
   if(ETMTickRunOnceEveryNMilliseconds(500, &led_flash_holding_var)) {
-      LEDOP_IO ^= 1; // DPARKER fix this horribly unsafe operation
-    }
+    LEDOP_IO ^= 1; // DPARKER fix this horribly unsafe operation
+  }
 
   // This task performs normal stack task including checking
   // for incoming packet, type of packet and calling
@@ -551,14 +551,14 @@ void TCPmodbus_task(void)
         
   
   // This tasks invokes each of the core stack application tasks
- // StackApplications();  // don't need
+  // StackApplications();  // don't need
 
  
   GenericTCPClient();
 
   _LATB8 = 0;
 
-//  ExecuteCommands();
+  //  ExecuteCommands();
 
 }
 
@@ -586,42 +586,42 @@ void TCPmodbus_task(void)
 void InitModbusData(void)
 {
  
- 	eth_message_from_GUI_put_index = 0;
- 	eth_message_from_GUI_get_index = 0;
+  eth_message_from_GUI_put_index = 0;
+  eth_message_from_GUI_get_index = 0;
  
- 	eth_cal_to_GUI_put_index = 0;
- 	eth_cal_to_GUI_get_index = 0;
+  eth_cal_to_GUI_put_index = 0;
+  eth_cal_to_GUI_get_index = 0;
  
-  #if 1 
-	/*
-   // setup some fake data
-   etm_can_hv_lambda_mirror.status_data.status_word_0	= 0x1111;
-   etm_can_hv_lambda_mirror.status_data.status_word_1	= 0x3344;
-   etm_can_hv_lambda_mirror.status_data.data_word_A	= 0x5566;
-   etm_can_hv_lambda_mirror.status_data.data_word_B	= 0x7788;
-   etm_can_hv_lambda_mirror.status_data.status_word_0_inhbit_mask = 0x9911;
-   etm_can_hv_lambda_mirror.status_data.status_word_1_fault_mask = 0x1155;
+#if 1 
+  /*
+  // setup some fake data
+  etm_can_hv_lambda_mirror.status_data.status_word_0	= 0x1111;
+  etm_can_hv_lambda_mirror.status_data.status_word_1	= 0x3344;
+  etm_can_hv_lambda_mirror.status_data.data_word_A	= 0x5566;
+  etm_can_hv_lambda_mirror.status_data.data_word_B	= 0x7788;
+  etm_can_hv_lambda_mirror.status_data.status_word_0_inhbit_mask = 0x9911;
+  etm_can_hv_lambda_mirror.status_data.status_word_1_fault_mask = 0x1155;
    
-   etm_can_hv_lambda_mirror.hvlambda_high_energy_set_point = 0x1122;
-   etm_can_hv_lambda_mirror.hvlambda_readback_base_plate_temp = 0x5599;
+  etm_can_hv_lambda_mirror.hvlambda_high_energy_set_point = 0x1122;
+  etm_can_hv_lambda_mirror.hvlambda_readback_base_plate_temp = 0x5599;
 
-   etm_can_ion_pump_mirror.status_data.status_word_0	= 0x2222;
-   etm_can_ion_pump_mirror.status_data.status_word_1	= 0x3344;
-   etm_can_ion_pump_mirror.status_data.data_word_A	= 0x5566;
-   etm_can_ion_pump_mirror.status_data.data_word_B	= 0x7788;
-   etm_can_ion_pump_mirror.status_data.status_word_0_inhbit_mask = 0x9911;
-   etm_can_ion_pump_mirror.status_data.status_word_1_fault_mask = 0x2266;
+  etm_can_ion_pump_mirror.status_data.status_word_0	= 0x2222;
+  etm_can_ion_pump_mirror.status_data.status_word_1	= 0x3344;
+  etm_can_ion_pump_mirror.status_data.data_word_A	= 0x5566;
+  etm_can_ion_pump_mirror.status_data.data_word_B	= 0x7788;
+  etm_can_ion_pump_mirror.status_data.status_word_0_inhbit_mask = 0x9911;
+  etm_can_ion_pump_mirror.status_data.status_word_1_fault_mask = 0x2266;
    
-    etm_can_afc_mirror.status_data.status_word_0 = 0x3333;
-    etm_can_cooling_mirror.status_data.status_word_0 = 0x4444;
-    etm_can_heater_magnet_mirror.status_data.status_word_0 = 0x5555;
-    etm_can_gun_driver_mirror.status_data.status_word_0 = 0x6666;
-    etm_can_magnetron_current_mirror.status_data.status_word_0 = 0x7777;
-    etm_can_pulse_sync_mirror.status_data.status_word_0 = 0x8888;
-    etm_can_ethernet_board_data.status_data->status_word_0 = 0x9999;
-	*/
+  etm_can_afc_mirror.status_data.status_word_0 = 0x3333;
+  etm_can_cooling_mirror.status_data.status_word_0 = 0x4444;
+  etm_can_heater_magnet_mirror.status_data.status_word_0 = 0x5555;
+  etm_can_gun_driver_mirror.status_data.status_word_0 = 0x6666;
+  etm_can_magnetron_current_mirror.status_data.status_word_0 = 0x7777;
+  etm_can_pulse_sync_mirror.status_data.status_word_0 = 0x8888;
+  etm_can_ethernet_board_data.status_data->status_word_0 = 0x9999;
+  */
 
-   #endif
+#endif
    
    
 }
@@ -639,22 +639,22 @@ void InitModbusData(void)
 ***************************************************************************/
 void BuildModbusOutput_write_header(unsigned int total_bytes)
 {
-	    data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-	    data_buffer[1] = transaction_number & 0xff;	 // transaction lo byte
-	    data_buffer[2] = 0;	// protocol hi 
-	    data_buffer[3] = 0;	// protocol lo 
-	    // byte 4 and 5 for length
-        data_buffer[4] = ((total_bytes + 7) >> 8) & 0xff;
-        data_buffer[5] = (total_bytes + 7) & 0xff;
-	    data_buffer[6] = modbus_send_index;	// unit Id 
+  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  data_buffer[1] = transaction_number & 0xff;	 // transaction lo byte
+  data_buffer[2] = 0;	// protocol hi 
+  data_buffer[3] = 0;	// protocol lo 
+  // byte 4 and 5 for length
+  data_buffer[4] = ((total_bytes + 7) >> 8) & 0xff;
+  data_buffer[5] = (total_bytes + 7) & 0xff;
+  data_buffer[6] = modbus_send_index;	// unit Id 
 
-	    data_buffer[7] = 0x10; // function code 
-	    data_buffer[8] = 0;   // ref # hi
-	    data_buffer[9] = 0;	  // ref # lo
+  data_buffer[7] = 0x10; // function code 
+  data_buffer[8] = 0;   // ref # hi
+  data_buffer[9] = 0;	  // ref # lo
 
-	    data_buffer[10] = (total_bytes >> 9) & 0xff;  // data length in words hi, always 0, assume data length < 256
-	    data_buffer[11] = total_bytes >> 1;     // data length in words lo
-	    data_buffer[12] = total_bytes & 0xff;   // data length in bytes
+  data_buffer[10] = (total_bytes >> 9) & 0xff;  // data length in words hi, always 0, assume data length < 256
+  data_buffer[11] = total_bytes >> 1;     // data length in words lo
+  data_buffer[12] = total_bytes & 0xff;   // data length in bytes
 
 }
 /****************************************************************************
@@ -667,24 +667,24 @@ void BuildModbusOutput_write_header(unsigned int total_bytes)
 ***************************************************************************/
 WORD BuildModbusOutput_write_boards(unsigned char *tx_ptr)
 {
-	  WORD i; 
-	  WORD total_bytes = 0;  // default: no cmd out 
+  WORD i; 
+  WORD total_bytes = 0;  // default: no cmd out 
     
-      if (tx_ptr) // otherwise index is wrong, don't need send any cmd out
-      {
-        total_bytes = 108 + MAX_CUSTOM_DATA_LENGTH * 2; // bytes after length byte
-        BuildModbusOutput_write_header(total_bytes);   
+  if (tx_ptr) // otherwise index is wrong, don't need send any cmd out
+    {
+      total_bytes = 108 + MAX_CUSTOM_DATA_LENGTH * 2; // bytes after length byte
+      BuildModbusOutput_write_header(total_bytes);   
 
-        // data starts at offset 13
-	    for (i = 0; i < total_bytes; i++, tx_ptr++)
+      // data starts at offset 13
+      for (i = 0; i < total_bytes; i++, tx_ptr++)
         {
-        	data_buffer[i + 13] = *tx_ptr;
+	  data_buffer[i + 13] = *tx_ptr;
         }
-        total_bytes = i + 13;
+      total_bytes = i + 13;
         		     
-       }
+    }
        
-       return (total_bytes);
+  return (total_bytes);
 
 }
 /****************************************************************************
@@ -697,77 +697,77 @@ WORD BuildModbusOutput_write_boards(unsigned char *tx_ptr)
 ***************************************************************************/
 WORD BuildModbusOutput_write_commands(unsigned char index)
 {
-	  WORD x, i; 
-	  WORD total_bytes = 0;  // default: no cmd out 
-      switch (index) // otherwise index is wrong, don't need send any cmd out
-      {
-      case MODBUS_WR_EVENTS: 
-      	// check if there are new events
-        if (event_log.gui_index == event_log.write_index) break;  /* no new events */
+  WORD x, i; 
+  WORD total_bytes = 0;  // default: no cmd out 
+  switch (index) // otherwise index is wrong, don't need send any cmd out
+    {
+    case MODBUS_WR_EVENTS: 
+      // check if there are new events
+      if (event_log.gui_index == event_log.write_index) break;  /* no new events */
 
-	total_bytes = ((event_log.write_index - event_log.gui_index) & 0x7F) * sizeof(TYPE_EVENT);
+      total_bytes = ((event_log.write_index - event_log.gui_index) & 0x7F) * sizeof(TYPE_EVENT);
 	
-        BuildModbusOutput_write_header(total_bytes);   
+      BuildModbusOutput_write_header(total_bytes);   
 
-        // data starts at offset 13
-        for (x = event_log.gui_index, i = 0; x != event_log.write_index; i++)
+      // data starts at offset 13
+      for (x = event_log.gui_index, i = 0; x != event_log.write_index; i++)
         {
             
-            if (i >= 64) break;  // max transfer 64 entries at one time
+	  if (i >= 64) break;  // max transfer 64 entries at one time
             
-			data_buffer[i * sizeof(TYPE_EVENT) + 13] = (event_log.event_data[x].event_number >> 8) & 0xff;
-			data_buffer[i * sizeof(TYPE_EVENT) + 14] = event_log.event_data[x].event_number & 0xff;
-			data_buffer[i * sizeof(TYPE_EVENT) + 15] = (event_log.event_data[x].event_time >> 24) & 0xff;
-			data_buffer[i * sizeof(TYPE_EVENT) + 16] = (event_log.event_data[x].event_time >> 16) & 0xff;
-			data_buffer[i * sizeof(TYPE_EVENT) + 17] = (event_log.event_data[x].event_time >> 8) & 0xff;
-			data_buffer[i * sizeof(TYPE_EVENT) + 18] = event_log.event_data[x].event_time & 0xff;
-			data_buffer[i * sizeof(TYPE_EVENT) + 19] = (event_log.event_data[x].event_id >> 8) & 0xff;
-			data_buffer[i * sizeof(TYPE_EVENT) + 20] = event_log.event_data[x].event_id & 0xff;
+	  data_buffer[i * sizeof(TYPE_EVENT) + 13] = (event_log.event_data[x].event_number >> 8) & 0xff;
+	  data_buffer[i * sizeof(TYPE_EVENT) + 14] = event_log.event_data[x].event_number & 0xff;
+	  data_buffer[i * sizeof(TYPE_EVENT) + 15] = (event_log.event_data[x].event_time >> 24) & 0xff;
+	  data_buffer[i * sizeof(TYPE_EVENT) + 16] = (event_log.event_data[x].event_time >> 16) & 0xff;
+	  data_buffer[i * sizeof(TYPE_EVENT) + 17] = (event_log.event_data[x].event_time >> 8) & 0xff;
+	  data_buffer[i * sizeof(TYPE_EVENT) + 18] = event_log.event_data[x].event_time & 0xff;
+	  data_buffer[i * sizeof(TYPE_EVENT) + 19] = (event_log.event_data[x].event_id >> 8) & 0xff;
+	  data_buffer[i * sizeof(TYPE_EVENT) + 20] = event_log.event_data[x].event_id & 0xff;
 
-                        x++;
-			x &= 0x7F;
+	  x++;
+	  x &= 0x7F;
         }
         
-        event_log.gui_index = x; //  next entry
+      event_log.gui_index = x; //  next entry
 
-        total_bytes = i * sizeof(TYPE_EVENT) + 13;
+      total_bytes = i * sizeof(TYPE_EVENT) + 13;
 
 
        
-       break;
-       /*
-      case MODBUS_WR_ONE_CAL_ENTRY:
+      break;
+      /*
+	case MODBUS_WR_ONE_CAL_ENTRY:
       	if (queue_is_empty(QUEUE_CAL_TO_GUI) == 0) 
         {
-	      	total_bytes = 6;
+	total_bytes = 6;
 	        
-        	BuildModbusOutput_write_header(total_bytes);   
+	BuildModbusOutput_write_header(total_bytes);   
 
-        	// data starts at offset 13
-			x = eth_cal_to_GUI[eth_cal_to_GUI_get_index].index;
-	        data_buffer[13] = (x >> 8) & 0xff;
-	        data_buffer[14] = x & 0xff;
-			x = eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale;
-	        data_buffer[15] = (x >> 8) & 0xff;
-	        data_buffer[16] = x & 0xff;
-			x = eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset;
-	        data_buffer[17] = (x >> 8) & 0xff;
-	        data_buffer[18] = x & 0xff;
+	// data starts at offset 13
+	x = eth_cal_to_GUI[eth_cal_to_GUI_get_index].index;
+	data_buffer[13] = (x >> 8) & 0xff;
+	data_buffer[14] = x & 0xff;
+	x = eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale;
+	data_buffer[15] = (x >> 8) & 0xff;
+	data_buffer[16] = x & 0xff;
+	x = eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset;
+	data_buffer[17] = (x >> 8) & 0xff;
+	data_buffer[18] = x & 0xff;
  
-            eth_cal_to_GUI_get_index++;
-            eth_cal_to_GUI_get_index = eth_cal_to_GUI_get_index & (ETH_CAL_TO_GUI_BUFFER_SIZE - 1);
+	eth_cal_to_GUI_get_index++;
+	eth_cal_to_GUI_get_index = eth_cal_to_GUI_get_index & (ETH_CAL_TO_GUI_BUFFER_SIZE - 1);
            
-	      	total_bytes += 13;
+	total_bytes += 13;
             
-         }   
-       break;
-       */
-      default:
-       break;           
+	}   
+	break;
+      */
+    default:
+      break;           
 	     
-       }
+    }
        
-       return (total_bytes);
+  return (total_bytes);
 
 }
 
@@ -875,24 +875,24 @@ unsigned int BuildModbusOutputCalibrationData(void) {
 
 WORD BuildModbusOutput_debug_data(unsigned char *tx_ptr)
 {
-	  WORD i; 
-	  WORD total_bytes = 0;  // default: no cmd out 
+  WORD i; 
+  WORD total_bytes = 0;  // default: no cmd out 
     
-      if (tx_ptr) // otherwise index is wrong, don't need send any cmd out
-      {
-	total_bytes = 80;
-        BuildModbusOutput_write_header(total_bytes);   
+  if (tx_ptr) // otherwise index is wrong, don't need send any cmd out
+    {
+      total_bytes = 80;
+      BuildModbusOutput_write_header(total_bytes);   
 
-        // data starts at offset 13
-	    for (i = 0; i < total_bytes; i++, tx_ptr++)
+      // data starts at offset 13
+      for (i = 0; i < total_bytes; i++, tx_ptr++)
         {
-        	data_buffer[i + 13] = *tx_ptr;
+	  data_buffer[i + 13] = *tx_ptr;
         }
-        total_bytes = i + 13;
+      total_bytes = i + 13;
         		     
-       }
+    }
        
-       return (total_bytes);
+  return (total_bytes);
 
 }
 
@@ -907,27 +907,27 @@ WORD BuildModbusOutput_debug_data(unsigned char *tx_ptr)
 ***************************************************************************/
 WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count)
 { 
-      /* modbus header for read:  transaction ID(word), protocol ID(word, 0x0000), length(word, bytes to follow), 
-	 unit id (byte, 0xff), function code (byte, 0x03), reference number(word), word count (byte) */
+  /* modbus header for read:  transaction ID(word), protocol ID(word, 0x0000), length(word, bytes to follow), 
+     unit id (byte, 0xff), function code (byte, 0x03), reference number(word), word count (byte) */
 
-	  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-	  data_buffer[1] = transaction_number & 0xff;	 // transaction lo byte
-	  data_buffer[2] = 0;	// protocol hi 
-	  data_buffer[3] = 0;	// protocol lo 
-      // fill the byte length    
-      data_buffer[4] = 0;
-      data_buffer[5] = 6;
-	  data_buffer[6] = index;	// unit Id 
+  data_buffer[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
+  data_buffer[1] = transaction_number & 0xff;	 // transaction lo byte
+  data_buffer[2] = 0;	// protocol hi 
+  data_buffer[3] = 0;	// protocol lo 
+  // fill the byte length    
+  data_buffer[4] = 0;
+  data_buffer[5] = 6;
+  data_buffer[6] = index;	// unit Id 
 
-      data_buffer[7] = 0x3; // function code 
-	  data_buffer[8] = 1;  // ref # hi
-	  data_buffer[9] = index;  // ref # lo, redundant for now
+  data_buffer[7] = 0x3; // function code 
+  data_buffer[8] = 1;  // ref # hi
+  data_buffer[9] = index;  // ref # lo, redundant for now
 
-      data_buffer[10] = 0;  // data length in words hi 
-      data_buffer[11] = byte_count >> 1;  // data length in words lo
+  data_buffer[10] = 0;  // data length in words hi 
+  data_buffer[11] = byte_count >> 1;  // data length in words lo
          
               
-      return (12);	// always 12 bytes for read command
+  return (12);	// always 12 bytes for read command
 
 }
 /****************************************************************************
@@ -1111,14 +1111,14 @@ void GenericTCPClient(void)
     case SM_SOCKET_OBTAINED:
       // Wait for the remote server to accept our connection request
       if(!TCPIsConnected(MySocket)) {
-		// Time out if too much time is spent in this state
-	        if(ETMTickGreaterThanNMilliseconds(5000, Timer)) {
-		  // Close the socket so it can be used by other modules
-		  TCPDisconnect(MySocket);
-		  MySocket = INVALID_SOCKET;
-		  GenericTCPExampleState = SM_HOME;
-		}
-		break;
+	// Time out if too much time is spent in this state
+	if(ETMTickGreaterThanNMilliseconds(5000, Timer)) {
+	  // Close the socket so it can be used by other modules
+	  TCPDisconnect(MySocket);
+	  MySocket = INVALID_SOCKET;
+	  GenericTCPExampleState = SM_HOME;
+	}
+	break;
       }
       
       Timer = ETMTickGet();
@@ -1144,90 +1144,90 @@ void GenericTCPClient(void)
     case SM_PROCESS_RESPONSE:
       // Check to see if the remote node has disconnected from us or sent us any application data
       if(!TCPIsConnected(MySocket)) {
-	      GenericTCPExampleState = SM_DISCONNECT;
+	GenericTCPExampleState = SM_DISCONNECT;
 	// Do not break;  We might still have data in the TCP RX FIFO waiting for us
       }
       
       // Get count of RX bytes waiting
       w = TCPIsGetReady(MySocket);	
 
-     if (w)
+      if (w)
            
-     {
-		if (w > (MAX_TX_SIZE-1)) {
-		  w = (MAX_TX_SIZE-1);
-		}
+	{
+	  if (w > (MAX_TX_SIZE-1)) {
+	    w = (MAX_TX_SIZE-1);
+	  }
 		
-		len = TCPGetArray(MySocket, data_buffer, w);
-		w -= len;
+	  len = TCPGetArray(MySocket, data_buffer, w);
+	  w -= len;
 	
-    	if (data_buffer[6] == modbus_send_index) {
-        	if (modbus_send_index == MODBUS_RD_COMMAND_DETAIL)
-            {
-            	queue_put_command(&data_buffer[9]);
-            }
-            else /* write commands return command count in the reference field */
-            {
-            	modbus_command_request = (data_buffer[8] << 8) | data_buffer[9];
-            }
+	  if (data_buffer[6] == modbus_send_index) {
+	    if (modbus_send_index == MODBUS_RD_COMMAND_DETAIL)
+	      {
+		queue_put_command(&data_buffer[9]);
+	      }
+	    else /* write commands return command count in the reference field */
+	      {
+		modbus_command_request = (data_buffer[8] << 8) | data_buffer[9];
+	      }
+	    
+	    etm_can_active_debugging_board_id = data_buffer[10];
+	    switch (data_buffer[10]) 
+	      {
+	      case MODBUS_WR_HVLAMBDA:
+		etm_can_active_debugging_board_id = ETM_CAN_ADDR_HV_LAMBDA_BOARD;
+		break;
+		
+	      case MODBUS_WR_ION_PUMP:
+		etm_can_active_debugging_board_id = ETM_CAN_ADDR_ION_PUMP_BOARD;
+		break;
+
+	      case MODBUS_WR_AFC:
+		etm_can_active_debugging_board_id = ETM_CAN_ADDR_AFC_CONTROL_BOARD;
+		break;
+
+	      case MODBUS_WR_COOLING:
+		etm_can_active_debugging_board_id = ETM_CAN_ADDR_COOLING_INTERFACE_BOARD;
+		break;
+			    
+	      case MODBUS_WR_HTR_MAGNET:
+		etm_can_active_debugging_board_id = ETM_CAN_ADDR_HEATER_MAGNET_BOARD;
+		break;
+
+	      case MODBUS_WR_GUN_DRIVER:
+		etm_can_active_debugging_board_id = ETM_CAN_ADDR_GUN_DRIVER_BOARD;
+		break;
+
+	      case MODBUS_WR_MAGNETRON_CURRENT:
+		etm_can_active_debugging_board_id = ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD;
+		break;
+
+	      case MODBUS_WR_PULSE_SYNC:
+		etm_can_active_debugging_board_id = ETM_CAN_ADDR_PULSE_SYNC_BOARD;
+		break;
+			    
+	      case MODBUS_WR_ETHERNET:
+		etm_can_active_debugging_board_id = ETM_CAN_ADDR_ETHERNET_BOARD;
+		break;
+	      }
+	    //    GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
+	  } // if (data_buffer[0] == (modbus_array_index + 1))
     
-			etm_can_active_debugging_board_id = data_buffer[10];
-			switch (data_buffer[10]) 
-			  {
-			  case MODBUS_WR_HVLAMBDA:
-			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_HV_LAMBDA_BOARD;
-			    break;
-			    
-			  case MODBUS_WR_ION_PUMP:
-			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_ION_PUMP_BOARD;
-			    break;
+	  modbus_cmd_need_repeat = 0;
 
-			  case MODBUS_WR_AFC:
-			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_AFC_CONTROL_BOARD;
-			    break;
+	  GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
 
-			  case MODBUS_WR_COOLING:
-			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_COOLING_INTERFACE_BOARD;
-			    break;
-			    
-			  case MODBUS_WR_HTR_MAGNET:
-			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_HEATER_MAGNET_BOARD;
-			    break;
-
-			  case MODBUS_WR_GUN_DRIVER:
-			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_GUN_DRIVER_BOARD;
-			    break;
-
-			  case MODBUS_WR_MAGNETRON_CURRENT:
-			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD;
-			    break;
-
-			  case MODBUS_WR_PULSE_SYNC:
-			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_PULSE_SYNC_BOARD;
-			    break;
-			    
-			  case MODBUS_WR_ETHERNET:
-			    etm_can_active_debugging_board_id = ETM_CAN_ADDR_ETHERNET_BOARD;
-			    break;
-			  }
-       //    GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
-		} // if (data_buffer[0] == (modbus_array_index + 1))
-    
-	  		modbus_cmd_need_repeat = 0;
-
-         GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
-
-    }  //  while(w)	
-    else
-    {
-		// Time out if too much time is spent in this state
-	        if(ETMTickGreaterThanNMilliseconds(1000, Timer)) {
-		  // Close the socket so it can be used by other modules
-		  TCPDisconnect(MySocket);
-		  MySocket = INVALID_SOCKET;
-		  GenericTCPExampleState = SM_HOME;
-		}
-    }
+	}  //  while(w)	
+      else
+	{
+	  // Time out if too much time is spent in this state
+	  if(ETMTickGreaterThanNMilliseconds(1000, Timer)) {
+	    // Close the socket so it can be used by other modules
+	    TCPDisconnect(MySocket);
+	    MySocket = INVALID_SOCKET;
+	    GenericTCPExampleState = SM_HOME;
+	  }
+	}
 
       break;
 	
