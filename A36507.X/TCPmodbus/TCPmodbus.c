@@ -337,62 +337,9 @@ static void InitializeBoard(void)
   LEDOP_TRIS = 0;
   LED_PUT(0x00);
     
-#if defined(STACK_USE_UART)
-  UART2TX_ON_TRIS = 0;
-  UART2TX_ON_IO = 0;    // always disable TX1
 
-  UART2TX_ON_TRIS = 0;
-  UART2TX_ON_IO = 1;    // always enable TX2
-
-#endif
 
   // UART
-#if defined(STACK_USE_UART)
-
-#if defined(__PIC24E__) || defined(__dsPIC33E__)
-#if defined (ENC_CS_IO) || defined (WF_CS_IO)   // UART to be used in case of ENC28J60 or MRF24W
-  __builtin_write_OSCCONL(OSCCON & 0xbf);
-  RPOR9bits.RP101R = 3; //Map U2TX to RF5
-  RPINR19bits.U2RXR = 0;
-  RPINR19bits.U2RXR = 0x64; //Map U2RX to RF4
-  __builtin_write_OSCCONL(OSCCON | 0x40);
-#endif
-#if(ENC100_INTERFACE_MODE == 0)                 // UART to be used only in case of SPI interface with ENC624Jxxx
-  __builtin_write_OSCCONL(OSCCON & 0xbf);
-  RPOR9bits.RP101R = 3; //Map U2TX to RF5
-  RPINR19bits.U2RXR = 0;
-  RPINR19bits.U2RXR = 0x64; //Map U2RX to RF4
-  __builtin_write_OSCCONL(OSCCON | 0x40);
-
-#endif
-#endif
-
-  UARTTX_TRIS = 0;
-  UARTRX_TRIS = 1;
-  UMODE = 0x8000;            // Set UARTEN.  Note: this must be done before setting UTXEN
-
-#if defined(__C30__)
-  USTA = 0x0400;        // UTXEN set
-#define CLOSEST_UBRG_VALUE ((GetPeripheralClock()+8ul*BAUD_RATE)/16/BAUD_RATE-1)
-#define BAUD_ACTUAL (GetPeripheralClock()/16/(CLOSEST_UBRG_VALUE+1))
-#else    //defined(__C32__)
-  USTA = 0x00001400;        // RXEN set, TXEN set
-#define CLOSEST_UBRG_VALUE ((GetPeripheralClock()+8ul*BAUD_RATE)/16/BAUD_RATE-1)
-#define BAUD_ACTUAL (GetPeripheralClock()/16/(CLOSEST_UBRG_VALUE+1))
-#endif
-    
-#define BAUD_ERROR ((BAUD_ACTUAL > BAUD_RATE) ? BAUD_ACTUAL-BAUD_RATE : BAUD_RATE-BAUD_ACTUAL)
-#define BAUD_ERROR_PRECENT    ((BAUD_ERROR*100+BAUD_RATE/2)/BAUD_RATE)
-#if (BAUD_ERROR_PRECENT > 3)
-#warning UART frequency error is worse than 3%
-#elif (BAUD_ERROR_PRECENT > 2)
-#warning UART frequency error is worse than 2%
-#endif
-    
-  UBRG = CLOSEST_UBRG_VALUE;
-#endif
-
-
   // Deassert all chip select lines so there isn't any problem with 
   // initialization order.  Ex: When ENC28J60 is on SPI2 with Explorer 16, 
   // MAX3232 ROUT2 pin will drive RF12/U2CTS ENC28J60 CS line asserted, 
@@ -511,23 +458,14 @@ void TCPmodbus_init(IPCONFIG* ip_config)
   // Initialize application specific hardware
   InitializeBoard();
 
-#if 1  //defined(STACK_USE_UART)
-  // Initialize stack-related hardware components that may be 
-  // required by the UART configuration routines
+
   ETMTickInitialize(20000000, ETM_TICK_USE_TIMER_1);  // DPARKER make this part of the configuration
-#endif
+
 
   // Initialize Stack and application related NV variables into AppConfig.
   InitAppConfig(ip_config);
     
-  InitModbusData();
-
-  // Initiates board setup process if button is depressed 
-  // on startup
-#if defined(STACK_USE_UART)
-  DoUARTConfig();
-#endif
-    
+  InitModbusData(); 
 
   // Initialize core stack layers (MAC, ARP, TCP, UDP) and
   // application modules (HTTP, SNMP, etc.)
@@ -540,9 +478,6 @@ void TCPmodbus_init(IPCONFIG* ip_config)
 //
 void TCPmodbus_task(void)
 {
-  _LATB8 = 1;
-
-
 
   // Blink LED0 (right most one) every second.
   if(ETMTickRunOnceEveryNMilliseconds(500, &led_flash_holding_var)) {
@@ -560,8 +495,6 @@ void TCPmodbus_task(void)
 
  
   GenericTCPClient();
-
-  _LATB8 = 0;
 
   //  ExecuteCommands();
 
@@ -597,38 +530,6 @@ void InitModbusData(void)
   eth_cal_to_GUI_put_index = 0;
   eth_cal_to_GUI_get_index = 0;
  
-#if 1 
-  /*
-  // setup some fake data
-  etm_can_hv_lambda_mirror.status_data.status_word_0	= 0x1111;
-  etm_can_hv_lambda_mirror.status_data.status_word_1	= 0x3344;
-  etm_can_hv_lambda_mirror.status_data.data_word_A	= 0x5566;
-  etm_can_hv_lambda_mirror.status_data.data_word_B	= 0x7788;
-  etm_can_hv_lambda_mirror.status_data.status_word_0_inhbit_mask = 0x9911;
-  etm_can_hv_lambda_mirror.status_data.status_word_1_fault_mask = 0x1155;
-   
-  etm_can_hv_lambda_mirror.hvlambda_high_energy_set_point = 0x1122;
-  etm_can_hv_lambda_mirror.hvlambda_readback_base_plate_temp = 0x5599;
-
-  etm_can_ion_pump_mirror.status_data.status_word_0	= 0x2222;
-  etm_can_ion_pump_mirror.status_data.status_word_1	= 0x3344;
-  etm_can_ion_pump_mirror.status_data.data_word_A	= 0x5566;
-  etm_can_ion_pump_mirror.status_data.data_word_B	= 0x7788;
-  etm_can_ion_pump_mirror.status_data.status_word_0_inhbit_mask = 0x9911;
-  etm_can_ion_pump_mirror.status_data.status_word_1_fault_mask = 0x2266;
-   
-  etm_can_afc_mirror.status_data.status_word_0 = 0x3333;
-  etm_can_cooling_mirror.status_data.status_word_0 = 0x4444;
-  etm_can_heater_magnet_mirror.status_data.status_word_0 = 0x5555;
-  etm_can_gun_driver_mirror.status_data.status_word_0 = 0x6666;
-  etm_can_magnetron_current_mirror.status_data.status_word_0 = 0x7777;
-  etm_can_pulse_sync_mirror.status_data.status_word_0 = 0x8888;
-  etm_can_ethernet_board_data.status_data->status_word_0 = 0x9999;
-  */
-
-#endif
-   
-   
 }
 
 /****************************************************************************
@@ -711,33 +612,7 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
 
        
       break;
-      /*
-	case MODBUS_WR_ONE_CAL_ENTRY:
-      	if (queue_is_empty(QUEUE_CAL_TO_GUI) == 0) 
-        {
-	total_bytes = 6;
-	        
-	BuildModbusOutput_write_header(total_bytes);   
-
-	// data starts at offset 13
-	x = eth_cal_to_GUI[eth_cal_to_GUI_get_index].index;
-	data_buffer[13] = (x >> 8) & 0xff;
-	data_buffer[14] = x & 0xff;
-	x = eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale;
-	data_buffer[15] = (x >> 8) & 0xff;
-	data_buffer[16] = x & 0xff;
-	x = eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset;
-	data_buffer[17] = (x >> 8) & 0xff;
-	data_buffer[18] = x & 0xff;
- 
-	eth_cal_to_GUI_get_index++;
-	eth_cal_to_GUI_get_index = eth_cal_to_GUI_get_index & (ETH_CAL_TO_GUI_BUFFER_SIZE - 1);
-           
-	total_bytes += 13;
-            
-	}   
-	break;
-      */
+      
     default:
       break;           
 	     
@@ -795,79 +670,10 @@ unsigned int BuildModbusOutputHighSpeedDataLog(void) {
   buffer_header[14] = pulse_index & 0xff;                  // pulse index low word
   
   pulse_index++;  // overflows at 65535
-  /*
-  if (send_high_speed_data_buffer & 0x01) {
-    ptr = (unsigned char *)&high_speed_data_buffer_a[0];
-    send_high_speed_data_buffer = 0;
-  } else {
-    ptr = (unsigned char *)&high_speed_data_buffer_b[0];
-    send_high_speed_data_buffer = 0;
-  } 
-
-  for (x = 0; x < (data_bytes - 2); x++) {
-    data_buffer[15 + x] = *ptr;
-    *ptr = 0;
-    ptr++;
-  }
-  */
+  
   return data_bytes + 13;
 
 }
-
-
-/*
-unsigned int BuildModbusOutputCalibrationData(void) {
-
-  buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-  buffer_header[1] = transaction_number & 0xff;	         // transaction lo byte
-  buffer_header[2] = 0;	                                 // protocol hi 
-  buffer_header[3] = 0;	                                 // protocol lo 
-  buffer_header[4] = 0;                                    // This is the length of data HB
-  buffer_header[5] = 13;                                   // This is the length of data LB
-  buffer_header[6] = MODBUS_WR_ONE_CAL_ENTRY;              // 
-  buffer_header[7] = 0x10;                                 // function code 
-  buffer_header[8] = 0;                                    // ref # hi
-  buffer_header[9] = 0;	                                 // ref # lo
-  buffer_header[10] = 0;                                   // msg length in words hi
-  buffer_header[11] = 3;                                   // msg length in words lo
-  buffer_header[12] = 6;                                   // data length in bytes // DPARKER is this used???
-  buffer_header[13] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].index >> 8) & 0xff;
-  buffer_header[14] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].index & 0xff;
-  buffer_header[15] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale >> 8) & 0xff;
-  buffer_header[16] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].scale & 0xff;
-  buffer_header[17] = (eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset >> 8) & 0xff;
-  buffer_header[18] = eth_cal_to_GUI[eth_cal_to_GUI_get_index].offset & 0xff;
-  
-  eth_cal_to_GUI_get_index++;
-  eth_cal_to_GUI_get_index = eth_cal_to_GUI_get_index & (ETH_CAL_TO_GUI_BUFFER_SIZE - 1);
-  
-  return 19;
-}
-*/
-/*
-WORD BuildModbusOutput_debug_data(unsigned char *tx_ptr)
-{
-  WORD i; 
-  WORD total_bytes = 0;  // default: no cmd out 
-    
-  if (tx_ptr) // otherwise index is wrong, don't need send any cmd out
-    {
-      total_bytes = 80;
-      BuildModbusOutput_write_header(total_bytes);   
-
-      // data starts at offset 13
-      for (i = 0; i < total_bytes; i++, tx_ptr++)
-        {
-	  data_buffer[i + 13] = *tx_ptr;
-        }
-      total_bytes = i + 13;
-        		     
-    }
-       
-  return (total_bytes);
-
-}
-*/
 
 /****************************************************************************
   Function:
@@ -1012,10 +818,7 @@ WORD BuildModbusOutput(void) {
       modbus_send_index = MODBUS_RD_COMMAND_DETAIL;
       total_bytes = BuildModbusOutput_read_command(modbus_send_index, 8);
       modbus_command_request = 0; 
-    } //else if (queue_is_empty(QUEUE_CAL_TO_GUI) == 0) {
-      //modbus_send_index = MODBUS_WR_ONE_CAL_ENTRY;
-      //total_bytes = BuildModbusOutputCalibrationData();
-    //}    
+    }
     
     switch (modbus_send_index)
       {
@@ -1120,7 +923,6 @@ void GenericTCPClient(void)
 
       if (header_length == 0) break;  // don't want to send anything for now, stay in this state
 
-      _LATB7 = 1;
       
       /*
 	unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id, unsigned char *data_ptr);
@@ -1145,13 +947,11 @@ void GenericTCPClient(void)
 	read_command is 12 bytes
 
        */
-      TCPPutArray(MySocket, buffer_header, header_length);  // DPARKER how to figure out how much of this header to put
+      TCPPutArray(MySocket, buffer_header, header_length);
       TCPPutArray(MySocket, data_ptr, (len - header_length));
-      _LATB7 = 0;
       
       // Send the packet
       TCPFlush(MySocket);
-      _LATB9 = 0;
       GenericTCPExampleState = SM_PROCESS_RESPONSE;
       break;
 
