@@ -68,6 +68,27 @@
 #include "A36507.h"
 
 
+
+
+typedef struct {
+  unsigned char *header_ptr;
+  unsigned char *data_ptr;
+  unsigned int  header_length;
+  unsigned int  data_length;
+} ETMModbusTXData;
+
+
+ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
+/*
+  This returns 
+  * header ptr
+  * data ptr
+  * header length
+  * data length
+*/
+
+void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
+
 unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id);
 
 unsigned long led_flash_holding_var;
@@ -863,19 +884,16 @@ WORD BuildModbusOutput(void) {
   Returns:
   	None
 ***************************************************************************/
-void GenericTCPClient(void)
-{
-
+void GenericTCPClient(void) {
   WORD				w, len;
-
-  //    char                sBuffer[250];
-    
-      
-       
+  
+  ETMModbusTXData tx_data;
+  
+  
+  
   static DWORD		Timer;
   static TCP_SOCKET	MySocket = INVALID_SOCKET;
-  static enum _GenericTCPExampleState
-  {
+  static enum _GenericTCPExampleState {
     SM_HOME = 0,
     SM_SOCKET_OBTAINED,
     SM_PROCESS_RESPONSE,
@@ -883,7 +901,7 @@ void GenericTCPClient(void)
     SM_DONE
   } GenericTCPExampleState = SM_DONE;
 
-  switch(GenericTCPExampleState)
+  switch(GenericTCPExampleState) 
     {
     case SM_HOME:
       // Connect a socket to the remote TCP server, 192.168.66.15
@@ -914,41 +932,26 @@ void GenericTCPClient(void)
       Timer = ETMTickGet();
       
       // Make certain the socket can be written to
-      if (TCPIsPutReady(MySocket) < MAX_TX_SIZE) break;
+      //if (TCPIsPutReady(MySocket) < MAX_TX_SIZE) break;  // DPARKER fix this
 
+      //len = BuildModbusOutput();
+      //if (len == 0) break;  
+      //if (header_length == 0) break;  // don't want to send anything for now, stay in this state      
+
+      tx_data = ETMModbusApplicationSpecificTXData();
+
+      if ((tx_data.header_length + tx_data.data_length) > TCPIsPutReady(MySocket)) {
+	// The socket can not be written to
+	break;
+      }
       
-      len = BuildModbusOutput();
-      
-      if (len == 0) break;  // don't want to send anything for now, stay in this state
+      if (tx_data.header_length == 0) {
+	// don't want to send anything for now, stay in this state
+	break;
+      }
 
-      if (header_length == 0) break;  // don't want to send anything for now, stay in this state
-
-      
-      /*
-	unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id, unsigned char *data_ptr);
-	This is used for all the boards and the debug data
-	bytes = 13 + data_bytes
-	
-	unsigned int BuildModbusOutputHighSpeedDataLog(void);
-	bytes = 15 + high_speed_data
-
-	WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count)
-	bytes = 12 
-	DPARKER why is this 12 and generic 13???
-
-
-	unsigned int BuildModbusOutputCalibrationData(void);
-	THIS IS BEING REMOVED - DO NOT NEED TO CONSIDER
-
-	generic output is 13 bytes
-	high speed output is 13 bytes, + 2 bytes pulse_index, + data
-	Calibration data is being removed and will not be supported . . .
-	debug_data is 13, + data
-	read_command is 12 bytes
-
-       */
-      TCPPutArray(MySocket, buffer_header, header_length);
-      TCPPutArray(MySocket, data_ptr, (len - header_length));
+      TCPPutArray(MySocket, tx_data.header_ptr, tx_data.header_length);
+      TCPPutArray(MySocket, tx_data.data_ptr, tx_data.data_length);
       
       // Send the packet
       TCPFlush(MySocket);
@@ -964,87 +967,32 @@ void GenericTCPClient(void)
       
       // Get count of RX bytes waiting
       w = TCPIsGetReady(MySocket);	
-
-      if (w)
-           
-	{
-	  if (w > (MAX_RX_SIZE-1)) {
-	    w = (MAX_RX_SIZE-1);
-	  }
-		
-	  len = TCPGetArray(MySocket, buffer_header, w);
-	  w -= len;
-	
-	  if (buffer_header[6] == modbus_send_index) {
-	    if (modbus_send_index == MODBUS_RD_COMMAND_DETAIL)
-	      {
-		queue_put_command(&buffer_header[9]);
-	      }
-	    else /* write commands return command count in the reference field */
-	      {
-		modbus_command_request = (buffer_header[8] << 8) | buffer_header[9];
-	      }
-	    
-	    etm_can_active_debugging_board_id = buffer_header[10];
-	    switch (buffer_header[10]) 
-	      {
-	      case MODBUS_WR_HVLAMBDA:
-		etm_can_active_debugging_board_id = ETM_CAN_ADDR_HV_LAMBDA_BOARD;
-		break;
-		
-	      case MODBUS_WR_ION_PUMP:
-		etm_can_active_debugging_board_id = ETM_CAN_ADDR_ION_PUMP_BOARD;
-		break;
-
-	      case MODBUS_WR_AFC:
-		etm_can_active_debugging_board_id = ETM_CAN_ADDR_AFC_CONTROL_BOARD;
-		break;
-
-	      case MODBUS_WR_COOLING:
-		etm_can_active_debugging_board_id = ETM_CAN_ADDR_COOLING_INTERFACE_BOARD;
-		break;
-			    
-	      case MODBUS_WR_HTR_MAGNET:
-		etm_can_active_debugging_board_id = ETM_CAN_ADDR_HEATER_MAGNET_BOARD;
-		break;
-
-	      case MODBUS_WR_GUN_DRIVER:
-		etm_can_active_debugging_board_id = ETM_CAN_ADDR_GUN_DRIVER_BOARD;
-		break;
-
-	      case MODBUS_WR_MAGNETRON_CURRENT:
-		etm_can_active_debugging_board_id = ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD;
-		break;
-
-	      case MODBUS_WR_PULSE_SYNC:
-		etm_can_active_debugging_board_id = ETM_CAN_ADDR_PULSE_SYNC_BOARD;
-		break;
-			    
-	      case MODBUS_WR_ETHERNET:
-		etm_can_active_debugging_board_id = ETM_CAN_ADDR_ETHERNET_BOARD;
-		break;
-	      }
-	    //    GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
-	  } // if (data_buffer[0] == (modbus_array_index + 1))
-    
-	  modbus_cmd_need_repeat = 0;
-
-	  GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
-
-	}  //  while(w)	
-      else
-	{
-	  // Time out if too much time is spent in this state
-	  if(ETMTickGreaterThanNMilliseconds(1000, Timer)) {
-	    // Close the socket so it can be used by other modules
-	    TCPDisconnect(MySocket);
-	    MySocket = INVALID_SOCKET;
-	    GenericTCPExampleState = SM_HOME;
-	  }
+      
+      if (w) {
+	if (w > (MAX_RX_SIZE-1)) {
+	  w = (MAX_RX_SIZE-1);
 	}
-
-      break;
 	
+	len = TCPGetArray(MySocket, buffer_header, w);
+	w -= len;
+	
+	ETMModbusApplicationSpecificRXData(buffer_header);
+	
+	modbus_cmd_need_repeat = 0;
+	GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
+	
+      } else {
+	// Time out if too much time is spent in this state
+	if(ETMTickGreaterThanNMilliseconds(1000, Timer)) {
+	  // Close the socket so it can be used by other modules
+	  TCPDisconnect(MySocket);
+	  MySocket = INVALID_SOCKET;
+	  GenericTCPExampleState = SM_HOME;
+	}
+      }
+      
+      break;
+      
     case SM_DISCONNECT:
       // Close the socket so it can be used by other modules
       // For this application, we wish to stay connected, but this state will still get entered if the remote server decides to disconnect
@@ -1052,15 +1000,102 @@ void GenericTCPClient(void)
       MySocket = INVALID_SOCKET;
       GenericTCPExampleState = SM_DONE;
       break;
-	
+      
     case SM_DONE:
-      // Do nothing unless the user pushes BUTTON1 and wants to restart the whole connection/download process
-      //if(BUTTON1_IO == 0u)
       GenericTCPExampleState = SM_HOME;
       break;
     }
 }
 
 
+// ------------------------------------ ////
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
+  unsigned int    total_length;
+  ETMModbusTXData data_to_send;
+  
+  total_length = BuildModbusOutput();
+  data_to_send.header_length = header_length;
+  data_to_send.data_length = total_length - header_length;
+  data_to_send.header_ptr = buffer_header;
+  data_to_send.data_ptr = data_ptr;
+  
+  return data_to_send;
+}
+
+
+
+
+
+void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]) {
+  
+  if (data_RX[6] == modbus_send_index) {
+    if (modbus_send_index == MODBUS_RD_COMMAND_DETAIL) {
+      queue_put_command(&data_RX[9]);
+    } else { 
+      /* write commands return command count in the reference field */
+      modbus_command_request = (data_RX[8] << 8) | data_RX[9];
+    }
+    
+    etm_can_active_debugging_board_id = data_RX[10];
+    switch (data_RX[10]) 
+      {
+      case MODBUS_WR_HVLAMBDA:
+	etm_can_active_debugging_board_id = ETM_CAN_ADDR_HV_LAMBDA_BOARD;
+	break;
+	
+      case MODBUS_WR_ION_PUMP:
+	etm_can_active_debugging_board_id = ETM_CAN_ADDR_ION_PUMP_BOARD;
+	break;
+	
+      case MODBUS_WR_AFC:
+	etm_can_active_debugging_board_id = ETM_CAN_ADDR_AFC_CONTROL_BOARD;
+	break;
+	
+      case MODBUS_WR_COOLING:
+	etm_can_active_debugging_board_id = ETM_CAN_ADDR_COOLING_INTERFACE_BOARD;
+	break;
+	
+      case MODBUS_WR_HTR_MAGNET:
+	etm_can_active_debugging_board_id = ETM_CAN_ADDR_HEATER_MAGNET_BOARD;
+	break;
+	
+      case MODBUS_WR_GUN_DRIVER:
+	etm_can_active_debugging_board_id = ETM_CAN_ADDR_GUN_DRIVER_BOARD;
+	break;
+	
+      case MODBUS_WR_MAGNETRON_CURRENT:
+	etm_can_active_debugging_board_id = ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD;
+	break;
+	
+      case MODBUS_WR_PULSE_SYNC:
+	etm_can_active_debugging_board_id = ETM_CAN_ADDR_PULSE_SYNC_BOARD;
+	break;
+	
+      case MODBUS_WR_ETHERNET:
+	etm_can_active_debugging_board_id = ETM_CAN_ADDR_ETHERNET_BOARD;
+	break;
+      }
+  } else {
+    // does not match the sent command
+    // DPARKER what to do here
+  }
+}
