@@ -87,7 +87,7 @@ void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 
 unsigned long led_flash_holding_var;
 
-unsigned char buffer_header[MAX_RX_SIZE];
+unsigned char rx_data[MAX_RX_SIZE];
 
 // Declare AppConfig structure and some other supporting stack variables
 APP_CONFIG AppConfig;
@@ -418,10 +418,10 @@ void GenericTCPClient(void) {
 	  w = (MAX_RX_SIZE-1);
 	}
 	
-	len = TCPGetArray(MySocket, buffer_header, w);
+	len = TCPGetArray(MySocket, rx_data, w);
 	w -= len;
 	
-	ETMModbusApplicationSpecificRXData(buffer_header);
+	ETMModbusApplicationSpecificRXData(rx_data);
 	
 	modbus_cmd_need_repeat = 0;
 	GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending

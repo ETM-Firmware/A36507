@@ -107,7 +107,6 @@ typedef struct {
 #define ETH_CAL_TO_GUI_BUFFER_SIZE  8
 extern ETMEthernetCalToGUI eth_cal_to_GUI[ ETH_CAL_TO_GUI_BUFFER_SIZE ];
 
-extern unsigned char buffer_header[MAX_RX_SIZE];
 extern unsigned char         modbus_cmd_need_repeat;  
 
 

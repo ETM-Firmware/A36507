@@ -52,7 +52,10 @@ unsigned long timer_write_holding_var;
 
 unsigned char *data_ptr;
 
+unsigned char buffer_header[MAX_RX_SIZE];
 
+
+//ETMModbusTXData etm_modbus_tx_data;
 
 
 #define QUEUE_MESSAGE_FROM_GUI  1
