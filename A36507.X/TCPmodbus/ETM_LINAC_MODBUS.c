@@ -1,26 +1,26 @@
-#include "TCPIPStack/TCPIPStack/TCPIPConfig.h"
-#include "TCPIPStack/TCPIPStack/TCPIP.h"
-#include "TCPIPStack/TCPIPStack/ETM_TICK.h"
-
-#include <p30F6014a.h>
+#include <xc.h>
 #include "TCPmodbus.h"
 #include "A36507.h"
+#include "TCPIPStack/TCPIPStack/ETM_TICK.h"
 
 
 
 
 
-static BYTE queue_buffer_room(BYTE q_index);
-static BYTE queue_is_empty(BYTE q_index);
-static void queue_put_command(BYTE * buffer_ptr);
+
+
+
+static unsigned char queue_buffer_room(unsigned char q_index);
+static unsigned char queue_is_empty(unsigned char q_index);
+static void queue_put_command(unsigned char * buffer_ptr);
 ETMEthernetMessageFromGUI GetNextMessage(void);
 void SendPulseData(unsigned int buffer_select);
 void BuildModbusOutput_write_header(unsigned int total_bytes);
-WORD BuildModbusOutput_write_commands(unsigned char index);
+unsigned int BuildModbusOutput_write_commands(unsigned char index);
 unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id);
 unsigned int BuildModbusOutputHighSpeedDataLog(void);
-WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count);
-WORD BuildModbusOutput(void);
+unsigned int BuildModbusOutput_read_command(unsigned char index, unsigned char byte_count);
+unsigned int BuildModbusOutput(void);
 ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
 void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 void InitModbusData(void);
@@ -33,16 +33,16 @@ unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, un
 ETMEthernetMessageFromGUI    eth_message_from_GUI[ ETH_GUI_MESSAGE_BUFFER_SIZE ];
 ETMEthernetCalToGUI          eth_cal_to_GUI[ ETH_CAL_TO_GUI_BUFFER_SIZE ];
 
-static BYTE         modbus_send_index = 0;
-static BYTE         modbus_refresh_index = 0;
-static BYTE         modbus_command_request = 0;  /* how many commands from GUI */
-static WORD         transaction_number = 0;
+static unsigned char         modbus_send_index = 0;
+static unsigned char         modbus_refresh_index = 0;
+static unsigned char         modbus_command_request = 0;  /* how many commands from GUI */
+static unsigned int         transaction_number = 0;
 
-static BYTE         eth_message_from_GUI_put_index;
-static BYTE         eth_message_from_GUI_get_index;
-static BYTE         eth_cal_to_GUI_put_index;
-static BYTE         eth_cal_to_GUI_get_index;
-static BYTE         send_high_speed_data_buffer;  /* bit 0 high for buffer A, bit 1 high for buffer B */
+static unsigned char         eth_message_from_GUI_put_index;
+static unsigned char         eth_message_from_GUI_get_index;
+static unsigned char         eth_cal_to_GUI_put_index;
+static unsigned char         eth_cal_to_GUI_get_index;
+static unsigned char         send_high_speed_data_buffer;  /* bit 0 high for buffer A, bit 1 high for buffer B */
 
 
 unsigned int header_length;
@@ -62,7 +62,7 @@ unsigned char buffer_header[MAX_RX_SIZE];
 #define QUEUE_CAL_TO_GUI        2
 /****************************************************************************
   Function:
-    static BYTE queue_buffer_room(q_index)
+    static unsigned char queue_buffer_room(q_index)
 
   Input:
     index to a queue
@@ -71,12 +71,12 @@ unsigned char buffer_header[MAX_RX_SIZE];
   Remarks:
     None
 ***************************************************************************/
-static BYTE queue_buffer_room(BYTE q_index)
+static unsigned char queue_buffer_room(unsigned char q_index)
 {
-  BYTE room = 0;
-  BYTE put_index;
-  BYTE get_index;
-  BYTE size;
+  unsigned char room = 0;
+  unsigned char put_index;
+  unsigned char get_index;
+  unsigned char size;
     
   switch (q_index) {
   case QUEUE_MESSAGE_FROM_GUI: 
@@ -108,7 +108,7 @@ static BYTE queue_buffer_room(BYTE q_index)
 
 /****************************************************************************
   Function:
-    static BYTE is_queue_empty(index)
+    static unsigned char is_queue_empty(index)
 
   Input:
     index to a queue
@@ -117,12 +117,12 @@ static BYTE queue_buffer_room(BYTE q_index)
   Remarks:
     None
 ***************************************************************************/
-static BYTE queue_is_empty(BYTE q_index)
+static unsigned char queue_is_empty(unsigned char q_index)
 {
-  BYTE is_empty = 0;
-  BYTE put_index;
-  BYTE get_index;
-  BYTE size;
+  unsigned char is_empty = 0;
+  unsigned char put_index;
+  unsigned char get_index;
+  unsigned char size;
     
   switch (q_index) {
   case QUEUE_MESSAGE_FROM_GUI: 
@@ -164,7 +164,7 @@ static BYTE queue_is_empty(BYTE q_index)
   Remarks:
     None
 ***************************************************************************/
-static void queue_put_command(BYTE * buffer_ptr)
+static void queue_put_command(unsigned char * buffer_ptr)
 {
   if (queue_buffer_room(QUEUE_MESSAGE_FROM_GUI) > 0)
     {
@@ -275,10 +275,10 @@ void BuildModbusOutput_write_header(unsigned int total_bytes)
  
 ***************************************************************************/
 // DPARKER rewrite this to use point to data instead of data buffer
-WORD BuildModbusOutput_write_commands(unsigned char index)
+unsigned int BuildModbusOutput_write_commands(unsigned char index)
 {
-  WORD x, i; 
-  WORD total_bytes = 0;  // default: no cmd out 
+  unsigned int x, i; 
+  unsigned int total_bytes = 0;  // default: no cmd out 
   switch (index) // otherwise index is wrong, don't need send any cmd out
     {
     case MODBUS_WR_EVENTS: 
@@ -386,7 +386,7 @@ unsigned int BuildModbusOutputHighSpeedDataLog(void) {
     Build modbus command, return 0 if we don't want to send anything
  
 ***************************************************************************/
-WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count)
+unsigned int BuildModbusOutput_read_command(unsigned char index, unsigned char byte_count)
 { 
   /* modbus header for read:  transaction ID(word), protocol ID(word, 0x0000), length(word, bytes to follow), 
      unit id (byte, 0xff), function code (byte, 0x03), reference number(word), word count (byte) */
@@ -426,8 +426,8 @@ WORD BuildModbusOutput_read_command(BYTE index, BYTE byte_count)
 #define SIZE_HIGH_SPEED_DATA TBD
 
 
-WORD BuildModbusOutput(void) {
-  WORD total_bytes = 0;  // default: no cmd out
+unsigned int BuildModbusOutput(void) {
+  unsigned int total_bytes = 0;  // default: no cmd out
   //unsigned char *tx_ptr = 0;
   unsigned int msg_size_bytes;
 
