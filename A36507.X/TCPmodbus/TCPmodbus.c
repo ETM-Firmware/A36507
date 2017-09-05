@@ -52,11 +52,6 @@
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Howard Schlunder     8/01/06	Original
  ********************************************************************/
-#define __GENERICTCPCLIENT_C
-
-//#define THIS_IS_STACK_APPLICATION
-
-
 #include <xc.h>
 #include "TCPIPStack/TCPIPStack/TCPIPConfig.h"
 #include "TCPIPStack/TCPIPStack/TCPIP.h"
@@ -71,7 +66,7 @@ static void InitializeBoard(void);
 static void InitAppConfig(IPCONFIG* ip_config);
 void TCPmodbus_init(IPCONFIG* ip_config);
 void TCPmodbus_task(void);
-void GenericTCPClient(void);
+void ETMTCPClient(void);
 
 
 
@@ -81,7 +76,6 @@ void GenericTCPClient(void);
 ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
 void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 
-unsigned long led_flash_holding_var;
 
 unsigned char rx_data[MAX_RX_SIZE];
 
@@ -89,9 +83,7 @@ unsigned char rx_data[MAX_RX_SIZE];
 APP_CONFIG AppConfig;
 static unsigned short wOriginalAppConfigChecksum;    // Checksum of the ROM defaults for AppConfig
 
-#define LED_PUT(a)	do{unsigned char vTemp = (a); LEDOP_IO = vTemp&0x1; LEDA_IO = vTemp&0x4; LEDB_IO = vTemp&0x2;} while(0)
-
-void GenericTCPClient(void);
+void ETMTCPClient(void);
 void InitModbusData(void);
 
 unsigned char         modbus_cmd_need_repeat = 0;  
@@ -125,13 +117,6 @@ unsigned char         modbus_cmd_need_repeat = 0;
 ***************************************************************************/
 static void InitializeBoard(void)
 {    
-  // LEDs
-  LEDA_TRIS = 0;
-  LEDB_TRIS = 0;
-  LEDOP_TRIS = 0;
-  LED_PUT(0x00);
-    
-
 
   // UART
   // Deassert all chip select lines so there isn't any problem with 
@@ -272,12 +257,6 @@ void TCPmodbus_init(IPCONFIG* ip_config)
 //
 void TCPmodbus_task(void)
 {
-
-  // Blink LED0 (right most one) every second.
-  if(ETMTickRunOnceEveryNMilliseconds(500, &led_flash_holding_var)) {
-    LEDOP_IO ^= 1; // DPARKER fix this horribly unsafe operation
-  }
-
   // This task performs normal stack task including checking
   // for incoming packet, type of packet and calling
   // appropriate stack entity to process it.
@@ -288,7 +267,7 @@ void TCPmodbus_task(void)
   // StackApplications();  // don't need
 
  
-  GenericTCPClient();
+  ETMTCPClient();
 
   //  ExecuteCommands();
 
@@ -300,7 +279,7 @@ void TCPmodbus_task(void)
 
 /*****************************************************************************
   Function:
-	void GenericTCPClient(void)
+	void ETMTCPClient(void)
 
   Summary:
 	Implements a simple HTTP client (over TCP).
@@ -325,7 +304,7 @@ void TCPmodbus_task(void)
   Returns:
   	None
 ***************************************************************************/
-void GenericTCPClient(void) {
+void ETMTCPClient(void) {
   WORD				w, len;
   
   ETMModbusTXData tx_data;
@@ -334,26 +313,26 @@ void GenericTCPClient(void) {
   
   static DWORD		Timer;
   static TCP_SOCKET	MySocket = INVALID_SOCKET;
-  static enum _GenericTCPExampleState {
+  static enum _ETMTCPState {
     SM_HOME = 0,
     SM_SOCKET_OBTAINED,
     SM_PROCESS_RESPONSE,
     SM_DISCONNECT,
     SM_DONE
-  } GenericTCPExampleState = SM_DONE;
+  } ETMTCPState = SM_DONE;
 
-  switch(GenericTCPExampleState) 
+  switch(ETMTCPState) 
     {
     case SM_HOME:
       // Connect a socket to the remote TCP server, 192.168.66.15
       MySocket = TCPOpen(AppConfig.MyRemIPAddr.Val, TCP_OPEN_IP_ADDRESS, 502, TCP_PURPOSE_TCP_MODBUS_CLIENT);
       
-      // Abort operation if no TCP socket of type TCP_PURPOSE_GENERIC_TCP_CLIENT is available
+      // Abort operation if no TCP socket of type TCP_PURPOSE_TCP_MODBUS_CLIENT is available
       // If this ever happens, you need to go add one to TCPIPConfig.h
       if(MySocket == INVALID_SOCKET)
 	break;
       
-      GenericTCPExampleState = SM_SOCKET_OBTAINED;
+      ETMTCPState = SM_SOCKET_OBTAINED;
       Timer = ETMTickGet();
       break;
 
@@ -365,7 +344,7 @@ void GenericTCPClient(void) {
 	  // Close the socket so it can be used by other modules
 	  TCPDisconnect(MySocket);
 	  MySocket = INVALID_SOCKET;
-	  GenericTCPExampleState = SM_HOME;
+	  ETMTCPState = SM_HOME;
 	}
 	break;
       }
@@ -396,13 +375,13 @@ void GenericTCPClient(void) {
       
       // Send the packet
       TCPFlush(MySocket);
-      GenericTCPExampleState = SM_PROCESS_RESPONSE;
+      ETMTCPState = SM_PROCESS_RESPONSE;
       break;
 
     case SM_PROCESS_RESPONSE:
       // Check to see if the remote node has disconnected from us or sent us any application data
       if(!TCPIsConnected(MySocket)) {
-	GenericTCPExampleState = SM_DISCONNECT;
+	ETMTCPState = SM_DISCONNECT;
 	// Do not break;  We might still have data in the TCP RX FIFO waiting for us
       }
       
@@ -420,7 +399,7 @@ void GenericTCPClient(void) {
 	ETMModbusApplicationSpecificRXData(rx_data);
 	
 	modbus_cmd_need_repeat = 0;
-	GenericTCPExampleState = SM_SOCKET_OBTAINED; // repeat sending
+	ETMTCPState = SM_SOCKET_OBTAINED; // repeat sending
 	
       } else {
 	// Time out if too much time is spent in this state
@@ -428,7 +407,7 @@ void GenericTCPClient(void) {
 	  // Close the socket so it can be used by other modules
 	  TCPDisconnect(MySocket);
 	  MySocket = INVALID_SOCKET;
-	  GenericTCPExampleState = SM_HOME;
+	  ETMTCPState = SM_HOME;
 	}
       }
       
@@ -439,11 +418,11 @@ void GenericTCPClient(void) {
       // For this application, we wish to stay connected, but this state will still get entered if the remote server decides to disconnect
       TCPDisconnect(MySocket);
       MySocket = INVALID_SOCKET;
-      GenericTCPExampleState = SM_DONE;
+      ETMTCPState = SM_DONE;
       break;
       
     case SM_DONE:
-      GenericTCPExampleState = SM_HOME;
+      ETMTCPState = SM_HOME;
       break;
     }
 }
