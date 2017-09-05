@@ -964,7 +964,8 @@ void DoA36507(void) {
   etm_can_master_sync_message.sync_3 = 0x4567;
 
   ETMCanMasterDoCan();
-  TCPmodbus_task();
+  //TCPmodbus_task();
+  ETMLinacModbusUpdate();
   ExecuteEthernetCommand(personality_select_from_pulse_sync);
   if (LookForDoseMessageFromReferenceDetector()) {
     // the dose data was updated with a new value from the reference detector
@@ -1255,7 +1256,6 @@ void UpdateHeaterScale() {
 
 void InitializeA36507(void) {
   unsigned int loop_counter;
-  IPCONFIG ip_config;
 
 
 
@@ -1315,7 +1315,11 @@ void InitializeA36507(void) {
   ETMCanMasterInitialize(CAN_PORT_1, FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
   ETMCanMasterLoadConfiguration(36507, 251, ETMEEPromReadWord(0x0181), FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, ETMEEPromReadWord(0x0180));
   global_data_A36507.system_serial_number = ETMEEPromReadWord(EEPROM_REGISTER_TOP_LEVEL_SERIAL_NUMBER);
+
+
+
   // Initialize TCPmodbus Module
+#if 0
   ip_config.remote_ip_addr   = ETMEEPromReadWord(EEPROM_REGISTER_REMOTE_IP_ADDRESS);
   ip_config.remote_ip_addr <<= 16;
   ip_config.remote_ip_addr  += ETMEEPromReadWord(EEPROM_REGISTER_REMOTE_IP_ADDRESS + 1);
@@ -1338,7 +1342,11 @@ void InitializeA36507(void) {
   }
 
   TCPmodbus_init(&ip_config);
+#endif
   
+  ETMLinacModbusInitialize();
+
+
 #ifndef __IGNORE_TCU
   // Initialize ETMmodbus Module
   ETMmodbus_init();

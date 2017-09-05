@@ -3,7 +3,7 @@
 #include "P1395_CAN_MASTER.h"
 #include "ETM_IO_PORTS.H"
 #include "ETM_SCALE.H"
-#include "TCPmodbus.h"
+#include "ETM_LINAC_MODBUS.h"
 
 unsigned int can_master_millisecond_counter;
 unsigned int previous_disable_xray_value;

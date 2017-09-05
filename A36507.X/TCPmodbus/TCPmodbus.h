@@ -11,8 +11,6 @@
 #ifndef __TCP_MODBUS_H
 #define __TCP_MODBUS_H
 
-#include "P1395_CAN_MASTER.h"
-
 typedef struct {
   unsigned char *header_ptr;
   unsigned char *data_ptr;
@@ -35,11 +33,10 @@ void TCPmodbus_init(IPCONFIG* ip_config);
 
 void TCPmodbus_task(void);
 
-unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset);
+//unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset);
 
-void SendPulseData(unsigned int buffer_select);
-#define SEND_BUFFER_A            1
-#define SEND_BUFFER_B            0
+//void SendPulseData(unsigned int buffer_select);
+
 
 
 
@@ -85,16 +82,9 @@ enum
 // STANDARD LOGGING DATA
 
 
-typedef struct {
-  unsigned int index ;                  // command index
-  unsigned int data_2;
-  unsigned int data_1;
-  unsigned int data_0;
-} ETMEthernetMessageFromGUI;
 
 
-#define ETH_GUI_MESSAGE_BUFFER_SIZE   8
-extern ETMEthernetMessageFromGUI eth_message_from_GUI[ ETH_GUI_MESSAGE_BUFFER_SIZE ];
+
 
 
 typedef struct {
@@ -110,7 +100,7 @@ extern ETMEthernetCalToGUI eth_cal_to_GUI[ ETH_CAL_TO_GUI_BUFFER_SIZE ];
 extern unsigned char         modbus_cmd_need_repeat;  
 
 
-extern ETMEthernetMessageFromGUI GetNextMessage(void);
+//extern 
 /*
   index will be 0xFFFF if there is no message
 */

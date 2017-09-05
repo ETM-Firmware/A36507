@@ -59,13 +59,11 @@
 #define IS_MODBUS_MAIN  1
 
 
+#include <xc.h>
 #include "TCPIPStack/TCPIPStack/TCPIPConfig.h"
 #include "TCPIPStack/TCPIPStack/TCPIP.h"
 #include "TCPIPStack/TCPIPStack/ETM_TICK.h"
-
-#include <p30F6014a.h>
 #include "TCPmodbus.h"
-#include "A36507.h"
 
 
 

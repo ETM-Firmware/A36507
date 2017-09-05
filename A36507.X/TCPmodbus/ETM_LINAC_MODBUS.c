@@ -2,8 +2,7 @@
 #include "TCPmodbus.h"
 #include "A36507.h"
 #include "TCPIPStack/TCPIPStack/ETM_TICK.h"
-
-
+#include "ETM_LINAC_MODBUS.h"
 
 
 
@@ -14,7 +13,6 @@ static unsigned char queue_buffer_room(unsigned char q_index);
 static unsigned char queue_is_empty(unsigned char q_index);
 static void queue_put_command(unsigned char * buffer_ptr);
 ETMEthernetMessageFromGUI GetNextMessage(void);
-void SendPulseData(unsigned int buffer_select);
 void BuildModbusOutput_write_header(unsigned int total_bytes);
 unsigned int BuildModbusOutput_write_commands(unsigned char index);
 unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char unit_id);
@@ -24,7 +22,7 @@ unsigned int BuildModbusOutput(void);
 ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
 void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 void InitModbusData(void);
-unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset);
+
 
 
 
@@ -676,4 +674,18 @@ unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, un
   else
     return (0xffff);
         
+}
+
+
+void ETMLinacModbusUpdate(void) {
+  TCPmodbus_task();
+}
+
+void ETMLinacModbusInitialize(void) {
+  IPCONFIG ip_config;
+  
+  ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168.70.15
+  ip_config.ip_addr        = 0x6346A8C0;  // 192.168.70.99
+  
+  TCPmodbus_init(&ip_config);
 }
