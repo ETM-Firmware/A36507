@@ -17,8 +17,6 @@ void ReadConfigFromMirror(void);
 
 BUFFERBYTE64 uart1_input_buffer;
 
-#define FCY_CLK  20000000
-
 
 unsigned int a_ready;
 unsigned int a_sent;

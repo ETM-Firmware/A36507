@@ -1,13 +1,3 @@
-
-/*********************************************************************
- *
- *  Main Application Entry Point and TCP/IP Stack Demo
- *  Module for Microchip TCP/IP Stack
- *   -Demonstrates how to call and use the Microchip TCP/IP stack
- *   -Reference: Microchip TCP/IP Stack Help (TCPIPStack Help.chm)1150
-
- *
- *********************************************************************/
 #ifndef __TCP_MODBUS_H
 #define __TCP_MODBUS_H
 
@@ -28,9 +18,7 @@ typedef struct {
 } IPCONFIG;
 
 
-
 void TCPmodbus_init(IPCONFIG* ip_config);
-
 void TCPmodbus_task(void);
 
 
@@ -44,6 +32,5 @@ void TCPmodbus_task(void);
 #define MODBUS_COMMAND_REFRESH_TOTAL     MODBUS_WR_EVENTS  
 
 extern unsigned char         modbus_cmd_need_repeat;  
-
 
 #endif

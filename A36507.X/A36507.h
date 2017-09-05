@@ -17,6 +17,8 @@
 #include "P1395_CAN_MASTER.h"
 
 
+#define FCY_CLK  20000000
+
 
 
 

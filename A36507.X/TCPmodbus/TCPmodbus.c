@@ -61,6 +61,9 @@
 
 
 
+#define TCP_CONNECTED_TIMEOUT_MILLISECONDS       5000
+#define SM_PROCESS_RESPONSE_TIMEOUT_MILLISECONDS 1000      
+
 
 static void InitializeBoard(void);
 static void InitAppConfig(IPCONFIG* ip_config);
@@ -115,10 +118,7 @@ unsigned char         modbus_cmd_need_repeat = 0;
   Remarks:
     None
 ***************************************************************************/
-static void InitializeBoard(void)
-{    
-
-  // UART
+static void InitializeBoard(void) {    
   // Deassert all chip select lines so there isn't any problem with 
   // initialization order.  Ex: When ENC28J60 is on SPI2 with Explorer 16, 
   // MAX3232 ROUT2 pin will drive RF12/U2CTS ENC28J60 CS line asserted, 
@@ -156,8 +156,7 @@ static void InitializeBoard(void)
 static ROM BYTE SerializedMACAddress[6] = {MY_DEFAULT_MAC_BYTE1, MY_DEFAULT_MAC_BYTE2, MY_DEFAULT_MAC_BYTE3, MY_DEFAULT_MAC_BYTE4, MY_DEFAULT_MAC_BYTE5, MY_DEFAULT_MAC_BYTE6};
 //#pragma romdata
 
-static void InitAppConfig(IPCONFIG* ip_config)
-{
+static void InitAppConfig(IPCONFIG* ip_config) {
     
   // Start out zeroing all AppConfig bytes to ensure all fields are 
   // deterministic for checksum generation
@@ -232,45 +231,30 @@ void TCPmodbusSetRemoteIPAddress(unsigned char byte4, unsigned char byte3, unsig
 //
 // called once for initilization.
 //
-void TCPmodbus_init(IPCONFIG* ip_config)
-{
+void TCPmodbus_init(IPCONFIG* ip_config) {
   // Initialize application specific hardware
   InitializeBoard();
-
-
-  ETMTickInitialize(20000000, ETM_TICK_USE_TIMER_1);  // DPARKER make this part of the configuration
-
 
   // Initialize Stack and application related NV variables into AppConfig.
   InitAppConfig(ip_config);
     
-  InitModbusData(); 
-
   // Initialize core stack layers (MAC, ARP, TCP, UDP) and
   // application modules (HTTP, SNMP, etc.)
   StackInit();
-
-
 }
+
+
 //
 // Need to call this task periodically
 //
-void TCPmodbus_task(void)
-{
+void TCPmodbus_task(void) {
   // This task performs normal stack task including checking
   // for incoming packet, type of packet and calling
   // appropriate stack entity to process it.
+
   StackTask();
         
-  
-  // This tasks invokes each of the core stack application tasks
-  // StackApplications();  // don't need
-
- 
   ETMTCPClient();
-
-  //  ExecuteCommands();
-
 }
 
 
@@ -305,11 +289,10 @@ void TCPmodbus_task(void)
   	None
 ***************************************************************************/
 void ETMTCPClient(void) {
-  WORD				w, len;
+  unsigned int w;
+  unsigned int len;
   
   ETMModbusTXData tx_data;
-  
-  
   
   static DWORD		Timer;
   static TCP_SOCKET	MySocket = INVALID_SOCKET;
@@ -340,7 +323,7 @@ void ETMTCPClient(void) {
       // Wait for the remote server to accept our connection request
       if(!TCPIsConnected(MySocket)) {
 	// Time out if too much time is spent in this state
-	if(ETMTickGreaterThanNMilliseconds(5000, Timer)) {
+	if(ETMTickGreaterThanNMilliseconds(TCP_CONNECTED_TIMEOUT_MILLISECONDS, Timer)) {
 	  // Close the socket so it can be used by other modules
 	  TCPDisconnect(MySocket);
 	  MySocket = INVALID_SOCKET;
@@ -351,13 +334,6 @@ void ETMTCPClient(void) {
       
       Timer = ETMTickGet();
       
-      // Make certain the socket can be written to
-      //if (TCPIsPutReady(MySocket) < MAX_TX_SIZE) break;  // DPARKER fix this
-
-      //len = BuildModbusOutput();
-      //if (len == 0) break;  
-      //if (header_length == 0) break;  // don't want to send anything for now, stay in this state      
-
       tx_data = ETMModbusApplicationSpecificTXData();
 
       if ((tx_data.header_length + tx_data.data_length) > TCPIsPutReady(MySocket)) {
@@ -403,7 +379,7 @@ void ETMTCPClient(void) {
 	
       } else {
 	// Time out if too much time is spent in this state
-	if(ETMTickGreaterThanNMilliseconds(1000, Timer)) {
+	if(ETMTickGreaterThanNMilliseconds(SM_PROCESS_RESPONSE_TIMEOUT_MILLISECONDS, Timer)) {
 	  // Close the socket so it can be used by other modules
 	  TCPDisconnect(MySocket);
 	  MySocket = INVALID_SOCKET;

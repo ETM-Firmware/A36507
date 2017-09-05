@@ -5,10 +5,6 @@
 #include "ETM_LINAC_MODBUS.h"
 
 
-
-
-
-
 static unsigned char queue_buffer_room(unsigned char q_index);
 static unsigned char queue_is_empty(unsigned char q_index);
 static void queue_put_command(unsigned char * buffer_ptr);
@@ -708,5 +704,9 @@ void ETMLinacModbusInitialize(void) {
   ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168.70.15
   ip_config.ip_addr        = 0x6346A8C0;  // 192.168.70.99
   
+  ETMTickInitialize(FCY_CLK, ETM_TICK_USE_TIMER_1);  // DPARKER make this part of the configuration
+
+  InitModbusData(); 
+
   TCPmodbus_init(&ip_config);
 }
