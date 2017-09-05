@@ -54,9 +54,7 @@
  ********************************************************************/
 #define __GENERICTCPCLIENT_C
 
-#define THIS_IS_STACK_APPLICATION
-
-#define IS_MODBUS_MAIN  1
+//#define THIS_IS_STACK_APPLICATION
 
 
 #include <xc.h>

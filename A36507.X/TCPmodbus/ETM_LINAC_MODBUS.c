@@ -26,9 +26,42 @@ void InitModbusData(void);
 
 
 
+enum
+{
+	MODBUS_WR_HVLAMBDA = 1, 	
+	MODBUS_WR_ION_PUMP,
+	MODBUS_WR_AFC,
+	MODBUS_WR_COOLING,
+	MODBUS_WR_HTR_MAGNET,
+	MODBUS_WR_GUN_DRIVER,
+	MODBUS_WR_MAGNETRON_CURRENT,
+	MODBUS_WR_PULSE_SYNC,
+	MODBUS_WR_ETHERNET,
+	MODBUS_WR_DEBUG_DATA,
+	MODBUS_WR_EVENTS,	   /* 11 */
+	
+	MODBUS_WR_ONE_CAL_ENTRY,
+	MODBUS_WR_PULSE_LOG,
+	MODBUS_RD_COMMAND_DETAIL,
 
 
+};
+
+
+typedef struct {
+  unsigned int index ;                  // command index
+  unsigned int scale;
+  unsigned int offset;
+} ETMEthernetCalToGUI;
+
+
+
+
+#define ETH_GUI_MESSAGE_BUFFER_SIZE   8
 ETMEthernetMessageFromGUI    eth_message_from_GUI[ ETH_GUI_MESSAGE_BUFFER_SIZE ];
+
+
+#define ETH_CAL_TO_GUI_BUFFER_SIZE  8
 ETMEthernetCalToGUI          eth_cal_to_GUI[ ETH_CAL_TO_GUI_BUFFER_SIZE ];
 
 static unsigned char         modbus_send_index = 0;
@@ -209,18 +242,6 @@ ETMEthernetMessageFromGUI GetNextMessage(void)
 }
 
 
-/****************************************************************************
-  Function:
-		unsigned int SendPulseData(unsigned char buffer_a)
-
-  Input:
-        0: buffer_b, non-0: buffer_a
-    
-  Description:
-  Remarks:
-  // This will change a flag to indicate pulse data ready
-  // It will return 0x0000 if previous data was sent,  or 0xFFFF if it was not (buffer full)
-  ***************************************************************************/
 void SendPulseData(unsigned int buffer_select) {
   if (buffer_select == SEND_BUFFER_A) {
     send_high_speed_data_buffer = 0x01;

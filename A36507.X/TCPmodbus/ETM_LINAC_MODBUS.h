@@ -10,18 +10,13 @@ typedef struct {
 } ETMEthernetMessageFromGUI;
 
 
-#define ETH_GUI_MESSAGE_BUFFER_SIZE   8
-extern ETMEthernetMessageFromGUI eth_message_from_GUI[ ETH_GUI_MESSAGE_BUFFER_SIZE ];
-
-
 ETMEthernetMessageFromGUI GetNextMessage(void);
 
 #define SEND_BUFFER_A            1
 #define SEND_BUFFER_B            0
 void SendPulseData(unsigned int buffer_select);
+
 unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset);
-//TCPmodbus_task();
-//TCPmodbus_init(&ip_config);
 
 
 void ETMLinacModbusUpdate(void);
