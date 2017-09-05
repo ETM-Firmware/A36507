@@ -47,6 +47,7 @@
           <itemPath>TCPmodbus/TCPIPStack/ETM_TICK_ASM.s</itemPath>
         </logicalFolder>
         <itemPath>TCPmodbus/TCPmodbus.c</itemPath>
+        <itemPath>TCPmodbus/ETM_LINAC_MODBUS.c</itemPath>
       </logicalFolder>
       <itemPath>A36507.c</itemPath>
       <itemPath>P1395_CAN_MASTER.c</itemPath>
@@ -253,6 +254,7 @@
         <property key="UART 1" value="true"/>
         <property key="UART 2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
+        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>

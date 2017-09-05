@@ -13,6 +13,12 @@
 
 #include "P1395_CAN_MASTER.h"
 
+typedef struct {
+  unsigned char *header_ptr;
+  unsigned char *data_ptr;
+  unsigned int  header_length;
+  unsigned int  data_length;
+} ETMModbusTXData;
 
 //void TCPmodbusSetIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1);
 //void TCPmodbusSetRemoteIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1);
@@ -101,7 +107,8 @@ typedef struct {
 #define ETH_CAL_TO_GUI_BUFFER_SIZE  8
 extern ETMEthernetCalToGUI eth_cal_to_GUI[ ETH_CAL_TO_GUI_BUFFER_SIZE ];
 
-
+extern unsigned char buffer_header[MAX_RX_SIZE];
+extern unsigned char         modbus_cmd_need_repeat;  
 
 
 extern ETMEthernetMessageFromGUI GetNextMessage(void);
