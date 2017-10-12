@@ -217,6 +217,7 @@ typedef struct {
   unsigned int debug_cal_read_request;
 
   TYPE_DIGITAL_INPUT magnetron_over_power;
+  TYPE_DIGITAL_INPUT x_ray_error_digital;
 
 } A36507GlobalVars;
 

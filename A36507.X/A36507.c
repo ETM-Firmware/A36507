@@ -1118,11 +1118,17 @@ void DoA36507(void) {
       
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	// Customer Enabled XRAYS, but not High Voltage durring one of the standby states
+	ETMDigitalUpdateInput(&global_data_A36507.x_ray_error_digital, 1);
+      } else {
+	ETMDigitalUpdateInput(&global_data_A36507.x_ray_error_digital, 0);
+      }
+      
+      if (ETMDigitalFilteredOutput(&global_data_A36507.x_ray_error_digital)) {
 	_FAULT_X_RAY_ON_LOGIC_ERROR = 1;
       }
     }
   }  
-    
+  
   if (global_data_A36507.drive_up_fault_counter > MAX_DRIVE_UP_FAULTS) {
     _FAULT_REPEATED_DRIVE_UP_FAULT = 1;
   }
@@ -1569,6 +1575,7 @@ void InitializeA36507(void) {
 
 
   ETMDigitalInitializeInput(&global_data_A36507.magnetron_over_power, 0, OVER_POWER_TRIP_TIME);
+  ETMDigitalInitializeInput(&global_data_A36507.x_ray_error_digital, 0, 100); // 1 second trip time
 }
  
  
