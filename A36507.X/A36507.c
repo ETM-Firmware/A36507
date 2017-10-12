@@ -1304,12 +1304,14 @@ void DoA36507(void) {
     
 
     // Run once a second at 250 milliseconds
-    if (can_master_millisecond_counter == 250) {
-      // Write Warmup Done Timers to EEPROM
-      global_data_A36507.last_recorded_warmup_seconds = mem_time_seconds_now;
-      ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 5, (unsigned int*)&global_data_A36507.last_recorded_warmup_seconds);
-    } // End of tasks that happen when millisecond = 250
-    
+    if (global_data_A36507.control_state != STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC) {
+      // Only run this after the warmup timers have been read or they will be corrupted
+      if (can_master_millisecond_counter == 250) {
+	// Write Warmup Done Timers to EEPROM
+	global_data_A36507.last_recorded_warmup_seconds = mem_time_seconds_now;
+	ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 5, (unsigned int*)&global_data_A36507.last_recorded_warmup_seconds);
+      } // End of tasks that happen when millisecond = 250
+    }
 
     // Run once a second at 500 milliseconds
     if (can_master_millisecond_counter == 500) {
