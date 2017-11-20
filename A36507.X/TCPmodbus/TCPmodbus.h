@@ -24,7 +24,7 @@ void TCPmodbus_task(void);
 
 #define MAX_RX_SIZE    48
 
-#define MAX_TX_SIZE    800	 // ethernet header for TCP/modbus is 60 bytes
+#define MAX_TX_SIZE    800	 // ethernet header for TCP/modbus is 60 bytes  // DPARKER why is this needed???
 
 
 

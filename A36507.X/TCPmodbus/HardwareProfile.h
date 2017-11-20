@@ -62,17 +62,17 @@
 // These directly influence timed events using the Tick module.  They also are used for UART and SPI baud rate generation.
 #define GetSystemClock()		(MAXIMUM_PIC_FREQ)	// Hz
 #define GetInstructionClock()	        (GetSystemClock()/4)	// Normally GetSystemClock()/4 for PIC18, GetSystemClock()/2 for PIC24/dsPIC, and GetSystemClock()/1 for PIC32.  Might need changing if using Doze modes.
-#define GetPeripheralClock()	        (GetSystemClock()/4)	// Normally GetSystemClock()/4 for PIC18, GetSystemClock()/2 for PIC24/dsPIC, and GetSystemClock()/1 for PIC32.  Divisor may be different if using a PIC32 since it's configurable.
+//#define GetPeripheralClock()	        (GetSystemClock()/4)	// Normally GetSystemClock()/4 for PIC18, GetSystemClock()/2 for PIC24/dsPIC, and GetSystemClock()/1 for PIC32.  Divisor may be different if using a PIC32 since it's configurable.
 
 // Hardware I/O pin mappings
 // LEDs
 // DPARKER - Why are these LEDs mapped to this module???  Why does the Ethernet module need access to the LEDs???
-#define LEDA_TRIS			(TRISGbits.TRISG12)	// Ref D3
-#define LEDA_IO				(LATGbits.LATG12)
-#define LEDB_TRIS			(TRISGbits.TRISG13)	// Ref D4
-#define LEDB_IO				(LATGbits.LATG13)
-#define LEDOP_TRIS			(TRISAbits.TRISA7)	// Ref D5
-#define LEDOP_IO		   	(LATAbits.LATA7)
+//#define LEDA_TRIS			(TRISGbits.TRISG12)	// Ref D3
+//#define LEDA_IO				(LATGbits.LATG12)
+//#define LEDB_TRIS			(TRISGbits.TRISG13)	// Ref D4
+//#define LEDB_IO				(LATGbits.LATG13)
+//#define LEDOP_TRIS			(TRISAbits.TRISA7)	// Ref D5
+//#define LEDOP_IO		   	(LATAbits.LATA7)
 
 
 

@@ -1654,7 +1654,11 @@ static void SendSystemReset(void)
 
     // Give some opportunity for the regulator to reach normal regulation and
     // have all clocks running
-    DelayMs(1);
+
+
+    //DelayMs(1);
+    __delay32(20000); // DPARKER Change these delays to 1 MS instead of clock dependent
+    
 
     // Execute the System Reset command
     ENC_CS_IO = 0;
@@ -1665,7 +1669,8 @@ static void SendSystemReset(void)
     ENC_CS_IO = 1;
 
     // Wait for the oscillator start up timer and PHY to become ready
-    DelayMs(1);
+    //DelayMs(1);
+    __delay32(20000); // DPARKER Change these delays to 1 MS instead of clock dependent
 }//end SendSystemReset
 
 
