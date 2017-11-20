@@ -254,7 +254,8 @@ DWORD GenerateRandomDWORD(void)
 	
 		// Wait no longer than 1 second obtaining entropy
 		dwTotalTime += wTime;
-		if(dwTotalTime >= GetInstructionClock())
+		//if(dwTotalTime >= GetInstructionClock())
+		if(dwTotalTime >= 100000) // DPARKER this is good enough
 		{
 			randomResult.w[0] ^= LFSRRand();
 			randomResult.w[1] ^= LFSRRand();
@@ -329,7 +330,8 @@ DWORD GenerateRandomDWORD(void)
 	
 		// Wait no longer than 1 second obtaining entropy
 		dwTotalTime += wTime;
-		if(dwTotalTime >= GetInstructionClock())
+		//if(dwTotalTime >= GetInstructionClock())
+		if(dwTotalTime >= 100000) // DPARKER this is good enough
 		{
 			randomResult.w[0] ^= LFSRRand();
 			randomResult.w[1] ^= LFSRRand();

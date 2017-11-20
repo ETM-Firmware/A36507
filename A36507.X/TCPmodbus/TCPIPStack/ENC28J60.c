@@ -1861,6 +1861,11 @@ static void WriteReg(BYTE Address, BYTE Data)
 
 	// For faster processors (dsPIC), delay for a few clock cycles to ensure 
 	// the MAC/MII register write Chip Select hold time minimum of 210ns is met.
+
+        // DPARKER - Just add a couple NOPS
+        Nop();
+        Nop();
+	/*
 	#if (GetInstructionClock() > 30000000)
 		Nop();
 		Nop();
@@ -1873,6 +1878,7 @@ static void WriteReg(BYTE Address, BYTE Data)
 		Nop();
 		Nop();
 	#endif
+	*/
 
 	ENC_CS_IO = 1;
 }//end WriteReg
