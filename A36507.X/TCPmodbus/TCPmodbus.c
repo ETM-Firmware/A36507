@@ -124,8 +124,9 @@ static void InitializeBoard(void) {
   // MAX3232 ROUT2 pin will drive RF12/U2CTS ENC28J60 CS line asserted, 
   // preventing proper 25LC256 EEPROM operation.
 #if defined(ENC_CS_TRIS)
-  ENC_CS_IO = 1;
-  ENC_CS_TRIS = 0;
+  //ENC_CS_IO = 1;
+  //ENC_CS_TRIS = 0;
+  // DPARKER REMOVE THESE
 #endif
 }
 

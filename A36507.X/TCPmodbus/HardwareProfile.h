@@ -78,11 +78,12 @@
 
 // ENC28J60 I/O pins
 
-#define ENC_CS_TRIS			(TRISDbits.TRISD15)	
-#define ENC_CS_IO			(LATDbits.LATD15)
+//#define ENC_CS_TRIS			(TRISDbits.TRISD15)
+//#define ENC_CS_TRIS			1
+//#define ENC_CS_IO			(LATDbits.LATD15)
 
-#define ENC_RST_TRIS		        (TRISAbits.TRISA15)
-#define ENC_RST_IO		        (LATAbits.LATA15)
+//#define ENC_RST_TRIS		        (TRISAbits.TRISA15)
+//#define ENC_RST_IO		        (LATAbits.LATA15)
 
 // SPI SCK, SDI, SDO pins are automatically controlled by the 
 // PIC24/dsPIC SPI module 

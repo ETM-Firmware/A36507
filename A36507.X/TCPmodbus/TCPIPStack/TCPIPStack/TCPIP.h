@@ -57,6 +57,8 @@
 #include "Compiler.h"
 #include "../../HardwareProfile.h"
 
+#define ENC_CS_TRIS			1  //DPARKER THIS IS A HACK
+
 // RESERVED FEATURE -- do not change from current value of 1u as this is not 
 // fully implemented yet.
 // Defines the number of different network interfaces to support (ex: 2 for 

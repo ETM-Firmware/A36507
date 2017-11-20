@@ -5,6 +5,9 @@
 #include "ETM_LINAC_MODBUS.h"
 
 
+#include "ETM_IO_PORTS.h"  //DPARKER Fix this
+
+
 static unsigned char queue_buffer_room(unsigned char q_index);
 static unsigned char queue_is_empty(unsigned char q_index);
 static void queue_put_command(unsigned char * buffer_ptr);
@@ -707,6 +710,8 @@ void ETMLinacModbusInitialize(void) {
   ETMTickInitialize(FCY_CLK, ETM_TICK_USE_TIMER_1);  // DPARKER make this part of the configuration
 
   InitModbusData(); 
+
+  ENC28J60Initialize(_PIN_RD15, _PIN_RA15);
 
   TCPmodbus_init(&ip_config);
 }

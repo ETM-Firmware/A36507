@@ -11,6 +11,8 @@ typedef struct {
 //void TCPmodbusSetIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1);
 //void TCPmodbusSetRemoteIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1);
 
+
+
 typedef struct {
   unsigned long remote_ip_addr;
   unsigned long ip_addr;
@@ -32,5 +34,9 @@ void TCPmodbus_task(void);
 #define MODBUS_COMMAND_REFRESH_TOTAL     MODBUS_WR_EVENTS  
 
 extern unsigned char         modbus_cmd_need_repeat;  
+
+
+
+
 
 #endif

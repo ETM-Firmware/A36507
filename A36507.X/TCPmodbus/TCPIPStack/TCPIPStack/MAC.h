@@ -57,6 +57,8 @@
 #define __MAC_H
 
 #include "../../HardwareProfile.h"
+#define ENC_CS_TRIS			1 // DPARKER THis is a hack
+
 
 #if defined(WF_CS_TRIS)
 	// Do not use the DMA and other goodies that Microchip Ethernet modules have
