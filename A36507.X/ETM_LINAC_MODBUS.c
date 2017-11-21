@@ -66,7 +66,7 @@ ETMEthernetMessageFromGUI    eth_message_from_GUI[ ETH_GUI_MESSAGE_BUFFER_SIZE ]
 ETMEthernetCalToGUI          eth_cal_to_GUI[ ETH_CAL_TO_GUI_BUFFER_SIZE ];
 
 static unsigned char         modbus_send_index = 0;
-static unsigned char         modbus_refresh_index = 0;
+static unsigned char         modbus_refresh_index = 1;
 static unsigned char         modbus_command_request = 0;  /* how many commands from GUI */
 static unsigned int         transaction_number = 0;
 
@@ -518,7 +518,7 @@ unsigned int BuildModbusOutput(void) {
       switch (modbus_send_index)
 	{
 	case MODBUS_WR_EVENTS:
-	  //total_bytes = BuildModbusOutput_write_commands(modbus_send_index);
+	  //total_bytes = BuildModbusOutput_write_commands(modbus_send_index);  //DPARKER figure out how to build event log
 	  break;
           
 	default:
@@ -554,8 +554,9 @@ unsigned int BuildModbusOutput(void) {
   
   if (total_bytes) {
     transaction_number++; // don't care about overflow
-    ETMTCPModbusWaitForResponse();
-    //modbus_cmd_need_repeat = 1; // clear when there is response
+    if (modbus_send_index != MODBUS_WR_EVENTS) {
+      ETMTCPModbusWaitForResponse();  // Event log is not repeatable so no need to wait for response
+    }
   }
   return (total_bytes);
 }
