@@ -70,7 +70,8 @@
 
 
 #include <xc.h>
-
+#include <libpic30.h>
+#include "etm.h"
 
 typedef struct {
   unsigned long pin_cs;

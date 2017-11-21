@@ -4,6 +4,10 @@
 #include "TCPIPStack/TCPIPStack/ETM_TICK.h"
 #include "ETM_LINAC_MODBUS.h"
 
+// DPARKER WHAT IS THIS FOR???
+#define MODBUS_COMMAND_REFRESH_TOTAL     MODBUS_WR_EVENTS  
+
+
 
 #include "ETM_IO_PORTS.h"  //DPARKER Fix this
 
@@ -701,17 +705,25 @@ void ETMLinacModbusUpdate(void) {
   TCPmodbus_task();
 }
 
+#define SPI_PORT_1   1
+
 void ETMLinacModbusInitialize(void) {
   IPCONFIG ip_config;
   
-  ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168.70.15
-  ip_config.ip_addr        = 0x6346A8C0;  // 192.168.70.99
+  ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168. 70. 15
+  ip_config.ip_addr        = 0x6346A8C0;  // 192.168. 70. 99
+  ip_config.mask           = 0xFFFFFF00;  // 255.255.255.  0
+  ip_config.gate           = 0x00000000;  //   0.  0.  0.  0
+  ip_config.dns            = 0x00000000;  //   0.  0.  0.  0
+  ip_config.mac_addr_0     = 0x0050; 
+  ip_config.mac_addr_1     = 0xC2B4; 
+  ip_config.mac_addr_2     = 0x2000;      //00-50-C2-B4-20-00 
   
   ETMTickInitialize(FCY_CLK, ETM_TICK_USE_TIMER_1);  // DPARKER make this part of the configuration
 
   InitModbusData(); 
 
-  ENC28J60Initialize(_PIN_RD15, _PIN_RA15, 1);
+  ENC28J60Initialize(_PIN_RD15, _PIN_RA15, SPI_PORT_1);
 
   TCPmodbus_init(&ip_config);
 }
