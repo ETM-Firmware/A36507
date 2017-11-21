@@ -76,8 +76,8 @@ void TCPmodbus_task(void);
 void ETMTCPClient(void);
 
 
-ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
-void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
+//ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
+//void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 
 
 unsigned char rx_data[MAX_RX_SIZE];

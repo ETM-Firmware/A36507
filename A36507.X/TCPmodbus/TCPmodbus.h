@@ -31,15 +31,25 @@ typedef struct {
 
 
 
-// DPARKER - why can't this be done, Why does the same variable need to be called out in TCPmodbus.c and ETM_LINAC_Modbus.c
-//extern ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
-//extern ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
+ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
+/*
+  This function must be defined in the user application file.
+  It is used to generate the TX data
+*/
+
+
+void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
+/*
+  This function must be defined in the user application file
+  It is used to process the recieved data
+*/
 
 
 void ETMTCPModbusENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config);
 /*
   This is called to initialize the ENC28J60 hardware
 */
+
 
 void ETMTCPModbusInitialize(IPCONFIG* ip_config);
 /*

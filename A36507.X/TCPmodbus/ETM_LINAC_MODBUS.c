@@ -22,8 +22,6 @@ unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char uni
 unsigned int BuildModbusOutputHighSpeedDataLog(void);
 unsigned int BuildModbusOutput_read_command(unsigned char index, unsigned char byte_count);
 unsigned int BuildModbusOutput(void);
-//ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
-void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 void InitModbusData(void);
 
 
