@@ -83,7 +83,7 @@ volatile unsigned int *SPICON_ptr;
 
 
 
-void ENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config) {
+void ETMTCPModbusENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config) {
   ENC28J60_pin_cs = ENC28J60_config->cable_select_pin;
   ENC28J60_pin_reset = ENC28J60_config->reset_pin;
   if (ENC28J60_config->spi_port == TCPMODBUS_USE_SPI_PORT_2) {

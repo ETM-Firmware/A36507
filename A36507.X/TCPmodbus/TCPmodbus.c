@@ -52,6 +52,12 @@
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Howard Schlunder     8/01/06	Original
  ********************************************************************/
+
+/*
+  Extensive rework by Dan Parker 11/21/2017
+*/
+
+
 #include <xc.h>
 #include "TCPIPStack/TCPIPStack/TCPIPConfig.h"
 #include "TCPIPStack/TCPIPStack/TCPIP.h"
@@ -154,9 +160,8 @@ static void InitAppConfig(IPCONFIG* ip_config) {
 //
 // called once for initilization.
 //
-void TCPmodbus_init(IPCONFIG* ip_config) {
+void ETMTCPModbusInitialize(IPCONFIG* ip_config) {
   
-
   // Initialize Stack and application related NV variables into AppConfig.
   InitAppConfig(ip_config);
     
@@ -169,13 +174,12 @@ void TCPmodbus_init(IPCONFIG* ip_config) {
 //
 // Need to call this task periodically
 //
-void TCPmodbus_task(void) {
+void ETMTCPModbusTask(void) {
   // This task performs normal stack task including checking
   // for incoming packet, type of packet and calling
   // appropriate stack entity to process it.
 
   StackTask();
-        
   ETMTCPClient();
 }
 
@@ -229,7 +233,7 @@ void ETMTCPClient(void) {
   switch(ETMTCPState) 
     {
     case SM_HOME:
-      // Connect a socket to the remote TCP server, 192.168.66.15
+      // Connect a socket to the remote TCP server,
       MySocket = TCPOpen(AppConfig.MyRemIPAddr.Val, TCP_OPEN_IP_ADDRESS, 502, TCP_PURPOSE_TCP_MODBUS_CLIENT);
       
       // Abort operation if no TCP socket of type TCP_PURPOSE_TCP_MODBUS_CLIENT is available
@@ -240,6 +244,7 @@ void ETMTCPClient(void) {
       ETMTCPState = SM_SOCKET_OBTAINED;
       Timer = ETMTickGet();
       break;
+
 
     case SM_SOCKET_OBTAINED:
       // Wait for the remote server to accept our connection request
@@ -276,6 +281,7 @@ void ETMTCPClient(void) {
       ETMTCPState = SM_PROCESS_RESPONSE;
       break;
 
+
     case SM_PROCESS_RESPONSE:
       // Check to see if the remote node has disconnected from us or sent us any application data
       if(!TCPIsConnected(MySocket)) {
@@ -310,6 +316,7 @@ void ETMTCPClient(void) {
       }
       
       break;
+
       
     case SM_DISCONNECT:
       // Close the socket so it can be used by other modules
@@ -318,6 +325,7 @@ void ETMTCPClient(void) {
       MySocket = INVALID_SOCKET;
       ETMTCPState = SM_DONE;
       break;
+
       
     case SM_DONE:
       ETMTCPState = SM_HOME;

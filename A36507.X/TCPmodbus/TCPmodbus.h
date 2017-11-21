@@ -11,11 +11,13 @@ typedef struct {
   char          net_bios_name[16];
 } IPCONFIG;
 
+
 typedef struct {
   unsigned long cable_select_pin;
   unsigned long reset_pin;
   unsigned int  spi_port;
 } TYPE_ENC28J60_CONFIG;
+
 
 typedef struct {
   unsigned char *header_ptr;
@@ -34,10 +36,20 @@ typedef struct {
 //extern ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 
 
-void TCPmodbus_init(IPCONFIG* ip_config);
-void TCPmodbus_task(void);
+void ETMTCPModbusENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config);
+/*
+  This is called to initialize the ENC28J60 hardware
+*/
 
-void ENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config);
+void ETMTCPModbusInitialize(IPCONFIG* ip_config);
+/*
+  This is called to initialize the TCP Modbus module
+*/
+
+
+void ETMTCPModbusTask(void);
+
+
 
 #define MAX_RX_SIZE    48
 

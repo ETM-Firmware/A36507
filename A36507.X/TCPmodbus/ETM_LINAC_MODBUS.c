@@ -22,7 +22,7 @@ unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char uni
 unsigned int BuildModbusOutputHighSpeedDataLog(void);
 unsigned int BuildModbusOutput_read_command(unsigned char index, unsigned char byte_count);
 unsigned int BuildModbusOutput(void);
-ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
+//ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
 void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 void InitModbusData(void);
 
@@ -78,9 +78,7 @@ static unsigned char         eth_cal_to_GUI_put_index;
 static unsigned char         eth_cal_to_GUI_get_index;
 static unsigned char         send_high_speed_data_buffer;  /* bit 0 high for buffer A, bit 1 high for buffer B */
 
-
 unsigned int header_length;
-
 
 unsigned long timer_write_holding_var;
 
@@ -702,7 +700,7 @@ unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, un
 
 
 void ETMLinacModbusUpdate(void) {
-  TCPmodbus_task();
+  ETMTCPModbusTask();
 }
 
 void ETMLinacModbusInitialize(void) {
@@ -732,7 +730,7 @@ void ETMLinacModbusInitialize(void) {
 
   InitModbusData(); 
 
-  ENC28J60Initialize(&ENC28J60_config);
+  ETMTCPModbusENC28J60Initialize(&ENC28J60_config);
 
-  TCPmodbus_init(&ip_config);
+  ETMTCPModbusInitialize(&ip_config);
 }
