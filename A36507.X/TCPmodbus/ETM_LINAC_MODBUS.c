@@ -711,7 +711,7 @@ void ETMLinacModbusInitialize(void) {
 
   InitModbusData(); 
 
-  ENC28J60Initialize(_PIN_RD15, _PIN_RA15);
+  ENC28J60Initialize(_PIN_RD15, _PIN_RA15, 1);
 
   TCPmodbus_init(&ip_config);
 }

@@ -87,9 +87,9 @@
 
 // SPI SCK, SDI, SDO pins are automatically controlled by the 
 // PIC24/dsPIC SPI module 
-#define ENC_SPI_IF			(IFS0bits.SPI1IF)
-#define ENC_SSPBUF			(SPI1BUF)
-#define ENC_SPISTAT			(SPI1STAT)
+//#define ENC_SPI_IF			(IFS0bits.SPI1IF)
+//#define ENC_SSPBUF			(SPI1BUF)
+//#define ENC_SPISTAT			(SPI1STAT)
 #define ENC_SPISTATbits                 (SPI1STATbits)
 #define ENC_SPICON1			(SPI1CON)
 #define ENC_SPICON1bits                 (SPI1CONbits)
