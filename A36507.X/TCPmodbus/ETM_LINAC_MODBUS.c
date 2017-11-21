@@ -709,6 +709,7 @@ void ETMLinacModbusUpdate(void) {
 
 void ETMLinacModbusInitialize(void) {
   IPCONFIG ip_config;
+  TYPE_ENC28J60_CONFIG ENC28J60_config;
   
   ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168. 70. 15
   ip_config.ip_addr        = 0x6346A8C0;  // 192.168. 70. 99
@@ -724,11 +725,14 @@ void ETMLinacModbusInitialize(void) {
   //ip_config.net_bios_name  = "ETMBoard Test";
   strcpy(ip_config.net_bios_name, "ETMBoard Test");
 
+  ENC28J60_config.cable_select_pin = _PIN_RD15;
+  ENC28J60_config.reset_pin = _PIN_RA15;
+  ENC28J60_config.spi_port = TCPMODBUS_USE_SPI_PORT_1;
+
+
   ETMTickInitialize(FCY_CLK, ETM_TICK_USE_TIMER_1);  // DPARKER make this part of the configuration
 
   InitModbusData(); 
 
-  ENC28J60Initialize(_PIN_RD15, _PIN_RA15, SPI_PORT_1);
-
-  TCPmodbus_init(&ip_config);
+  TCPmodbus_init(&ip_config, &ENC28J60_config);
 }

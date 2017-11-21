@@ -72,6 +72,7 @@
 #include <xc.h>
 #include <libpic30.h>
 #include "etm.h"
+#include "TCPmodbus.h"
 
 typedef struct {
   unsigned long pin_cs;
@@ -85,7 +86,7 @@ volatile unsigned int *SSPBUF_ptr;
 volatile unsigned int *SPISTAT_ptr;
 volatile unsigned int *SPICON_ptr;
 
-
+/*
 void ENC28J60Initialize(unsigned long cs_pin, unsigned long reset_pin, unsigned int spi_port) {
   CHIP_ENC28J60.pin_cs = cs_pin;
   CHIP_ENC28J60.pin_rst = reset_pin;
@@ -100,6 +101,22 @@ void ENC28J60Initialize(unsigned long cs_pin, unsigned long reset_pin, unsigned 
   }
 
 }
+*/
+
+void ENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config) {
+  CHIP_ENC28J60.pin_cs = ENC28J60_config->cable_select_pin;
+  CHIP_ENC28J60.pin_rst = ENC28J60_config->reset_pin;
+  if (ENC28J60_config->spi_port == TCPMODBUS_USE_SPI_PORT_2) {
+    SSPBUF_ptr  = &SPI2BUF;
+    SPISTAT_ptr = &SPI2STAT;
+    SPICON_ptr =  &SPI2CON;
+  } else {
+    SSPBUF_ptr  = &SPI1BUF;
+    SPISTAT_ptr = &SPI1STAT;
+    SPICON_ptr =  &SPI1CON;
+  }
+}
+
 
 
 //#include "../HardwareProfile.h"

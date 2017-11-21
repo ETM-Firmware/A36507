@@ -12,12 +12,20 @@ typedef struct {
 } IPCONFIG;
 
 typedef struct {
+  unsigned long cable_select_pin;
+  unsigned long reset_pin;
+  unsigned int  spi_port;
+} TYPE_ENC28J60_CONFIG;
+
+typedef struct {
   unsigned char *header_ptr;
   unsigned char *data_ptr;
   unsigned int  header_length;
   unsigned int  data_length;
 } ETMModbusTXData;
 
+#define TCPMODBUS_USE_SPI_PORT_1         1
+#define TCPMODBUS_USE_SPI_PORT_2         2
 
 
 
@@ -26,8 +34,7 @@ typedef struct {
 //extern ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 
 
-
-void TCPmodbus_init(IPCONFIG* ip_config);
+void TCPmodbus_init(IPCONFIG* ip_config, TYPE_ENC28J60_CONFIG* ENC28J60_config);
 void TCPmodbus_task(void);
 
 

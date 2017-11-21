@@ -59,6 +59,7 @@
 #include "TCPmodbus.h"
 
 
+#include "ETM_IO_PORTS.h"
 
 
 #define TCP_CONNECTED_TIMEOUT_MILLISECONDS       5000
@@ -67,7 +68,6 @@
 
 static void InitializeBoard(void);
 static void InitAppConfig(IPCONFIG* ip_config);
-void TCPmodbus_init(IPCONFIG* ip_config);
 void TCPmodbus_task(void);
 void ETMTCPClient(void);
 
@@ -83,7 +83,6 @@ APP_CONFIG AppConfig;
 static unsigned short wOriginalAppConfigChecksum;    // Checksum of the ROM defaults for AppConfig
 
 void ETMTCPClient(void);
-void InitModbusData(void);
 
 unsigned char         modbus_cmd_need_repeat = 0;  
 
@@ -184,7 +183,12 @@ static void InitAppConfig(IPCONFIG* ip_config) {
 //
 // called once for initilization.
 //
-void TCPmodbus_init(IPCONFIG* ip_config) {
+void TCPmodbus_init(IPCONFIG* ip_config, TYPE_ENC28J60_CONFIG* ENC28J60_config) {
+  
+
+  //ENC28J60Initialize(_PIN_RD15, _PIN_RA15, 1);
+  ENC28J60Initialize(ENC28J60_config);
+  
   // Initialize application specific hardware
   InitializeBoard();
 
