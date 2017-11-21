@@ -56,7 +56,7 @@
 #ifndef __MAC_H
 #define __MAC_H
 
-#include "../../HardwareProfile.h"
+//#include "../../HardwareProfile.h"
 #define ENC_CS_TRIS			1 // DPARKER THis is a hack
 
 

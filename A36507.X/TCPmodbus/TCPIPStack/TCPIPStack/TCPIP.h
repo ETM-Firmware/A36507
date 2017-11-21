@@ -55,7 +55,7 @@
 #include <stdlib.h>
 #include "GenericTypeDefs.h"
 #include "Compiler.h"
-#include "../../HardwareProfile.h"
+//#include "../../HardwareProfile.h"
 
 #define ENC_CS_TRIS			1  //DPARKER THIS IS A HACK
 

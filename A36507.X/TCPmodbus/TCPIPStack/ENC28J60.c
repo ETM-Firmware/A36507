@@ -82,6 +82,8 @@ TYPE_CHIP_ENC28J60 CHIP_ENC28J60;
 
 volatile unsigned int *SSPBUF_ptr;
 volatile unsigned int *SPISTAT_ptr;
+volatile unsigned int *SPICON_ptr;
+
 
 void ENC28J60Initialize(unsigned long cs_pin, unsigned long reset_pin, unsigned int spi_port) {
   CHIP_ENC28J60.pin_cs = cs_pin;
@@ -89,15 +91,17 @@ void ENC28J60Initialize(unsigned long cs_pin, unsigned long reset_pin, unsigned 
   if (spi_port == 2) {
     SSPBUF_ptr  = &SPI2BUF;
     SPISTAT_ptr = &SPI2STAT;
+    SPICON_ptr =  &SPI2CON;
   } else {
     SSPBUF_ptr  = &SPI1BUF;
     SPISTAT_ptr = &SPI1STAT;
+    SPICON_ptr =  &SPI1CON;
   }
 
 }
 
 
-#include "../HardwareProfile.h"
+//#include "../HardwareProfile.h"
 
 #define ENC_CS_TRIS			1 // DPARKER this is a hack
 
@@ -156,10 +160,10 @@ typedef struct  __attribute__((aligned(2), packed))
     #define ClearSPIDoneFlag()
     static inline __attribute__((__always_inline__)) void WaitForDataByte( void )
     {
-        while ((ENC_SPISTATbits.SPITBF == 1) || (ENC_SPISTATbits.SPIRBF == 0));
+        while ((*SPISTAT_ptr & 0x0002) || ((*SPISTAT_ptr & 0x0001) == 0));
+        //while ((ENC_SPISTATbits.SPITBF == 1) || (ENC_SPISTATbits.SPIRBF == 0));
     }
 
-    #define SPI_ON_BIT          (ENC_SPISTATbits.SPIEN)
 
 
 // Prototypes of functions intended for MAC layer use only.
@@ -216,9 +220,7 @@ void MACInit(void)
 
     // Set up SPI
     ClearSPIDoneFlag();
-#if defined(__18CXX)
-    
-#elif defined(__C30__)
+
     *SPISTAT_ptr = 0;        // clear SPI
     #if defined(__PIC24H__) || defined(__dsPIC33F__) || defined(__dsPIC33E__)|| defined(__PIC24E__)
         ENC_SPICON1 = 0x0F;     // 1:1 primary prescale, 5:1 secondary prescale (8MHz  @ 40MIPS)
@@ -228,13 +230,16 @@ void MACInit(void)
     #else   // dsPIC30F
 	//ENC_SPICON1 = 0x1F;     // sec 2:1(10M), should be 0x1f or 1:1 sec, 1:1 primary prescale, 1:1 secondary prescale (20MHz)
 	// DPARKER EDIT HERE
-	ENC_SPICON1 = 0b11011;
+	//ENC_SPICON1 = 0b11011;
     #endif
+	*SPICON_ptr = 0b0000000100111011; // DPARKER fix this to set SPI frequency based on request frequency 
+	/*
     ENC_SPICON2 = 0;
     ENC_SPICON1bits.CKE = 1;
     ENC_SPICON1bits.MSTEN = 1;
-    ENC_SPISTATbits.SPIEN = 1;
-#endif
+	*/
+    *SPISTAT_ptr |= 0x8000;
+
 
     // RESET the entire ENC28J60, clearing all registers
     // Also wait for CLKRDY to become set.
@@ -1149,14 +1154,14 @@ BYTE MACGet()
 
     {
         // Send the opcode and read a byte in one 16-bit operation
-        ENC_SPISTATbits.SPIEN = 0;
-        ENC_SPICON1bits.MODE16 = 1;
-        ENC_SPISTATbits.SPIEN = 1;
+        *SPISTAT_ptr &= 0x7FFF;
+        *SPICON_ptr |= 0x0400;
+        *SPISTAT_ptr |= 0x8000;
         *SSPBUF_ptr = RBM<<8 | 0x00; // Send Read Buffer Memory command plus 8 dummy bits to generate clocks for the return result
         WaitForDataByte();          // Wait until WORD is transmitted
-        ENC_SPISTATbits.SPIEN = 0;
-        ENC_SPICON1bits.MODE16 = 0;
-        ENC_SPISTATbits.SPIEN = 1;
+        *SPISTAT_ptr &= 0x7FFF;
+        *SPICON_ptr &= 0xFBFF;
+        *SPISTAT_ptr |= 0x8000;
     }
 
 
@@ -1213,9 +1218,9 @@ WORD MACGetArray(BYTE *val, WORD len)
         // Read the data, 2 bytes at a time, for as long as possible
         if(len >= 2)
         {
-            ENC_SPISTATbits.SPIEN = 0;
-            ENC_SPICON1bits.MODE16 = 1;
-            ENC_SPISTATbits.SPIEN = 1;
+            *SPISTAT_ptr &= 0x7FFF;
+            *SPICON_ptr |= 0x0400;
+            *SPISTAT_ptr |= 0x8000;
             while(1)
             {
                 *SSPBUF_ptr = 0x0000;    // Send a dummy WORD to generate 32 clocks
@@ -1230,9 +1235,9 @@ WORD MACGetArray(BYTE *val, WORD len)
                 if(len - i < 2)
                     break;
             };
-            ENC_SPISTATbits.SPIEN = 0;
-            ENC_SPICON1bits.MODE16 = 0;
-            ENC_SPISTATbits.SPIEN = 1;
+            *SPISTAT_ptr &= 0x7FFF;
+            *SPICON_ptr &= 0xFBFF;
+            *SPISTAT_ptr |= 0x8000;
         }
     }
 
@@ -1289,14 +1294,14 @@ void MACPut(BYTE val)
 
     {
         // Send the Write Buffer Memory and data, in on 16-bit write
-        ENC_SPISTATbits.SPIEN = 0;
-        ENC_SPICON1bits.MODE16 = 1;
-        ENC_SPISTATbits.SPIEN = 1;
+        *SPISTAT_ptr &= 0x7FFF;
+        *SPICON_ptr |= 0x0400;
+        *SPISTAT_ptr |= 0x8000;
         *SSPBUF_ptr = (WBM<<8) | (WORD)val;  // Start sending the WORD
         WaitForDataByte();                  // Wait until WORD is transmitted
-        ENC_SPISTATbits.SPIEN = 0;
-        ENC_SPICON1bits.MODE16 = 0;
-        ENC_SPISTATbits.SPIEN = 1;
+        *SPISTAT_ptr &= 0x7FFF;
+        *SPICON_ptr &= 0xFBFF;
+        *SPISTAT_ptr |= 0x8000;
     }
 
     Dummy = *SSPBUF_ptr;
@@ -1346,9 +1351,9 @@ void MACPutArray(BYTE *val, WORD len)
         {
             wv.v[1] = *val++;
             wv.v[0] = *val++;
-            ENC_SPISTATbits.SPIEN = 0;
-            ENC_SPICON1bits.MODE16 = 1;
-            ENC_SPISTATbits.SPIEN = 1;
+            *SPISTAT_ptr &= 0x7FFF;
+            *SPICON_ptr |= 0x0400;
+            *SPISTAT_ptr |= 0x8000;
             while(1)
             {
                 *SSPBUF_ptr = wv.Val;        // Start sending the WORD
@@ -1362,9 +1367,9 @@ void MACPutArray(BYTE *val, WORD len)
             };
             WaitForDataByte();              // Wait until WORD is transmitted
             Dummy = *SSPBUF_ptr;
-            ENC_SPISTATbits.SPIEN = 0;
-            ENC_SPICON1bits.MODE16 = 0;
-            ENC_SPISTATbits.SPIEN = 1;
+            *SPISTAT_ptr &= 0x7FFF;
+            *SPICON_ptr &= 0xFBFF;
+            *SPISTAT_ptr |= 0x8000;
         }
     }
    
