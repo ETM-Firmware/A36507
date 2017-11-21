@@ -56,7 +56,7 @@
 #define __HELPERS_C
 
 #include <stdarg.h>
-#include "TCPIPStack/TCPIP.h"
+#include "TCPIP.h"
 
 
 // Default Random Number Generator seed. 0x41FE9F9E corresponds to calling LFSRSeedRand(1)

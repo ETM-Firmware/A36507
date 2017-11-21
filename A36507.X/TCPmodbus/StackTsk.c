@@ -53,7 +53,7 @@
 ********************************************************************/
 #define __STACKTSK_C
 
-#include "TCPIPStack/TCPIP.h"
+#include "TCPIP.h"
 
 // Stack FSM states.
 typedef enum

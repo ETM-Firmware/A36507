@@ -53,7 +53,7 @@
  ********************************************************************/
 #define __ICMP_C
 
-#include "TCPIPStack/TCPIP.h"
+#include "TCPIP.h"
 
 #if defined(STACK_USE_ICMP_SERVER) || defined(STACK_USE_ICMP_CLIENT)
 

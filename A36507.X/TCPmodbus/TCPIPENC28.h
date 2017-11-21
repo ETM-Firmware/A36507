@@ -53,7 +53,7 @@
 #include "Compiler.h"
 #define GENERATED_BY_TCPIPCONFIG "Version 1.0.4612.18258"
 
-#include "../../TCPmodbus.h"
+#include "TCPmodbus.h"
 // =======================================================================
 //   Application Options
 // =======================================================================

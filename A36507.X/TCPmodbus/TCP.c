@@ -58,8 +58,8 @@
  ********************************************************************/
 #define __TCP_C
 
-#include "TCPIPStack/TCPIP.h"
-#include "TCPIPStack/ETM_TICK.h"
+#include "TCPIP.h"
+#include "ETM_TICK.h"
 
 #if defined(STACK_USE_TCP)
 

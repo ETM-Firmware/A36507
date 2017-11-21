@@ -1,7 +1,7 @@
 #include <xc.h>
 #include "TCPmodbus.h"
 #include "A36507.h"
-#include "TCPIPStack/TCPIPStack/ETM_TICK.h"
+#include "ETM_TICK.h"
 #include "ETM_LINAC_MODBUS.h"
 
 // DPARKER WHAT IS THIS FOR???

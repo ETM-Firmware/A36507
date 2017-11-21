@@ -1,6 +1,6 @@
 #include <xc.h>
 //#include "ETM_TICK.h"
-#include "TCPIPStack/ETM_TICK.h"
+#include "ETM_TICK.h"
 /*
   Tick is defined as number of clock cycles
 */

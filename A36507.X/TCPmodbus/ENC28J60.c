@@ -115,7 +115,7 @@ void ETMTCPModbusENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config) {
 // Make sure that this hardware profile has an ENC28J60 in it
 #if defined(ENC_CS_TRIS)
 
-#include "TCPIPStack/TCPIP.h"
+#include "TCPIP.h"
 
 /** D E F I N I T I O N S ****************************************************/
 // IMPORTANT SPI NOTE: The code in this file expects that the SPI interrupt

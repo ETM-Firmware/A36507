@@ -59,9 +59,9 @@
 
 
 #include <xc.h>
-#include "TCPIPStack/TCPIPStack/TCPIPConfig.h"
-#include "TCPIPStack/TCPIPStack/TCPIP.h"
-#include "TCPIPStack/TCPIPStack/ETM_TICK.h"
+#include "TCPIPConfig.h"
+#include "TCPIP.h"
+#include "ETM_TICK.h"
 
 #include "TCPmodbus.h"
 #include "ETM_IO_PORTS.h"
