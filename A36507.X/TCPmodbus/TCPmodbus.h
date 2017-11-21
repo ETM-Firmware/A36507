@@ -2,22 +2,22 @@
 #define __TCP_MODBUS_H
 
 typedef struct {
+  unsigned long remote_ip_addr;
+  unsigned long ip_addr;
+  unsigned long mask;
+  unsigned long gate;
+  unsigned long dns;
+  unsigned char mac_addr[6];
+  char          net_bios_name[16];
+} IPCONFIG;
+
+typedef struct {
   unsigned char *header_ptr;
   unsigned char *data_ptr;
   unsigned int  header_length;
   unsigned int  data_length;
 } ETMModbusTXData;
 
-typedef struct {
-  unsigned long remote_ip_addr;
-  unsigned long ip_addr;
-  unsigned long mask;
-  unsigned long gate;
-  unsigned long dns;
-  unsigned int  mac_addr_0;
-  unsigned int  mac_addr_1;
-  unsigned int  mac_addr_2;
-} IPCONFIG;
 
 
 

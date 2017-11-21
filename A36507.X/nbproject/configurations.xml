@@ -8,7 +8,6 @@
         <logicalFolder name="f1" displayName="TCPIPStack" projectFiles="true">
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/ARP.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/Compiler.h</itemPath>
-          <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/Delay.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/ENC28J60.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/GenericTypeDefs.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/Helpers.h</itemPath>
@@ -19,10 +18,8 @@
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/TCP.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/TCPIP.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/TCPIPConfig.h</itemPath>
-          <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/Tick.h</itemPath>
           <itemPath>TCPmodbus/TCPIPStack/TCPIPStack/TCPIPENC28.h</itemPath>
         </logicalFolder>
-        <itemPath>TCPmodbus/HardwareProfile.h</itemPath>
         <itemPath>TCPmodbus/TCPmodbus.h</itemPath>
       </logicalFolder>
     </logicalFolder>

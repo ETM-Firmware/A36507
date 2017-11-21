@@ -8,7 +8,7 @@
 #define MODBUS_COMMAND_REFRESH_TOTAL     MODBUS_WR_EVENTS  
 
 
-
+#include <string.h>
 #include "ETM_IO_PORTS.h"  //DPARKER Fix this
 
 
@@ -715,10 +715,15 @@ void ETMLinacModbusInitialize(void) {
   ip_config.mask           = 0x00FFFFFF;  // 255.255.255.  0
   ip_config.gate           = 0x00000000;  //   0.  0.  0.  0
   ip_config.dns            = 0x00000000;  //   0.  0.  0.  0
-  ip_config.mac_addr_0     = 0x0050; 
-  ip_config.mac_addr_1     = 0xC2B4; 
-  ip_config.mac_addr_2     = 0x2000;      //00-50-C2-B4-20-00 
-  
+  ip_config.mac_addr[0]    = 0x00; 
+  ip_config.mac_addr[1]    = 0x50; 
+  ip_config.mac_addr[2]    = 0xC2; 
+  ip_config.mac_addr[3]    = 0xB4; 
+  ip_config.mac_addr[4]    = 0x20; 
+  ip_config.mac_addr[5]    = 0x00;        //00-50-C2-B4-20-00 
+  //ip_config.net_bios_name  = "ETMBoard Test";
+  strcpy(ip_config.net_bios_name, "ETMBoard Test");
+
   ETMTickInitialize(FCY_CLK, ETM_TICK_USE_TIMER_1);  // DPARKER make this part of the configuration
 
   InitModbusData(); 

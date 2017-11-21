@@ -72,10 +72,6 @@ void TCPmodbus_task(void);
 void ETMTCPClient(void);
 
 
-
-
-
-
 ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
 void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 
@@ -90,10 +86,6 @@ void ETMTCPClient(void);
 void InitModbusData(void);
 
 unsigned char         modbus_cmd_need_repeat = 0;  
-
-
-
-
 
 
 
@@ -123,11 +115,6 @@ static void InitializeBoard(void) {
   // initialization order.  Ex: When ENC28J60 is on SPI2 with Explorer 16, 
   // MAX3232 ROUT2 pin will drive RF12/U2CTS ENC28J60 CS line asserted, 
   // preventing proper 25LC256 EEPROM operation.
-#if defined(ENC_CS_TRIS)
-  //ENC_CS_IO = 1;
-  //ENC_CS_TRIS = 0;
-  // DPARKER REMOVE THESE
-#endif
 }
 
 /*********************************************************************
@@ -145,33 +132,21 @@ static void InitializeBoard(void) {
  *
  * Note:            None
  ********************************************************************/
-// MAC Address Serialization using a MPLAB PM3 Programmer and 
-// Serialized Quick Turn Programming (SQTP). 
-// The advantage of using SQTP for programming the MAC Address is it
-// allows you to auto-increment the MAC address without recompiling 
-// the code for each unit.  To use SQTP, the MAC address must be fixed
-// at a specific location in program memory.  Uncomment these two pragmas
-// that locate the MAC address at 0x1FFF0.  Syntax below is for MPLAB C 
-// Compiler for PIC18 MCUs. Syntax will vary for other compilers.
-//#pragma romdata MACROM=0x1FFF0
-static ROM BYTE SerializedMACAddress[6] = {MY_DEFAULT_MAC_BYTE1, MY_DEFAULT_MAC_BYTE2, MY_DEFAULT_MAC_BYTE3, MY_DEFAULT_MAC_BYTE4, MY_DEFAULT_MAC_BYTE5, MY_DEFAULT_MAC_BYTE6};
-//#pragma romdata
-
 static void InitAppConfig(IPCONFIG* ip_config) {
     
   // Start out zeroing all AppConfig bytes to ensure all fields are 
   // deterministic for checksum generation
-  memset((void*)&AppConfig, 0x00, sizeof(AppConfig));
         
   AppConfig.Flags.bIsDHCPEnabled = 0;
   AppConfig.Flags.bInConfigMode = 0;
-  memcpypgm2ram((void*)&AppConfig.MyMACAddr, (ROM void*)SerializedMACAddress, sizeof(AppConfig.MyMACAddr));
-  //        {
-  //            _prog_addressT MACAddressAddress;
-  //            MACAddressAddress.next = 0x157F8;
-  //            _memcpy_p2d24((char*)&AppConfig.MyMACAddr, MACAddressAddress, sizeof(AppConfig.MyMACAddr));
-  //        }
-  
+
+  AppConfig.MyMACAddr.v[0] = ip_config->mac_addr[0];
+  AppConfig.MyMACAddr.v[1] = ip_config->mac_addr[1];
+  AppConfig.MyMACAddr.v[2] = ip_config->mac_addr[2];
+  AppConfig.MyMACAddr.v[3] = ip_config->mac_addr[3];
+  AppConfig.MyMACAddr.v[4] = ip_config->mac_addr[4];
+  AppConfig.MyMACAddr.v[5] = ip_config->mac_addr[5];
+
   AppConfig.MyIPAddr.Val = ip_config->ip_addr;
   AppConfig.DefaultIPAddr.Val = AppConfig.MyIPAddr.Val;
   AppConfig.MyMask.Val = ip_config->mask;
@@ -180,51 +155,31 @@ static void InitAppConfig(IPCONFIG* ip_config) {
   AppConfig.PrimaryDNSServer.Val = ip_config->dns;
   AppConfig.SecondaryDNSServer.Val = MY_DEFAULT_SECONDARY_DNS_BYTE1 | MY_DEFAULT_SECONDARY_DNS_BYTE2<<8ul  | MY_DEFAULT_SECONDARY_DNS_BYTE3<<16ul  | MY_DEFAULT_SECONDARY_DNS_BYTE4<<24ul;
   AppConfig.MyRemIPAddr.Val = ip_config->remote_ip_addr;
-      
     
-  // Load the default NetBIOS Host Name
-  memcpypgm2ram(AppConfig.NetBIOSName, (ROM void*)MY_DEFAULT_HOST_NAME, 16);
-  FormatNetBIOSName(AppConfig.NetBIOSName);
-    
+  // Load the NetBIOS Host Name
+  AppConfig.NetBIOSName[0]  = ip_config->net_bios_name[0];
+  AppConfig.NetBIOSName[1]  = ip_config->net_bios_name[1];
+  AppConfig.NetBIOSName[2]  = ip_config->net_bios_name[2];
+  AppConfig.NetBIOSName[3]  = ip_config->net_bios_name[3];
+  AppConfig.NetBIOSName[4]  = ip_config->net_bios_name[4];
+  AppConfig.NetBIOSName[5]  = ip_config->net_bios_name[5];
+  AppConfig.NetBIOSName[6]  = ip_config->net_bios_name[6];
+  AppConfig.NetBIOSName[7]  = ip_config->net_bios_name[7];
+  AppConfig.NetBIOSName[8]  = ip_config->net_bios_name[8];
+  AppConfig.NetBIOSName[9]  = ip_config->net_bios_name[9];
+  AppConfig.NetBIOSName[10] = ip_config->net_bios_name[10];
+  AppConfig.NetBIOSName[11] = ip_config->net_bios_name[11];
+  AppConfig.NetBIOSName[12] = ip_config->net_bios_name[12];
+  AppConfig.NetBIOSName[13] = ip_config->net_bios_name[13];
+  AppConfig.NetBIOSName[14] = ip_config->net_bios_name[14];
+  AppConfig.NetBIOSName[15] = ip_config->net_bios_name[15];
 
+  FormatNetBIOSName(AppConfig.NetBIOSName);
+  
   // Compute the checksum of the AppConfig defaults as loaded from ROM
   wOriginalAppConfigChecksum = CalcIPChecksum((BYTE*)&AppConfig, sizeof(AppConfig));
 }
 
-void TCPmodbusSetIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1) {
-  unsigned long temp;
-  temp = byte4;
-  temp <<= 24;
-  AppConfig.MyIPAddr.Val = temp;
-  
-  temp = byte3;
-  temp <<= 16;
-  AppConfig.MyIPAddr.Val |= temp;
-  
-  temp = byte2;
-  temp <<= 8;
-  AppConfig.MyIPAddr.Val |= temp;
-  
-  AppConfig.MyIPAddr.Val |= byte1;
-}
-
-
-void TCPmodbusSetRemoteIPAddress(unsigned char byte4, unsigned char byte3, unsigned char byte2, unsigned char byte1) {
-  unsigned long temp;
-  temp = byte4;
-  temp <<= 24;
-  AppConfig.MyRemIPAddr.Val = temp;
-  
-  temp = byte3;
-  temp <<= 16;
-  AppConfig.MyRemIPAddr.Val |= temp;
-  
-  temp = byte2;
-  temp <<= 8;
-  AppConfig.MyRemIPAddr.Val |= temp;
-  
-  AppConfig.MyRemIPAddr.Val |= byte1;
-}
 
 //
 // called once for initilization.
