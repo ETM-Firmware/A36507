@@ -74,38 +74,18 @@
 #include "etm.h"
 #include "TCPmodbus.h"
 
-typedef struct {
-  unsigned long pin_cs;
-  unsigned long pin_rst;
-  
-} TYPE_CHIP_ENC28J60;
-
-TYPE_CHIP_ENC28J60 CHIP_ENC28J60;
+unsigned long ENC28J60_pin_cs;
+unsigned long ENC28J60_pin_reset;
 
 volatile unsigned int *SSPBUF_ptr;
 volatile unsigned int *SPISTAT_ptr;
 volatile unsigned int *SPICON_ptr;
 
-/*
-void ENC28J60Initialize(unsigned long cs_pin, unsigned long reset_pin, unsigned int spi_port) {
-  CHIP_ENC28J60.pin_cs = cs_pin;
-  CHIP_ENC28J60.pin_rst = reset_pin;
-  if (spi_port == 2) {
-    SSPBUF_ptr  = &SPI2BUF;
-    SPISTAT_ptr = &SPI2STAT;
-    SPICON_ptr =  &SPI2CON;
-  } else {
-    SSPBUF_ptr  = &SPI1BUF;
-    SPISTAT_ptr = &SPI1STAT;
-    SPICON_ptr =  &SPI1CON;
-  }
 
-}
-*/
 
 void ENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config) {
-  CHIP_ENC28J60.pin_cs = ENC28J60_config->cable_select_pin;
-  CHIP_ENC28J60.pin_rst = ENC28J60_config->reset_pin;
+  ENC28J60_pin_cs = ENC28J60_config->cable_select_pin;
+  ENC28J60_pin_reset = ENC28J60_config->reset_pin;
   if (ENC28J60_config->spi_port == TCPMODBUS_USE_SPI_PORT_2) {
     SSPBUF_ptr  = &SPI2BUF;
     SPISTAT_ptr = &SPI2STAT;
@@ -115,6 +95,15 @@ void ENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config) {
     SPISTAT_ptr = &SPI1STAT;
     SPICON_ptr =  &SPI1CON;
   }
+
+    // Set up the SPI module on the PIC for communications with the ENC28J60
+    ETMSetPin(ENC28J60_pin_cs);
+    ETMPinTrisOutput(ENC28J60_pin_cs);
+   
+    // If the RESET pin is connected, put the chip in reset
+    ETMClearPin(ENC28J60_pin_reset);
+    ETMPinTrisOutput(ENC28J60_pin_reset);
+
 }
 
 
@@ -225,16 +214,9 @@ void MACInit(void)
 {
     BYTE i;
 
-    // Set up the SPI module on the PIC for communications with the ENC28J60
-    //ENC_CS_IO = 1;
-    //ENC_CS_TRIS = 0;        // Make the Chip Select pin an output
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
-    ETMPinTrisOutput(CHIP_ENC28J60.pin_cs);
-   
-
     // If the RESET pin is connected, take the chip out of reset
-    ETMSetPin(CHIP_ENC28J60.pin_rst);
-    ETMPinTrisOutput(CHIP_ENC28J60.pin_rst);
+    ETMSetPin(ENC28J60_pin_reset);
+    ETMPinTrisOutput(ENC28J60_pin_reset);
 
     // Set up SPI
     ClearSPIDoneFlag();
@@ -1167,7 +1149,7 @@ BYTE MACGet()
     BYTE Result;
 
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
 	ClearSPIDoneFlag();
 
     {
@@ -1185,7 +1167,7 @@ BYTE MACGet()
 
     Result = *SSPBUF_ptr;
     //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
+    ETMSetPin(ENC28J60_pin_cs);
 
     return Result;
 }//end MACGet
@@ -1221,7 +1203,7 @@ WORD MACGetArray(BYTE *val, WORD len)
 
     // Start the burst operation
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
     ClearSPIDoneFlag();
     *SSPBUF_ptr = RBM;       // Send the Read Buffer Memory opcode.
     i = 0;
@@ -1279,7 +1261,7 @@ WORD MACGetArray(BYTE *val, WORD len)
 
     // Terminate the burst operation
     //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
+    ETMSetPin(ENC28J60_pin_cs);
     return i;
 }//end MACGetArray
 
@@ -1307,7 +1289,7 @@ void MACPut(BYTE val)
     volatile BYTE Dummy;
 
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
     ClearSPIDoneFlag();
 
     {
@@ -1324,7 +1306,7 @@ void MACPut(BYTE val)
 
     Dummy = *SSPBUF_ptr;
     //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
+    ETMSetPin(ENC28J60_pin_cs);
 }//end MACPut
 
 
@@ -1355,7 +1337,7 @@ void MACPutArray(BYTE *val, WORD len)
 
     // Select the chip and send the proper opcode
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
     ClearSPIDoneFlag();
     *SSPBUF_ptr = WBM;       // Send the Write Buffer Memory opcode
     WaitForDataByte();      // Wait until opcode/constant is transmitted.
@@ -1404,7 +1386,7 @@ void MACPutArray(BYTE *val, WORD len)
 
     // Terminate the burst operation
     //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
+    ETMSetPin(ENC28J60_pin_cs);
 }//end MACPutArray
 
 
@@ -1446,13 +1428,13 @@ static void SendSystemReset(void)
 
     // Execute the System Reset command
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
     ClearSPIDoneFlag();
     *SSPBUF_ptr = SR_CMD;
     WaitForDataByte();      // Wait until the command is transmitted.
     Dummy = *SSPBUF_ptr;
     //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
+    ETMSetPin(ENC28J60_pin_cs);
 
     // Wait for the oscillator start up timer and PHY to become ready
     //DelayMs(1);
@@ -1488,7 +1470,7 @@ static REG ReadETHReg(BYTE Address)
 
     // Select the chip and send the Read Control Register opcode/address
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
     ClearSPIDoneFlag();
     *SSPBUF_ptr = RCR | Address;
 
@@ -1499,7 +1481,7 @@ static REG ReadETHReg(BYTE Address)
     WaitForDataByte();      // Wait until the register is received
     r.Val = *SSPBUF_ptr;
     //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
+    ETMSetPin(ENC28J60_pin_cs);
 
     return r;
 }//end ReadETHReg
@@ -1532,7 +1514,7 @@ static REG ReadMACReg(BYTE Address)
     REG r;
 
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
     ClearSPIDoneFlag();
     *SSPBUF_ptr = RCR | Address; // Send the Read Control Register opcode and
                                 //   address.
@@ -1546,7 +1528,7 @@ static REG ReadMACReg(BYTE Address)
     WaitForDataByte();          // Wait until register is received.
     r.Val = *SSPBUF_ptr;
     //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
+    ETMSetPin(ENC28J60_pin_cs);
     return r;
 }//end ReadMACReg
 
@@ -1625,7 +1607,7 @@ static void WriteReg(BYTE Address, BYTE Data)
     volatile BYTE Dummy;
 
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
     ClearSPIDoneFlag();
 
     {
@@ -1661,7 +1643,7 @@ static void WriteReg(BYTE Address, BYTE Data)
 	*/
 
 	//ENC_CS_IO = 1;
-	ETMSetPin(CHIP_ENC28J60.pin_cs);
+	ETMSetPin(ENC28J60_pin_cs);
 }//end WriteReg
 
 
@@ -1692,7 +1674,7 @@ static void BFCReg(BYTE Address, BYTE Data)
     volatile BYTE Dummy;
 
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
     ClearSPIDoneFlag();
     *SSPBUF_ptr = BFC | Address; // Send the opcode and address.
     WaitForDataByte();          // Wait until opcode/address is transmitted.
@@ -1701,7 +1683,7 @@ static void BFCReg(BYTE Address, BYTE Data)
     WaitForDataByte();          // Wait until register is written.
     Dummy = *SSPBUF_ptr;
     //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
+    ETMSetPin(ENC28J60_pin_cs);
 }//end BFCReg
 
 
@@ -1732,7 +1714,7 @@ static void BFSReg(BYTE Address, BYTE Data)
     volatile BYTE Dummy;
 
     //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
+    ETMClearPin(ENC28J60_pin_cs);
     ClearSPIDoneFlag();
     *SSPBUF_ptr = BFS | Address; // Send the opcode and address.
     WaitForDataByte();          // Wait until opcode/address is transmitted.
@@ -1741,7 +1723,7 @@ static void BFSReg(BYTE Address, BYTE Data)
     WaitForDataByte();          // Wait until register is written.
     Dummy = *SSPBUF_ptr;
     //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
+    ETMSetPin(ENC28J60_pin_cs);
 }//end BFSReg
 
 

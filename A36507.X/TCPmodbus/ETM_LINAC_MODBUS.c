@@ -705,8 +705,6 @@ void ETMLinacModbusUpdate(void) {
   TCPmodbus_task();
 }
 
-#define SPI_PORT_1   1
-
 void ETMLinacModbusInitialize(void) {
   IPCONFIG ip_config;
   TYPE_ENC28J60_CONFIG ENC28J60_config;
@@ -734,5 +732,7 @@ void ETMLinacModbusInitialize(void) {
 
   InitModbusData(); 
 
-  TCPmodbus_init(&ip_config, &ENC28J60_config);
+  ENC28J60Initialize(&ENC28J60_config);
+
+  TCPmodbus_init(&ip_config);
 }

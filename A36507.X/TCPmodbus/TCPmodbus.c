@@ -56,9 +56,8 @@
 #include "TCPIPStack/TCPIPStack/TCPIPConfig.h"
 #include "TCPIPStack/TCPIPStack/TCPIP.h"
 #include "TCPIPStack/TCPIPStack/ETM_TICK.h"
+
 #include "TCPmodbus.h"
-
-
 #include "ETM_IO_PORTS.h"
 
 
@@ -66,7 +65,6 @@
 #define SM_PROCESS_RESPONSE_TIMEOUT_MILLISECONDS 1000      
 
 
-static void InitializeBoard(void);
 static void InitAppConfig(IPCONFIG* ip_config);
 void TCPmodbus_task(void);
 void ETMTCPClient(void);
@@ -88,33 +86,6 @@ unsigned char         modbus_cmd_need_repeat = 0;
 
 
 
-/****************************************************************************
-  Function:
-    static void InitializeBoard(void)
-
-  Description:
-    This routine initializes the hardware.  It is a generic initialization
-    routine for many of the Microchip development boards, using definitions
-    in HardwareProfile.h to determine specific initialization.
-
-  Precondition:
-    None
-
-  Parameters:
-    None - None
-
-  Returns:
-    None
-
-  Remarks:
-    None
-***************************************************************************/
-static void InitializeBoard(void) {    
-  // Deassert all chip select lines so there isn't any problem with 
-  // initialization order.  Ex: When ENC28J60 is on SPI2 with Explorer 16, 
-  // MAX3232 ROUT2 pin will drive RF12/U2CTS ENC28J60 CS line asserted, 
-  // preventing proper 25LC256 EEPROM operation.
-}
 
 /*********************************************************************
  * Function:        void InitAppConfig(void)
@@ -183,14 +154,8 @@ static void InitAppConfig(IPCONFIG* ip_config) {
 //
 // called once for initilization.
 //
-void TCPmodbus_init(IPCONFIG* ip_config, TYPE_ENC28J60_CONFIG* ENC28J60_config) {
+void TCPmodbus_init(IPCONFIG* ip_config) {
   
-
-  //ENC28J60Initialize(_PIN_RD15, _PIN_RA15, 1);
-  ENC28J60Initialize(ENC28J60_config);
-  
-  // Initialize application specific hardware
-  InitializeBoard();
 
   // Initialize Stack and application related NV variables into AppConfig.
   InitAppConfig(ip_config);

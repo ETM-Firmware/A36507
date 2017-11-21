@@ -34,9 +34,10 @@ typedef struct {
 //extern ETMModbusApplicationSpecificRXData(unsigned char data_RX[]);
 
 
-void TCPmodbus_init(IPCONFIG* ip_config, TYPE_ENC28J60_CONFIG* ENC28J60_config);
+void TCPmodbus_init(IPCONFIG* ip_config);
 void TCPmodbus_task(void);
 
+void ENC28J60Initialize(TYPE_ENC28J60_CONFIG* ENC28J60_config);
 
 #define MAX_RX_SIZE    48
 
