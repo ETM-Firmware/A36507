@@ -452,10 +452,11 @@ unsigned int BuildModbusOutput(void) {
   header_length = 0;
   
   if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var)) {
-    if (!modbus_cmd_need_repeat) {
+    if (!ETMTCPModbusWaitingForResponse()) {
+      // If response can been recieved, send the next command, else repeat the previous one
       modbus_refresh_index++;
       if (modbus_refresh_index > MODBUS_COMMAND_REFRESH_TOTAL) modbus_refresh_index = 1;	 // starts from 1
-    }
+   }
 	      
     modbus_send_index = modbus_refresh_index;
     
@@ -553,7 +554,8 @@ unsigned int BuildModbusOutput(void) {
   
   if (total_bytes) {
     transaction_number++; // don't care about overflow
-    modbus_cmd_need_repeat = 1; // clear when there is response
+    ETMTCPModbusWaitForResponse();
+    //modbus_cmd_need_repeat = 1; // clear when there is response
   }
   return (total_bytes);
 }

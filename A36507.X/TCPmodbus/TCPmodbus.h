@@ -63,7 +63,11 @@ void ETMTCPModbusTask(void);
 
 #define MAX_RX_SIZE    48
 
-extern unsigned char         modbus_cmd_need_repeat;  
+//extern unsigned char         modbus_cmd_need_repeat;  
+
+void ETMTCPModbusWaitForResponse(void);
+
+unsigned char ETMTCPModbusWaitingForResponse(void);
 
 
 #endif

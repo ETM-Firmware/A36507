@@ -333,3 +333,13 @@ void ETMTCPClient(void) {
     }
 }
 
+unsigned char ETMTCPModbusWaitingForResponse(void) {
+  return modbus_cmd_need_repeat;
+}
+
+void ETMTCPModbusWaitForResponse(void) {
+  modbus_cmd_need_repeat = 1;
+}
+
+
+
