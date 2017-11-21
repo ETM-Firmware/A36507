@@ -152,11 +152,7 @@ typedef struct  __attribute__((aligned(2), packed))
 } ENC_PREAMBLE;
 
 
-#if defined (__18CXX)
-    #define ClearSPIDoneFlag()  {ENC_SPI_IF = 0;}
-    #define WaitForDataByte()   {while(!ENC_SPI_IF); ENC_SPI_IF = 0;}
-    #define SPI_ON_BIT          (ENC_SPICON1bits.SSPEN)
-#elif defined(__C30__)
+
     #define ClearSPIDoneFlag()
     static inline __attribute__((__always_inline__)) void WaitForDataByte( void )
     {
@@ -164,17 +160,6 @@ typedef struct  __attribute__((aligned(2), packed))
     }
 
     #define SPI_ON_BIT          (ENC_SPISTATbits.SPIEN)
-#elif defined( __PIC32MX__ )
-    #define ClearSPIDoneFlag()
-    static inline __attribute__((__always_inline__)) void WaitForDataByte( void )
-    {
-        while (!ENC_SPISTATbits.SPITBE || !ENC_SPISTATbits.SPIRBF);
-    }
-
-    #define SPI_ON_BIT          (ENC_SPICON1bits.ON)
-#else
-    #error Determine SPI flag mechanism
-#endif
 
 
 // Prototypes of functions intended for MAC layer use only.
@@ -223,31 +208,16 @@ void MACInit(void)
     //ENC_CS_TRIS = 0;        // Make the Chip Select pin an output
     ETMSetPin(CHIP_ENC28J60.pin_cs);
     ETMPinTrisOutput(CHIP_ENC28J60.pin_cs);
-    
-
-#if defined(__18CXX)
-    ENC_SCK_TRIS = 0;
-    ENC_SDO_TRIS = 0;
-    ENC_SDI_TRIS = 1;
-#endif
+   
 
     // If the RESET pin is connected, take the chip out of reset
     ETMSetPin(CHIP_ENC28J60.pin_rst);
     ETMPinTrisOutput(CHIP_ENC28J60.pin_rst);
 
-/*
-#if defined(ENC_RST_IO)
-    ENC_RST_IO      = 1;
-    ENC_RST_TRIS    = 0;
-#endif
-*/
     // Set up SPI
     ClearSPIDoneFlag();
 #if defined(__18CXX)
-    ENC_SPICON1 = 0x20;     // SSPEN bit is set, SPI in master mode, FOSC/4,
-                            //   IDLE state is low level
-    ENC_SPISTATbits.CKE = 1;// Transmit data on rising edge of clock
-    ENC_SPISTATbits.SMP = 0;// Input sampled at middle of data output time
+    
 #elif defined(__C30__)
     *SPISTAT_ptr = 0;        // clear SPI
     #if defined(__PIC24H__) || defined(__dsPIC33F__) || defined(__dsPIC33E__)|| defined(__PIC24E__)
@@ -264,12 +234,6 @@ void MACInit(void)
     ENC_SPICON1bits.CKE = 1;
     ENC_SPICON1bits.MSTEN = 1;
     ENC_SPISTATbits.SPIEN = 1;
-#elif defined(__C32__)
-    ENC_SPIBRG = (GetPeripheralClock()-1ul)/2ul/ENC_MAX_SPI_FREQ;
-	ENC_SPICON1bits.SMP = 1;	// Delay SDI input sampling (PIC perspective) by 1/2 SPI clock
-    ENC_SPICON1bits.CKE = 1;
-    ENC_SPICON1bits.MSTEN = 1;
-    ENC_SPICON1bits.ON = 1;
 #endif
 
     // RESET the entire ENC28J60, clearing all registers
@@ -1183,15 +1147,6 @@ BYTE MACGet()
     ETMClearPin(CHIP_ENC28J60.pin_cs);
 	ClearSPIDoneFlag();
 
-    #if defined(__C32__)
-    {
-        // Send the opcode and read a byte in one 16-bit operation
-        ENC_SPICON1bits.MODE16 = 1;
-        *SSPBUF_ptr = RBM<<8 | 0x00; // Send Read Buffer Memory command plus 8 dummy bits to generate clocks for the return result
-        WaitForDataByte();          // Wait until WORD is transmitted
-        ENC_SPICON1bits.MODE16 = 0;
-    }
-    #elif defined(__C30__)
     {
         // Send the opcode and read a byte in one 16-bit operation
         ENC_SPISTATbits.SPIEN = 0;
@@ -1203,18 +1158,7 @@ BYTE MACGet()
         ENC_SPICON1bits.MODE16 = 0;
         ENC_SPISTATbits.SPIEN = 1;
     }
-    #else
-    {
-        // Send the opcode and read a byte in two 8-bit operations
-        *SSPBUF_ptr = RBM;
-        WaitForDataByte();      // Wait until opcode/address is transmitted.
-        Result = *SSPBUF_ptr;
 
-        *SSPBUF_ptr = 0;         // Send a dummy byte to receive the register
-                                //   contents.
-        WaitForDataByte();      // Wait until register is received.
-    }
-    #endif
 
     Result = *SSPBUF_ptr;
     //ENC_CS_IO = 1;
@@ -1249,48 +1193,6 @@ WORD MACGetArray(BYTE *val, WORD len)
 {
 // Workaround needed on HPC Explorer (classic) board to prevent interference
 // with I2C temperature sensor on the same SPI wires
-#if defined(__18F8722) || defined(_18F8722) ||  defined(__18F8723) || defined(_18F8723)
-    WORD i;
-    volatile BYTE Dummy;
-
-    i = len;
-    Dummy = 0xFF;
-    ClearSPIDoneFlag();
-    while(i--)
-    {
-        if(((BYTE_VAL*)&Dummy)->bits.b0)
-        {
-            // End bust operation
-            //ENC_CS_IO = 1;
-	    ETMSetPin(CHIP_ENC28J60.pin_cs);
-            ((BYTE_VAL*)&Dummy)->bits.b0 = 0;
-
-            // Start the burst operation
-            //ENC_CS_IO = 0;
-	    ETMClearPin(CHIP_ENC28J60.pin_cs);
-            *SSPBUF_ptr = RBM;       // Send the Read Buffer Memory opcode.
-            WaitForDataByte();      // Wait until opcode/address is transmitted.
-        }
-        else
-            Dummy = 0xFF;
-
-        *SSPBUF_ptr = 0;     // Send a dummy byte to receive a byte
-        if(val)
-        {
-            WaitForDataByte();  // Wait until byte is received.
-            *val++ = *SSPBUF_ptr;
-        }
-        else
-        {
-            WaitForDataByte();  // Wait until byte is received.
-        }
-    }
-
-    //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
-
-    return len;
-#else
     WORD i;
     volatile BYTE Dummy;
 
@@ -1305,34 +1207,6 @@ WORD MACGetArray(BYTE *val, WORD len)
     WaitForDataByte();      // Wait until opcode/address is transmitted.
     Dummy = *SSPBUF_ptr;
 
-    #if defined(__C32__)
-    {
-        DWORD_VAL dwv;
-
-        // Read the data, 4 bytes at a time, for as long as possible
-        if(len >= 4)
-        {
-            ENC_SPICON1bits.MODE32 = 1;
-            while(1)
-            {
-                *SSPBUF_ptr = 0x00000000;    // Send a dummy DWORD to generate 32 clocks
-                i += 4;
-                WaitForDataByte();         // Wait until DWORD is transmitted
-                dwv.Val = *SSPBUF_ptr;
-                if(val)
-                {
-                    *(++val) = dwv.v[3];
-                    *(++val) = dwv.v[2];
-                    *(++val) = dwv.v[1];
-                    *(++val) = dwv.v[0];
-                }
-                if(len - i < 4)
-                    break;
-            };
-            ENC_SPICON1bits.MODE32 = 0;
-        }
-    }
-    #elif defined(__C30__)
     {
         WORD_VAL wv;
 
@@ -1361,7 +1235,6 @@ WORD MACGetArray(BYTE *val, WORD len)
             ENC_SPISTATbits.SPIEN = 1;
         }
     }
-    #endif
 
     // Read the data
     while(i<len)
@@ -1385,7 +1258,6 @@ WORD MACGetArray(BYTE *val, WORD len)
     //ENC_CS_IO = 1;
     ETMSetPin(CHIP_ENC28J60.pin_cs);
     return i;
-#endif
 }//end MACGetArray
 
 
@@ -1415,15 +1287,6 @@ void MACPut(BYTE val)
     ETMClearPin(CHIP_ENC28J60.pin_cs);
     ClearSPIDoneFlag();
 
-    #if defined(__C32__)
-    {
-        // Send the Write Buffer Memory and data, in on 16-bit write
-        ENC_SPICON1bits.MODE16 = 1;
-        *SSPBUF_ptr = (WBM<<8) | (WORD)val;  // Start sending the WORD
-        WaitForDataByte();                  // Wait until WORD is transmitted
-        ENC_SPICON1bits.MODE16 = 0;
-    }
-    #elif defined(__C30__)
     {
         // Send the Write Buffer Memory and data, in on 16-bit write
         ENC_SPISTATbits.SPIEN = 0;
@@ -1435,15 +1298,6 @@ void MACPut(BYTE val)
         ENC_SPICON1bits.MODE16 = 0;
         ENC_SPISTATbits.SPIEN = 1;
     }
-    #else
-    {
-        *SSPBUF_ptr = WBM;       // Send the opcode and constant.
-        WaitForDataByte();      // Wait until opcode/constant is transmitted.
-        Dummy = *SSPBUF_ptr;
-        *SSPBUF_ptr = val;       // Send the byte to be writen.
-        WaitForDataByte();      // Wait until finished transmitting
-    }
-    #endif
 
     Dummy = *SSPBUF_ptr;
     //ENC_CS_IO = 1;
@@ -1474,40 +1328,6 @@ void MACPutArray(BYTE *val, WORD len)
 {
 // Workaround needed on HPC Explorer (classic) board to prevent interference
 // with I2C temperature sensor on the same SPI wires
-#if defined(__18F8722) || defined(_18F8722) ||  defined(__18F8723) || defined(_18F8723)
-    WORD i;
-    volatile BYTE Dummy;
-
-    i = len;
-    Dummy = 0xFF;
-    ClearSPIDoneFlag();
-    while(i--)
-    {
-        if(((BYTE_VAL*)&Dummy)->bits.b0)
-        {
-            // End bust operation
-            //ENC_CS_IO = 1;
-	    ETMSetPin(CHIP_ENC28J60.pin_cs);
-            ((BYTE_VAL*)&Dummy)->bits.b0 = 0;
-
-            // Start the burst operation
-            //ENC_CS_IO = 0;
-	    ETMClearPin(CHIP_ENC28J60.pin_cs);
-            *SSPBUF_ptr = WBM;       // Send the Read Buffer Memory opcode.
-            WaitForDataByte();      // Wait until opcode/address is transmitted.
-        }
-        else
-            Dummy = 0xFF;
-
-        *SSPBUF_ptr = *val++;    // Send byte
-        WaitForDataByte();      // Wait until byte is sent
-    }
-
-    //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
-
-    return;
-#else
     volatile BYTE Dummy;
 
     // Select the chip and send the proper opcode
@@ -1518,37 +1338,6 @@ void MACPutArray(BYTE *val, WORD len)
     WaitForDataByte();      // Wait until opcode/constant is transmitted.
     Dummy = *SSPBUF_ptr;
 
-    #if defined(__C32__)
-    {
-        DWORD_VAL dwv;
-
-        // Send the data, 4 bytes at a time, for as long as possible
-        if(len >= 4)
-        {
-            dwv.v[3] = *val++;
-            dwv.v[2] = *val++;
-            dwv.v[1] = *val++;
-            dwv.v[0] = *val++;
-            ENC_SPICON1bits.MODE32 = 1;
-            while(1)
-            {
-                *SSPBUF_ptr = dwv.Val;       // Start sending the DWORD
-                len -= 4;
-                if(len < 4)
-                    break;
-                dwv.v[3] = *val++;
-                dwv.v[2] = *val++;
-                dwv.v[1] = *val++;
-                dwv.v[0] = *val++;
-                WaitForDataByte();          // Wait until DWORD is transmitted
-                Dummy = *SSPBUF_ptr;
-            };
-            WaitForDataByte();              // Wait until DWORD is transmitted
-            Dummy = *SSPBUF_ptr;
-            ENC_SPICON1bits.MODE32 = 0;
-        }
-    }
-    #elif defined(__C30__)
     {
         WORD_VAL wv;
 
@@ -1578,7 +1367,7 @@ void MACPutArray(BYTE *val, WORD len)
             ENC_SPISTATbits.SPIEN = 1;
         }
     }
-    #endif
+   
 
     // Send the data, one byte at a time
     while(len)
@@ -1593,93 +1382,9 @@ void MACPutArray(BYTE *val, WORD len)
     // Terminate the burst operation
     //ENC_CS_IO = 1;
     ETMSetPin(CHIP_ENC28J60.pin_cs);
-#endif
 }//end MACPutArray
 
 
-#if defined(__18CXX)
-/******************************************************************************
- * Function:        void MACPutROMArray(ROM BYTE *val, WORD len)
- *
- * PreCondition:    SPI bus must be initialized (done in MACInit()).
- *                  EWRPT must point to the location to begin writing.
- *
- * Input:           *val: Pointer to source of bytes to copy.
- *                  len:  Number of bytes to write to the data buffer.
- *
- * Output:          None
- *
- * Side Effects:    None
- *
- * Overview:        MACPutArray writes several sequential bytes to the
- *                  ENC28J60 RAM.  It performs faster than multiple MACPut()
- *                  calls.  EWRPT is incremented by len.
- *
- * Note:            None
- *****************************************************************************/
-void MACPutROMArray(ROM BYTE *val, WORD len)
-{
-// Workaround needed on HPC Explorer (classic) board to prevent interference
-// with I2C temperature sensor on the same SPI wires
-#if defined(__18F8722) || defined(_18F8722) ||  defined(__18F8723) || defined(_18F8723)
-    WORD i;
-    volatile BYTE Dummy;
-
-    i = len;
-    Dummy = 0xFF;
-    ClearSPIDoneFlag();
-    while(i--)
-    {
-        if(((BYTE_VAL*)&Dummy)->bits.b0)
-        {
-            // End bust operation
-            //ENC_CS_IO = 1;
-	    ETMSetPin(CHIP_ENC28J60.pin_cs);
-            ((BYTE_VAL*)&Dummy)->bits.b0 = 0;
-
-            // Start the burst operation
-            //ENC_CS_IO = 0;
-	    ETMClearPin(CHIP_ENC28J60.pin_cs);
-            *SSPBUF_ptr = WBM;       // Send the Read Buffer Memory opcode.
-            WaitForDataByte();      // Wait until opcode/address is transmitted.
-        }
-        else
-            Dummy = 0xFF;
-
-        *SSPBUF_ptr = *val++;    // Send byte
-        WaitForDataByte();      // Wait until byte is sent
-    }
-
-    //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
-    return;
-#else
-    volatile BYTE Dummy;
-
-    // Select the chip and send the proper opcode
-    //ENC_CS_IO = 0;
-    ETMClearPin(CHIP_ENC28J60.pin_cs);
-    ClearSPIDoneFlag();
-    *SSPBUF_ptr = WBM;       // Send the Write Buffer Memory opcode
-    WaitForDataByte();      // Wait until opcode/constant is transmitted.
-    Dummy = *SSPBUF_ptr;
-
-    // Send the data
-    while(len)
-    {
-        *SSPBUF_ptr = *val;  // Start sending the byte
-        val++;              // Increment after writing to *SSPBUF_ptr to increase speed
-        len--;              // Decrement after writing to *SSPBUF_ptr to increase speed
-        WaitForDataByte();  // Wait until byte is transmitted
-        Dummy = *SSPBUF_ptr;
-    };
-
-    // Terminate the burst operation
-    //ENC_CS_IO = 1;
-    ETMSetPin(CHIP_ENC28J60.pin_cs);
-#endif
-}//end MACPutROMArray
-#endif
 
 /******************************************************************************
  * Function:        static void SendSystemReset(void)
@@ -1900,15 +1605,6 @@ static void WriteReg(BYTE Address, BYTE Data)
     ETMClearPin(CHIP_ENC28J60.pin_cs);
     ClearSPIDoneFlag();
 
-    #if defined(__C32__)
-    {
-        // Send the Write Buffer Memory and data, in on 16-bit write
-        ENC_SPICON1bits.MODE16 = 1;
-        *SSPBUF_ptr = ((WCR | Address)<<8) | (WORD)Data; // Start sending the WORD
-        WaitForDataByte();                  // Wait until WORD is transmitted
-        ENC_SPICON1bits.MODE16 = 0;
-    }
-    #else
     {
         *SSPBUF_ptr = WCR | Address; // Send the opcode and address.
         WaitForDataByte();          // Wait until opcode/constant is transmitted.
@@ -1916,7 +1612,6 @@ static void WriteReg(BYTE Address, BYTE Data)
         *SSPBUF_ptr = Data;          // Send the byte to be writen.
         WaitForDataByte();          // Wait until finished transmitting
     }
-    #endif
 
     Dummy = *SSPBUF_ptr;
 
@@ -2327,92 +2022,5 @@ void SetRXHashTableEntry(MAC_ADDR DestMACAddr)
 }
 #endif
 
-//// GetRegs is a function for debugging purposes only.  It will read all
-//// registers and store them in the PIC's RAM so they can be viewed with
-//// the ICD2.
-//REG Regs[4][32];
-//void GetRegs(void)
-//{
-//  BYTE i;
-//
-//  BankSel(0x000);
-//  for(i=0; i<0x1A; i++)
-//      Regs[0][i] = ReadETHReg(i);
-//  for(i=0x1B; i<32; i++)
-//      Regs[0][i] = ReadETHReg(i);
-//
-//  BankSel(0x100);
-//  for(i=0; i<0x1A; i++)
-//      Regs[1][i] = ReadETHReg(i);
-//  for(i=0x1B; i<32; i++)
-//      Regs[1][i] = ReadETHReg(i);
-//
-//  BankSel(0x200);
-//  for(i=0; i<5; i++)
-//      Regs[2][i] = ReadMACReg(i);
-//  Regs[2][5] = ReadETHReg(i);
-//  for(i=6; i<0x0F; i++)
-//      Regs[2][i] = ReadMACReg(i);
-//  Regs[2][0x0F] = ReadETHReg(i);
-//  for(i=0x10; i<0x13; i++)
-//      Regs[2][i] = ReadMACReg(i);
-//  Regs[2][0x13] = ReadETHReg(i);
-//  for(i=0x14; i<0x1A; i++)
-//      Regs[2][i] = ReadMACReg(i);
-//  for(i=0x1B; i<32; i++)
-//      Regs[2][i] = ReadETHReg(i);
-//
-//  BankSel(0x300);
-//  for(i=0; i<0x06; i++)
-//      Regs[3][i] = ReadMACReg(i);
-//  for(i=6; i<0x0A; i++)
-//      Regs[3][i] = ReadETHReg(i);
-//  Regs[3][0x0A] = ReadMACReg(i);
-//  for(i=0x0B; i<0x1A; i++)
-//      Regs[3][i] = ReadETHReg(i);
-//  for(i=0x1B; i<32; i++)
-//      Regs[3][i] = ReadETHReg(i);
-//
-//  Regs[0][0x1A].Val = 0;
-//  Regs[1][0x1A].Val = 0;
-//  Regs[2][0x1A].Val = 0;
-//  Regs[3][0x1A].Val = 0;
-//
-//  BankSel(ERDPTL);
-//
-//  return;
-//}
-
-//// Get8KBMem is a function intended for debugging purposes.  It will read all
-//// Ethernet RAM and output it in hex out the UART
-//void Get8KBMem(void)
-//{
-//  WORD_VAL i;
-//  BYTE v;
-//  WORD_VAL RDSave;
-//
-//  RDSave.v[0] = ReadETHReg(ERDPTL).Val;
-//  RDSave.v[1] = ReadETHReg(ERDPTH).Val;
-//
-//  for(i.Val = 0; i.Val < 8192; i.Val++)
-//  {
-//      WriteReg(ERDPTL, i.v[0]);
-//      WriteReg(ERDPTH, i.v[1]);
-//      v = MACGet();
-//
-//      putcUART('0');
-//      while(BusyUART());
-//      putcUART('x');
-//      while(BusyUART());
-//      putcUART(btohexa_high(v));
-//      while(BusyUART());
-//      putcUART(btohexa_low(v));
-//      while(BusyUART());
-//  }
-//
-//  WriteReg(ERDPTL, RDSave.v[0]);
-//  WriteReg(ERDPTH, RDSave.v[1]);
-//
-//}
 
 #endif //#if defined(ENC_CS_TRIS)
