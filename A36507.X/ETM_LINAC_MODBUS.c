@@ -4,10 +4,6 @@
 #include "ETM_TICK.h"
 #include "ETM_LINAC_MODBUS.h"
 
-// DPARKER WHAT IS THIS FOR???
-#define MODBUS_COMMAND_REFRESH_TOTAL     MODBUS_WR_EVENTS  
-
-
 #include <string.h>
 #include "ETM_IO_PORTS.h"  //DPARKER Fix this
 
@@ -20,8 +16,11 @@ void BuildModbusOutput_write_header(unsigned int total_bytes);
 unsigned int BuildModbusOutputEventLog(unsigned char index);
 unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char data_id);
 unsigned int BuildModbusOutputHighSpeedDataLog(void);
-unsigned int BuildModbusOutput_read_command(unsigned char index, unsigned char byte_count);
-unsigned int BuildModbusOutput(void);
+
+unsigned int BuildModbusOutput_read_command(void);
+
+
+
 void InitModbusData(void);
 
 
@@ -76,7 +75,6 @@ static unsigned char         eth_cal_to_GUI_put_index;
 static unsigned char         eth_cal_to_GUI_get_index;
 static unsigned char         send_high_speed_data_buffer;  /* bit 0 high for buffer A, bit 1 high for buffer B */
 
-unsigned int header_length;
 
 unsigned long timer_write_holding_var;
 
@@ -338,8 +336,7 @@ unsigned int BuildModbusOutputEventLog(unsigned char index)
 unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char data_id) {
   unsigned int total_bytes;
 
-  header_length = 13;
-  total_bytes = msg_bytes + 13;
+  total_bytes = msg_bytes + 15;
 
   buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
   buffer_header[1] = transaction_number & 0xff;	         // transaction lo byte
@@ -364,7 +361,6 @@ unsigned int BuildModbusOutputHighSpeedDataLog(void) {
   
   data_bytes = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData) + 2;
 
-  header_length = 15;
   buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
   buffer_header[1] = transaction_number & 0xff;	         // transaction lo byte
   buffer_header[2] = 0;	                                 // protocol hi 
@@ -395,26 +391,26 @@ unsigned int BuildModbusOutputHighSpeedDataLog(void) {
     Build modbus command, return 0 if we don't want to send anything
  
 ***************************************************************************/
-unsigned int BuildModbusOutput_read_command(unsigned char index, unsigned char byte_count)
+unsigned int BuildModbusOutput_read_command(void)
 { 
   /* modbus header for read:  transaction ID(word), protocol ID(word, 0x0000), length(word, bytes to follow), 
      unit id (byte, 0xff), function code (byte, 0x03), reference number(word), word count (byte) */
 
-  header_length = 12;
   buffer_header[0] = (transaction_number >> 8) & 0xff;	  // transaction hi byte
   buffer_header[1] = transaction_number & 0xff;	          // transaction lo byte
   buffer_header[2] = 0;	                                  // protocol hi 
   buffer_header[3] = 0;	                                  // protocol lo 
   buffer_header[4] = 0;
   buffer_header[5] = 6;
-  buffer_header[6] = index;	                          // unit Id 
+  buffer_header[6] = MODBUS_RD_COMMAND_DETAIL;
   buffer_header[7] = 0x3;                                 // function code 
   buffer_header[8] = 1;                                   // ref # hi
-  buffer_header[9] = index;                               // ref # lo, redundant for now
+  buffer_header[9] = MODBUS_RD_COMMAND_DETAIL;            // ref # lo, redundant for now
   buffer_header[10] = 0;                                  // data length in words hi 
-  buffer_header[11] = byte_count >> 1;                    // data length in words lo
+  buffer_header[11] = 4;                                  // data length in words lo
+  buffer_header[12] = 0;                                  // data length in bytes // DPARKER is this used???
          
-  return (12);	// always 12 bytes for read command
+  return (15);	// always 15 bytes for read command
 }
 
 #define SIZE_BOARD_MIRROR    104
@@ -518,20 +514,13 @@ unsigned int PrepareStandardMessage(void) {
 }
 
 
-/****************************************************************************
-  Function:
-    BuildModbusOutput(void)
-
-  Description:
-    Build modbus command, return 0 if we don't want to send anything
- 
-***************************************************************************/
-
-unsigned int BuildModbusOutput(void) {
-  unsigned int total_bytes = 0;  // default: no cmd out
+ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
+  unsigned int total_bytes = 0;
   unsigned int msg_size_bytes;
+  ETMModbusTXData data_to_send;
+  unsigned int header_length;
+  
 
-  header_length = 0;
   // See if there are any high speed messages to be sent
   if (send_high_speed_data_buffer) {
     total_bytes = BuildModbusOutputHighSpeedDataLog();
@@ -552,7 +541,7 @@ unsigned int BuildModbusOutput(void) {
     // FUTURE Scope trace High Voltage is ready to send
   } else if (modbus_command_request) {
     modbus_send_index = MODBUS_RD_COMMAND_DETAIL;
-    total_bytes = BuildModbusOutput_read_command(modbus_send_index, 8);
+    total_bytes = BuildModbusOutput_read_command();
     modbus_command_request = 0; 
   } else {
     // Execute regularly scheduled command - No need to check to see if they were recieved we will resend them again soon enough
@@ -562,24 +551,19 @@ unsigned int BuildModbusOutput(void) {
       total_bytes = BuildModbusOutputGeneric(msg_size_bytes, modbus_send_index);
     }
   }
-  
+
+  header_length = 0;
   if (total_bytes) {
+    header_length = 15;
     transaction_number++; // don't care about overflow
     if (modbus_send_index != MODBUS_WR_EVENTS) {
       ETMTCPModbusWaitForResponse();  // Event log is not repeatable so no need to wait for response
     }
   }
-  return (total_bytes);
-}
 
 
-ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
-  unsigned int    total_length;
-  ETMModbusTXData data_to_send;
-  
-  total_length = BuildModbusOutput();
   data_to_send.header_length = header_length;
-  data_to_send.data_length = total_length - header_length;
+  data_to_send.data_length = total_bytes - header_length;
   data_to_send.header_ptr = buffer_header;
   data_to_send.data_ptr = data_ptr;
   
@@ -691,6 +675,7 @@ void InitModbusData(void)
   // This will add  a transmit message to the Send Calibration Data queue
   // It will return 0x0000 if the message was added to the queue or 0xFFFF if it was not (buffer full)
   ***************************************************************************/
+
 unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset)
 {
     
@@ -713,14 +698,6 @@ unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, un
 
 void ETMLinacModbusUpdate(void) {
   ETMTCPModbusTask();
-  /*
-  if (ETMTCPModbusReadyToTransmit()) {
-    total_length = BuildModbusOutput();
-    if (total_length > 0) {
-      ETMTCPModbusMessageReady();
-    }
-  }
-  */
 }
 
 
