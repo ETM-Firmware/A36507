@@ -38,6 +38,7 @@ enum
 	MODBUS_WR_PULSE_SYNC,
 	MODBUS_WR_ETHERNET,
 	MODBUS_WR_DEBUG_DATA,
+	MODBUS_WR_CAL_DATA,
 	MODBUS_WR_EVENTS,	   /* 11 */
 	
 	MODBUS_WR_ONE_CAL_ENTRY,
@@ -417,101 +418,26 @@ unsigned int BuildModbusOutput_read_command(void)
 #define SIZE_DEBUG_DATA      80
 #define SIZE_HIGH_SPEED_DATA TBD
 
-unsigned int PrepareStandardMessage(void);
 
 unsigned char scheduled_modbus_message_counter = 0;
 
-unsigned int PrepareStandardMessage(void) {
-  unsigned int message_size = 0;
-  
+
+
+unsigned char GetNextMessageType(void) {
+  static unsigned char scheduled_modbus_message_counter = 0;
+
   scheduled_modbus_message_counter++;
-  if (scheduled_modbus_message_counter >= 11) {
-    scheduled_modbus_message_counter = 0;
+  if (scheduled_modbus_message_counter > MODBUS_WR_EVENTS) {
+    scheduled_modbus_message_counter = MODBUS_WR_HVLAMBDA;
   }
   
-  switch (scheduled_modbus_message_counter)
-    {
-    case 0:
-      data_ptr = (unsigned char *)&mirror_hv_lambda;
-      modbus_send_index = MODBUS_WR_HVLAMBDA;
-      message_size = SIZE_BOARD_MIRROR;
-      break;
-
-    case 1:
-      data_ptr = (unsigned char *)&mirror_ion_pump;
-      modbus_send_index = MODBUS_WR_ION_PUMP;
-      message_size = SIZE_BOARD_MIRROR;
-      break;
-    
-    case 2:
-      data_ptr = (unsigned char *)&mirror_afc;
-      modbus_send_index = MODBUS_WR_AFC;
-      message_size = SIZE_BOARD_MIRROR;
-      break;
-      
-    case 3:
-      data_ptr = (unsigned char *)&mirror_cooling;
-      modbus_send_index = MODBUS_WR_COOLING;
-      message_size = SIZE_BOARD_MIRROR;
-      break;
-    
-    case 4:
-      data_ptr = (unsigned char *)&mirror_htr_mag;
-      modbus_send_index = MODBUS_WR_HTR_MAGNET;
-      message_size = SIZE_BOARD_MIRROR;
-      break;
-
-    case 5:
-      data_ptr = (unsigned char *)&mirror_gun_drv;
-      modbus_send_index = MODBUS_WR_GUN_DRIVER;
-      message_size = SIZE_BOARD_MIRROR;
-      break;
-    
-    case 6:
-      data_ptr = (unsigned char *)&mirror_pulse_mon;
-      modbus_send_index = MODBUS_WR_MAGNETRON_CURRENT;
-      message_size = SIZE_BOARD_MIRROR;
-      break;
-    
-    case 7:
-      data_ptr = (unsigned char *)&mirror_pulse_sync;
-      modbus_send_index = MODBUS_WR_PULSE_SYNC;
-      message_size = SIZE_BOARD_MIRROR;
-      break;
-    
-    case 8:
-      data_ptr = (unsigned char *)&local_data_ecb;
-      modbus_send_index = MODBUS_WR_ETHERNET;
-      message_size = SIZE_BOARD_MIRROR;
-      break;
-    
-    case 9:
-      if (etm_can_active_debugging_board_id == ETM_CAN_ADDR_ETHERNET_BOARD) {
-	data_ptr = (unsigned char *)&debug_data_ecb;
-      } else {
-	data_ptr = (unsigned char *)&debug_data_slave_mirror;
-      }
-      modbus_send_index = MODBUS_WR_DEBUG_DATA;
-      message_size = SIZE_DEBUG_DATA;
-      break;
-      
-    case 10:
-      // FUTURE USE OF CALIBRATION DATA
-      break;
-
-    case 11:
-      // EVENT LOG IF NOT EMPTY
-      // DPARKER ADD EVENT LOG IN HERE
-      //total_bytes = BuildModbusOutputEventLog(modbus_send_index);  //DPARKER figure out how to build event log
-      break;
-
-    default: // move to the next for now, ignore some boards
-      scheduled_modbus_message_counter = 0;
-      break;
-    }
-  
-  return message_size;
+  return scheduled_modbus_message_counter;
 }
+
+
+
+
+
 
 
 #define HEADER_LENGTH_CHAR 15
@@ -562,14 +488,120 @@ void BuildModbusHeader(unsigned int data_bytes, unsigned int data_id) {
 }
 
 
+void PrepareStandardMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
+
+  tx_data->data_length = 0;
+
+  switch (data_type)
+    {
+    case MODBUS_WR_HVLAMBDA:
+      tx_data->data_ptr = (unsigned char *)&mirror_hv_lambda;
+      tx_data->data_length = SIZE_BOARD_MIRROR;
+      tx_data->tx_ready = 1;
+      break;
+
+    case MODBUS_WR_ION_PUMP:
+      tx_data->data_ptr = (unsigned char *)&mirror_ion_pump;
+      tx_data->data_length = SIZE_BOARD_MIRROR;
+      tx_data->tx_ready = 1;
+      break;
+    
+    case MODBUS_WR_AFC:
+      tx_data->data_ptr = (unsigned char *)&mirror_afc;
+      tx_data->data_length = SIZE_BOARD_MIRROR;
+      tx_data->tx_ready = 1;
+      break;
+      
+    case MODBUS_WR_COOLING:
+      tx_data->data_ptr = (unsigned char *)&mirror_cooling;
+      tx_data->data_length = SIZE_BOARD_MIRROR;
+      tx_data->tx_ready = 1;
+      break;
+    
+    case MODBUS_WR_HTR_MAGNET:
+      tx_data->data_ptr = (unsigned char *)&mirror_htr_mag;
+      tx_data->data_length = SIZE_BOARD_MIRROR;
+      tx_data->tx_ready = 1;
+      break;
+
+    case MODBUS_WR_GUN_DRIVER:
+      tx_data->data_ptr = (unsigned char *)&mirror_gun_drv;
+      tx_data->data_length = SIZE_BOARD_MIRROR;
+      tx_data->tx_ready = 1;
+      break;
+    
+    case MODBUS_WR_MAGNETRON_CURRENT:
+      tx_data->data_ptr = (unsigned char *)&mirror_pulse_mon;
+      tx_data->data_length = SIZE_BOARD_MIRROR;
+      tx_data->tx_ready = 1;
+      break;
+    
+    case MODBUS_WR_PULSE_SYNC:
+      tx_data->data_ptr = (unsigned char *)&mirror_pulse_sync;
+      tx_data->data_length = SIZE_BOARD_MIRROR;
+      tx_data->tx_ready = 1;
+      break;
+    
+    case MODBUS_WR_ETHERNET:
+      tx_data->data_ptr = (unsigned char *)&local_data_ecb;
+      tx_data->data_length = SIZE_BOARD_MIRROR;
+      tx_data->tx_ready = 1;
+      break;
+    
+    case MODBUS_WR_DEBUG_DATA:
+      if (etm_can_active_debugging_board_id == ETM_CAN_ADDR_ETHERNET_BOARD) {
+	tx_data->data_ptr = (unsigned char *)&debug_data_ecb;
+      } else {
+	tx_data->data_ptr = (unsigned char *)&debug_data_slave_mirror;
+      }
+      tx_data->data_length = SIZE_DEBUG_DATA;
+      tx_data->tx_ready = 1;
+      break;
+      
+    case MODBUS_WR_CAL_DATA:
+      // FUTURE USE OF CALIBRATION DATA
+      tx_data->data_length = 0;
+      tx_data->tx_ready = 0;
+      break;
+
+    case MODBUS_WR_EVENTS:
+      /*
+      tx_data->data_length = 0;
+      if (NewMessageInEventLog()) {
+	tx_data->data_ptr = (unsigned char *)&event_log.event_data[event_log.gui_index];
+	tx_data->data_length = EventLogMessageSize();
+      }
+      */
+      tx_data->data_ptr = (unsigned char *)&local_data_ecb;  // Dummy data location so that we don't crash the processor if this gets executed for some reason
+      tx_data->data_length = 0;
+      tx_data->tx_ready = 0;
+      break;
+
+    case MODBUS_RD_COMMAND_DETAIL:
+      tx_data->data_ptr = (unsigned char *)&local_data_ecb;  // Dummy data location so that we don't crash the processor if this gets executed for some reason
+      tx_data->data_length = 0;
+      tx_data->tx_ready = 1;
+      break;
+    
+
+    default: // move to the next for now, ignore some boards
+      tx_data->data_length = 0;
+      tx_data->data_ptr = (unsigned char *)&local_data_ecb; // DUMMY LOCATION
+      tx_data->tx_ready = 0;
+      break;
+    }
+
+}
+
+
+
 ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
-  unsigned int total_bytes = 0;
-  unsigned int msg_size_bytes;
   ETMModbusTXData data_to_send;
-  unsigned int header_length;
-  unsigned char send_data = 0;
 
   // See if there are any high speed messages to be sent
+  data_to_send.tx_ready = 0;
+  data_to_send.header_length = HEADER_LENGTH_CHAR;
+  data_to_send.header_ptr = buffer_header;
   if (send_high_speed_data_buffer) {
     /*
     total_bytes = BuildModbusOutputHighSpeedDataLog();
@@ -591,38 +623,26 @@ ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
     // FUTURE Scope trace High Voltage is ready to send
   } else if (modbus_command_request) {
     modbus_send_index = MODBUS_RD_COMMAND_DETAIL;
-    msg_size_bytes = 0;
+    PrepareStandardMessage(&data_to_send, modbus_send_index);
     modbus_command_request = 0;
-    data_ptr = (unsigned char *)&local_data_ecb;
-    send_data = 1;
   } else {
     // Execute regularly scheduled command - No need to check to see if they were recieved we will resend them again soon enough
     if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var)) {
       // 100ms has passed - Send the next Message
       //msg_size_bytes = PrepareStandardMessage();
-      data_ptr = (unsigned char *)&local_data_ecb;
-      modbus_send_index = MODBUS_WR_ETHERNET;
-      msg_size_bytes = SIZE_BOARD_MIRROR;
-      //total_bytes = BuildModbusOutputGeneric(msg_size_bytes, modbus_send_index);
-      send_data = 1;
+      modbus_send_index = GetNextMessageType();
+      PrepareStandardMessage(&data_to_send, modbus_send_index);
     }
   }
 
-  header_length = 0;
-  if (send_data) {
-    header_length = HEADER_LENGTH_CHAR;
-    BuildModbusHeader(msg_size_bytes, modbus_send_index);
+
+  if (data_to_send.tx_ready) { 
+    BuildModbusHeader(data_to_send.data_length, modbus_send_index);
     //transaction_number++; // don't care about overflow
     if (modbus_send_index != MODBUS_WR_EVENTS) {
       ETMTCPModbusWaitForResponse();  // Event log is not repeatable so no need to wait for response
     }
   }
-
-
-  data_to_send.header_length = header_length;
-  data_to_send.data_length = msg_size_bytes;
-  data_to_send.header_ptr = buffer_header;
-  data_to_send.data_ptr = data_ptr;
   
   return data_to_send;
 }

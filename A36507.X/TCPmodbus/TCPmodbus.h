@@ -22,7 +22,8 @@ typedef struct {
 typedef struct {
   unsigned char *header_ptr;
   unsigned char *data_ptr;
-  unsigned int  header_length;
+  unsigned char tx_ready;
+  unsigned char  header_length;
   unsigned int  data_length;
 } ETMModbusTXData;
 

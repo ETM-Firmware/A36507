@@ -257,6 +257,7 @@ void ETMTCPClient(void) {
       
       Timer = ETMTickGet();
       
+      tx_data.tx_ready = 0;
       tx_data = ETMModbusApplicationSpecificTXData();
 
       if ((tx_data.header_length + tx_data.data_length) > TCPIsPutReady(MySocket)) {
@@ -264,7 +265,7 @@ void ETMTCPClient(void) {
 	break;
       }
       
-      if (tx_data.header_length == 0) {
+      if (tx_data.tx_ready == 0) {
 	// don't want to send anything for now, stay in this state
 	break;
       }
@@ -275,6 +276,7 @@ void ETMTCPClient(void) {
       // Send the packet
       TCPFlush(MySocket);
       ETMTCPState = SM_PROCESS_RESPONSE;
+
       break;
 
 
