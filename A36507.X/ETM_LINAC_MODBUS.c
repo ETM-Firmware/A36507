@@ -500,9 +500,6 @@ void InitModbusData(void)
   eth_message_from_GUI_put_index = 0;
   eth_message_from_GUI_get_index = 0;
  
-  eth_cal_to_GUI_put_index = 0;
-  eth_cal_to_GUI_get_index = 0;
- 
 }
 
 
