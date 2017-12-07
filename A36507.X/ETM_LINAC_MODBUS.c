@@ -17,6 +17,10 @@ void InitModbusData(void);
 
 static void queue_put_command(unsigned char * buffer_ptr);
 
+
+unsigned int NewMessageInEventLog(void);
+unsigned int EventLogMessageSize(void);
+
 enum {
   MODBUS_WR_CYCLE_START,
   MODBUS_WR_HVLAMBDA, 	
@@ -132,6 +136,37 @@ ETMEthernetMessageFromGUI GetNextMessage(void) {
   
   return (command);    
 }
+
+
+
+unsigned int NewMessageInEventLog(void) {
+  if (event_log.gui_index == event_log.write_index) {
+    return 0;
+  }
+  return 1;
+}
+
+unsigned int EventLogMessageSize(void) {
+  unsigned int events_to_send = 0;
+
+  if (event_log.gui_index > event_log.write_index) {
+    events_to_send = 128 - event_log.gui_index; 
+  } else {
+    events_to_send = event_log.write_index - event_log.gui_index;
+  }
+  if (events_to_send >= 64) {
+    // Max of 64 events per send
+    events_to_send = 64;
+  }	
+  
+  // Update the gui_index
+  event_log.gui_index += events_to_send;
+  event_log.gui_index &= 0x7F;
+
+  return (events_to_send << 3);
+}
+
+
 
 
 void SendPulseData(unsigned int buffer_select) {
@@ -266,16 +301,12 @@ void PrepareStandardMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
       break;
 
     case MODBUS_WR_EVENTS:
-      /*
-      tx_data->data_length = 0;
+      tx_data->tx_ready = 0;
       if (NewMessageInEventLog()) {
 	tx_data->data_ptr = (unsigned char *)&event_log.event_data[event_log.gui_index];
 	tx_data->data_length = EventLogMessageSize();
+	tx_data->tx_ready = 1;
       }
-      */
-      tx_data->data_ptr = (unsigned char *)&local_data_ecb;  // Dummy data location so that we don't crash the processor if this gets executed for some reason
-      tx_data->data_length = 0;
-      tx_data->tx_ready = 0;
       break;
 
     case MODBUS_RD_COMMAND_DETAIL:
