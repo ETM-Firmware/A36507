@@ -12,38 +12,30 @@
 //static unsigned char queue_is_empty(unsigned char q_index);
 
 
-static void queue_put_command(unsigned char * buffer_ptr);
-
-
 ETMEthernetMessageFromGUI GetNextMessage(void);
-
-
-
 void InitModbusData(void);
 
+static void queue_put_command(unsigned char * buffer_ptr);
 
-
-
-enum
-{
-	MODBUS_WR_HVLAMBDA = 1, 	
-	MODBUS_WR_ION_PUMP,
-	MODBUS_WR_AFC,
-	MODBUS_WR_COOLING,
-	MODBUS_WR_HTR_MAGNET,
-	MODBUS_WR_GUN_DRIVER,
-	MODBUS_WR_MAGNETRON_CURRENT,
-	MODBUS_WR_PULSE_SYNC,
-	MODBUS_WR_ETHERNET,
-	MODBUS_WR_DEBUG_DATA,
-	MODBUS_WR_CAL_DATA,
-	MODBUS_WR_EVENTS,	   /* 11 */
-	
-	MODBUS_WR_ONE_CAL_ENTRY,
-	MODBUS_WR_PULSE_LOG,
-	MODBUS_RD_COMMAND_DETAIL,
-
-
+enum {
+  MODBUS_WR_CYCLE_START,
+  MODBUS_WR_HVLAMBDA, 	
+  MODBUS_WR_ION_PUMP,
+  MODBUS_WR_AFC,
+  MODBUS_WR_COOLING,
+  MODBUS_WR_HTR_MAGNET,
+  MODBUS_WR_GUN_DRIVER,
+  MODBUS_WR_MAGNETRON_CURRENT,
+  MODBUS_WR_PULSE_SYNC,
+  MODBUS_WR_ETHERNET,
+  MODBUS_WR_DEBUG_DATA,
+  MODBUS_WR_CAL_DATA,
+  MODBUS_WR_EVENTS,
+  MODBUS_WR_CYCLE_STOP,
+  
+  MODBUS_WR_PULSE_LOG,
+  MODBUS_WR_,
+  MODBUS_RD_COMMAND_DETAIL,
 };
 
 
@@ -165,8 +157,9 @@ unsigned char GetNextMessageType(void) {
   static unsigned char scheduled_modbus_message_counter = 0;
 
   scheduled_modbus_message_counter++;
-  if (scheduled_modbus_message_counter > MODBUS_WR_EVENTS) {
-    scheduled_modbus_message_counter = MODBUS_WR_HVLAMBDA;
+  if (scheduled_modbus_message_counter >= MODBUS_WR_CYCLE_STOP) {
+    scheduled_modbus_message_counter = MODBUS_WR_CYCLE_START;
+    scheduled_modbus_message_counter++;
   }
   
   return scheduled_modbus_message_counter;
@@ -181,54 +174,24 @@ unsigned char GetNextMessageType(void) {
 #define HEADER_LENGTH_CHAR 15
 
 void BuildModbusHeader(unsigned int data_bytes, unsigned int data_id) {
-  static unsigned pulse_index = 0;        // index for eash tracking
-  static unsigned transaction_number = 0; // Index for each transaction
-
-
-  buffer_header[0] = (transaction_number >> 8) & 0xff;	    // transaction hi byte
-  buffer_header[1] = transaction_number & 0xff;	    // transaction lo byte
-  buffer_header[2] = 0;	                            // protocol hi - 0 
-  buffer_header[3] = 0;	                            // protocol lo - 0
-  buffer_header[4] = ((data_bytes + HEADER_LENGTH_CHAR - 8) >> 8);              // This is the length of data remaining in the message
-  buffer_header[5] = (data_bytes + HEADER_LENGTH_CHAR - 8);                       // This is the length of data remaining in the message
-  buffer_header[6] = data_id;                              // Unit Identifier - What Type of Data is this 
-  if (data_id == MODBUS_RD_COMMAND_DETAIL) {
-    buffer_header[7] = 0x3;                                // function code 0x03 = Read Multiple Holding Registers, 
-  } else {
-    buffer_header[7] = 0x10;                               // function code 0x10 = Write Multiple Holding Registers, 
-  }
-  // DATA STARTS HERE - HOW SHOULD THIS BE FORMATED FOR GENERIC ETM MESSAGES
-  buffer_header[8] = 0;                                    // Reserved for pulse index High Word
-  buffer_header[9] = 0;	                                   // Reserved for pulse index low word
-  // This header data is not sent out
-  buffer_header[10] = data_bytes >> 9;                     // msg length in words hi
-  buffer_header[11] = data_bytes >> 1;                     // msg length in words lo
-  buffer_header[12] = (data_bytes +15) & 0xff;                   // data length in bytes // DPARKER is this used???
-  buffer_header[13] = (pulse_index >> 8) & 0xff;           // pulse index high word
-  buffer_header[14] = pulse_index & 0xff;                  // pulse index low word
-
-
-  if (data_id == MODBUS_RD_COMMAND_DETAIL) {
-    buffer_header[9] = MODBUS_RD_COMMAND_DETAIL;
-    buffer_header[10] = 0;                     // msg length in words hi
-    buffer_header[11] = 4;                     // msg length in words lo
-    buffer_header[12] = 0;                   // data length in bytes // DPARKER is this used???
-  }
 
 
 
-  
-  if (data_id == MODBUS_WR_PULSE_LOG) {
-    pulse_index++;  // overflows at 65535
-  }
-  transaction_number++;
   
 }
 
 
 void PrepareStandardMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
+  static unsigned pulse_index = 0;        // index for eash tracking
+  static unsigned transaction_number = 0; // Index for each transaction
+
 
   tx_data->data_length = 0;
+  tx_data->tx_ready = 0;
+  
+  tx_data->header_length = HEADER_LENGTH_CHAR;
+  tx_data->header_ptr = buffer_header;
+  
 
   switch (data_type)
     {
@@ -329,17 +292,57 @@ void PrepareStandardMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
       break;
     }
 
+  if (tx_data->tx_ready) {
+ 
+    // DPARKER the header message still needs some clean up to make the specifiaction clear and uniform
+
+   // Prepare the header message
+    buffer_header[0] = (transaction_number >> 8) & 0xff;	    // transaction hi byte
+    buffer_header[1] = transaction_number & 0xff;	    // transaction lo byte
+    buffer_header[2] = 0;	                            // protocol hi - 0 
+    buffer_header[3] = 0;	                            // protocol lo - 0
+    buffer_header[4] = ((tx_data->data_length + HEADER_LENGTH_CHAR - 8) >> 8);              // This is the length of data remaining in the message
+    buffer_header[5] = (tx_data->data_length + HEADER_LENGTH_CHAR - 8);                       // This is the length of data remaining in the message
+    buffer_header[6] = data_type;                              // Unit Identifier - What Type of Data is this 
+    if (data_type == MODBUS_RD_COMMAND_DETAIL) {
+      buffer_header[7] = 0x3;                                // function code 0x03 = Read Multiple Holding Registers, 
+    } else {
+      buffer_header[7] = 0x10;                               // function code 0x10 = Write Multiple Holding Registers, 
+    }
+    // DATA STARTS HERE - HOW SHOULD THIS BE FORMATED FOR GENERIC ETM MESSAGES
+    buffer_header[8] = 0;                                    // Reserved for pulse index High Word
+    buffer_header[9] = 0;	                                   // Reserved for pulse index low word
+    // This header data is not sent out
+    buffer_header[10] = tx_data->data_length >> 9;                     // msg length in words hi
+    buffer_header[11] = tx_data->data_length >> 1;                     // msg length in words lo
+    buffer_header[12] = (tx_data->data_length +15) & 0xff;                   // data length in bytes // DPARKER is this used???
+    buffer_header[13] = (pulse_index >> 8) & 0xff;           // pulse index high word
+    buffer_header[14] = pulse_index & 0xff;                  // pulse index low word
+    
+    
+    if (data_type == MODBUS_RD_COMMAND_DETAIL) {
+      buffer_header[9] = MODBUS_RD_COMMAND_DETAIL;
+      buffer_header[10] = 0;                     // msg length in words hi
+      buffer_header[11] = 4;                     // msg length in words lo
+      buffer_header[12] = 0;                   // data length in bytes // DPARKER is this used???
+    }
+
+    if (data_type == MODBUS_WR_PULSE_LOG) {
+      pulse_index++;  // overflows at 65535
+    }
+    transaction_number++;
+  }
 }
 
 
 
 ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
   ETMModbusTXData data_to_send;
+  unsigned char send_message;
 
   // See if there are any high speed messages to be sent
-  data_to_send.tx_ready = 0;
-  data_to_send.header_length = HEADER_LENGTH_CHAR;
-  data_to_send.header_ptr = buffer_header;
+
+  send_message = 0;
   if (send_high_speed_data_buffer) {
     /*
     total_bytes = BuildModbusOutputHighSpeedDataLog();
@@ -361,24 +364,22 @@ ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
     // FUTURE Scope trace High Voltage is ready to send
   } else if (modbus_command_request) {
     modbus_send_index = MODBUS_RD_COMMAND_DETAIL;
-    PrepareStandardMessage(&data_to_send, modbus_send_index);
+    send_message = 1;
     modbus_command_request = 0;
   } else {
     // Execute regularly scheduled command - No need to check to see if they were recieved we will resend them again soon enough
     if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var)) {
       // 100ms has passed - Send the next Message
-      //msg_size_bytes = PrepareStandardMessage();
       modbus_send_index = GetNextMessageType();
-      PrepareStandardMessage(&data_to_send, modbus_send_index);
+      send_message = 1;
     }
   }
 
 
-  if (data_to_send.tx_ready) { 
-    BuildModbusHeader(data_to_send.data_length, modbus_send_index);
-    //transaction_number++; // don't care about overflow
+  if (send_message) { 
+    PrepareStandardMessage(&data_to_send, modbus_send_index);
     if (modbus_send_index != MODBUS_WR_EVENTS) {
-      ETMTCPModbusWaitForResponse();  // Event log is not repeatable so no need to wait for response
+      //ETMTCPModbusWaitForResponse();  // Event log is not repeatable so no need to wait for response
     }
   }
   
