@@ -8,16 +8,14 @@
 #include "ETM_IO_PORTS.h"  //DPARKER Fix this
 
 
-static unsigned char queue_buffer_room(unsigned char q_index);
-static unsigned char queue_is_empty(unsigned char q_index);
-static void queue_put_command(unsigned char * buffer_ptr);
-ETMEthernetMessageFromGUI GetNextMessage(void);
-void BuildModbusOutput_write_header(unsigned int total_bytes);
-unsigned int BuildModbusOutputEventLog(unsigned char index);
-unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char data_id);
-unsigned int BuildModbusOutputHighSpeedDataLog(void);
+//static unsigned char queue_buffer_room(unsigned char q_index);
+//static unsigned char queue_is_empty(unsigned char q_index);
 
-unsigned int BuildModbusOutput_read_command(void);
+
+static void queue_put_command(unsigned char * buffer_ptr);
+
+
+ETMEthernetMessageFromGUI GetNextMessage(void);
 
 
 
@@ -68,7 +66,6 @@ ETMEthernetCalToGUI          eth_cal_to_GUI[ ETH_CAL_TO_GUI_BUFFER_SIZE ];
 static unsigned char         modbus_send_index = 0;
 //static unsigned char         modbus_refresh_index = 1;
 static unsigned char         modbus_command_request = 0;  /* how many commands from GUI */
-static unsigned int         transaction_number = 0;
 
 static unsigned char         eth_message_from_GUI_put_index;
 static unsigned char         eth_message_from_GUI_get_index;
@@ -87,98 +84,6 @@ unsigned char buffer_header[MAX_RX_SIZE];
 //ETMModbusTXData etm_modbus_tx_data;
 
 
-#define QUEUE_MESSAGE_FROM_GUI  1
-#define QUEUE_CAL_TO_GUI        2
-/****************************************************************************
-  Function:
-    static unsigned char queue_buffer_room(q_index)
-
-  Input:
-    index to a queue
-  Description:
- 	return buffer room left for the queue
-  Remarks:
-    None
-***************************************************************************/
-static unsigned char queue_buffer_room(unsigned char q_index) {
-  unsigned char room = 0;
-  unsigned char put_index;
-  unsigned char get_index;
-  unsigned char size;
-    
-  switch (q_index) {
-  case QUEUE_MESSAGE_FROM_GUI: 
-    put_index = eth_message_from_GUI_put_index;
-    get_index = eth_message_from_GUI_get_index;
-    size = ETH_GUI_MESSAGE_BUFFER_SIZE;
-    break;
-  case QUEUE_CAL_TO_GUI:
-    put_index = eth_cal_to_GUI_put_index;
-    get_index = eth_cal_to_GUI_get_index;
-    size = ETH_CAL_TO_GUI_BUFFER_SIZE;
-    break;
-  default:
-    room = 0xff; // not defined
-    break;
-  }
-    
-  if (room != 0xff)
-    {
-      room  = (get_index - put_index - 1) & (size - 1);        
-    }
-  else
-    room = 0;
-        
-  return (room);
-}
-
-
-
-/****************************************************************************
-  Function:
-    static unsigned char is_queue_empty(index)
-
-  Input:
-    index to a queue
-  Description:
- 	return length of the queue
-  Remarks:
-    None
-***************************************************************************/
-static unsigned char queue_is_empty(unsigned char q_index) {
-  unsigned char is_empty = 0;
-  unsigned char put_index;
-  unsigned char get_index;
-  unsigned char size;
-    
-  switch (q_index) {
-  case QUEUE_MESSAGE_FROM_GUI: 
-    put_index = eth_message_from_GUI_put_index;
-    get_index = eth_message_from_GUI_get_index;
-    size = ETH_GUI_MESSAGE_BUFFER_SIZE;
-    break;
-  case QUEUE_CAL_TO_GUI:
-    put_index = eth_cal_to_GUI_put_index;
-    get_index = eth_cal_to_GUI_get_index;
-    size = ETH_CAL_TO_GUI_BUFFER_SIZE;
-    break;
-  default:
-    is_empty = 0xff; // not defined
-    break;
-  }
-    
-  if (is_empty != 0xff)
-    {
-      if (put_index == get_index)
-	is_empty = 1;
-      // else default is_empty = 0 	    
-    }
-  else
-    is_empty = 0; // not defined
-        
-  return (is_empty);
-}
-
 
 /****************************************************************************
   Function:
@@ -191,20 +96,22 @@ static unsigned char queue_is_empty(unsigned char q_index) {
   Remarks:
     None
 ***************************************************************************/
-static void queue_put_command(unsigned char * buffer_ptr)
-{
-  if (queue_buffer_room(QUEUE_MESSAGE_FROM_GUI) > 0)
-    {
-      eth_message_from_GUI[eth_message_from_GUI_put_index].index = (*buffer_ptr << 8) | *(buffer_ptr + 1);
-      eth_message_from_GUI[eth_message_from_GUI_put_index].data_2 = (*(buffer_ptr + 2) << 8) | *(buffer_ptr + 3);
-      eth_message_from_GUI[eth_message_from_GUI_put_index].data_1 = (*(buffer_ptr + 4) << 8) | *(buffer_ptr + 5);
-      eth_message_from_GUI[eth_message_from_GUI_put_index].data_0 = (*(buffer_ptr + 6) << 8) | *(buffer_ptr + 7);
-
-      eth_message_from_GUI_put_index++;
-      eth_message_from_GUI_put_index = eth_message_from_GUI_put_index & (ETH_GUI_MESSAGE_BUFFER_SIZE - 1);
-    
-    }
-        
+static void queue_put_command(unsigned char * buffer_ptr) {
+  
+  if (((eth_message_from_GUI_put_index + 1) & 0xF) == eth_message_from_GUI_get_index) {
+    // The command buffer is full
+    // Drop this message??
+    // DPARKER what to do here
+    return;
+  }
+  
+  eth_message_from_GUI[eth_message_from_GUI_put_index].index = (*buffer_ptr << 8) | *(buffer_ptr + 1);
+  eth_message_from_GUI[eth_message_from_GUI_put_index].data_2 = (*(buffer_ptr + 2) << 8) | *(buffer_ptr + 3);
+  eth_message_from_GUI[eth_message_from_GUI_put_index].data_1 = (*(buffer_ptr + 4) << 8) | *(buffer_ptr + 5);
+  eth_message_from_GUI[eth_message_from_GUI_put_index].data_0 = (*(buffer_ptr + 6) << 8) | *(buffer_ptr + 7);
+  
+  eth_message_from_GUI_put_index++;
+  eth_message_from_GUI_put_index &= 0xF;
 }
 
 
@@ -222,14 +129,15 @@ static void queue_put_command(unsigned char * buffer_ptr)
 ETMEthernetMessageFromGUI GetNextMessage(void) {
   ETMEthernetMessageFromGUI command;
   
-  if (queue_is_empty(QUEUE_MESSAGE_FROM_GUI) == 0) {
+  if (eth_message_from_GUI_put_index == eth_message_from_GUI_get_index)  {
+    // The message queue is empty
+    command.index = 0xFFFF;
+  } else {
     command = eth_message_from_GUI[eth_message_from_GUI_get_index]; 
     eth_message_from_GUI_get_index++;
-    eth_message_from_GUI_get_index = eth_message_from_GUI_get_index & (ETH_GUI_MESSAGE_BUFFER_SIZE - 1);
-    
-  } else {
-    command.index = 0xffff;
+    eth_message_from_GUI_get_index &= 0xF;
   }
+  
   return (command);    
 }
 
@@ -243,176 +151,6 @@ void SendPulseData(unsigned int buffer_select) {
 }
 
 
-/****************************************************************************
-  Function:
-    BuildModbusOutput_write_header(unsigned index)
-
-  Description:
-    Build the header for modbus command according to total bytes
- 
-	modbus header for write:  transaction ID(word), protocol ID(word, 0x0000), length(word, bytes to follow), 
-	unit id (byte, 0xff), function code (byte, 0x10), reference number(word), data word count (word), 
-	data byte count(byte), data bytes 
-***************************************************************************/
-void BuildModbusOutput_write_header(unsigned int total_bytes)
-{
-  buffer_header[0] = (transaction_number >> 8) & 0xff;	  // transaction hi byte
-  buffer_header[1] = transaction_number & 0xff;	          // transaction lo byte
-  buffer_header[2] = 0;	                                  // protocol hi 
-  buffer_header[3] = 0;	                                  // protocol lo 
-  buffer_header[4] = ((total_bytes + 7) >> 8) & 0xff;     // byte 4 and 5 for length
-  buffer_header[5] = (total_bytes + 7) & 0xff;
-  buffer_header[6] = modbus_send_index;	                  // unit Id 
-  buffer_header[7] = 0x10;                                // function code 
-  buffer_header[8] = 0;                                   // ref # hi
-  buffer_header[9] = 0;	                                  // ref # lo
-  buffer_header[10] = (total_bytes >> 9) & 0xff;          // data length in words hi, always 0, assume data length < 256
-  buffer_header[11] = total_bytes >> 1;                   // data length in words lo
-  buffer_header[12] = total_bytes & 0xff;                 // data length in bytes
-
-}
-
-
-
-/****************************************************************************
-  Function:
-    BuildModbusOutputEventLog(void)
-
-  Description:
-    Build modbus command, return 0 if we don't want to send anything
- 
-***************************************************************************/
-// DPARKER rewrite this to use point to data instead of data buffer
-unsigned int BuildModbusOutputEventLog(unsigned char index)
-{
-  unsigned int x, i; 
-  unsigned int total_bytes = 0;  // default: no cmd out 
-  switch (index) // otherwise index is wrong, don't need send any cmd out
-    {
-    case MODBUS_WR_EVENTS: 
-      // check if there are new events
-      if (event_log.gui_index == event_log.write_index) break;  /* no new events */
-
-      total_bytes = ((event_log.write_index - event_log.gui_index) & 0x7F) * sizeof(TYPE_EVENT);
-	
-      BuildModbusOutput_write_header(total_bytes);   
-
-      // data starts at offset 13
-      for (x = event_log.gui_index, i = 0; x != event_log.write_index; i++)
-        {
-            
-	  if (i >= 64) break;  // max transfer 64 entries at one time
-	  /*    
-	  data_buffer[i * sizeof(TYPE_EVENT) + 13] = (event_log.event_data[x].event_number >> 8) & 0xff;
-	  data_buffer[i * sizeof(TYPE_EVENT) + 14] = event_log.event_data[x].event_number & 0xff;
-	  data_buffer[i * sizeof(TYPE_EVENT) + 15] = (event_log.event_data[x].event_time >> 24) & 0xff;
-	  data_buffer[i * sizeof(TYPE_EVENT) + 16] = (event_log.event_data[x].event_time >> 16) & 0xff;
-	  data_buffer[i * sizeof(TYPE_EVENT) + 17] = (event_log.event_data[x].event_time >> 8) & 0xff;
-	  data_buffer[i * sizeof(TYPE_EVENT) + 18] = event_log.event_data[x].event_time & 0xff;
-	  data_buffer[i * sizeof(TYPE_EVENT) + 19] = (event_log.event_data[x].event_id >> 8) & 0xff;
-	  data_buffer[i * sizeof(TYPE_EVENT) + 20] = event_log.event_data[x].event_id & 0xff;
-      */
-	  x++;
-	  x &= 0x7F;
-        }
-
-      event_log.gui_index = x; //  next entry
-
-      total_bytes = i * sizeof(TYPE_EVENT) + 13;
-
-
-       
-      break;
-      
-    default:
-      break;           
-	     
-    }
-       
-  return (total_bytes);
-
-}
-
-
-unsigned int BuildModbusOutputGeneric(unsigned int msg_bytes,  unsigned char data_id) {
-  unsigned int total_bytes;
-
-  total_bytes = msg_bytes + 15;
-
-  buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-  buffer_header[1] = transaction_number & 0xff;	         // transaction lo byte
-  buffer_header[2] = 0;	                                 // protocol hi 
-  buffer_header[3] = 0;	                                 // protocol lo 
-  buffer_header[4] = ((msg_bytes + 7) >> 8);             // This is the length of data HB
-  buffer_header[5] = msg_bytes + 7;                      // This is the length of data LB
-  buffer_header[6] = data_id;	                         // Which Block of data are we sending 
-  buffer_header[7] = 0x10;                               // function code 
-  buffer_header[8] = 0;                                  // ref # hi
-  buffer_header[9] = 0;	                                 // ref # lo
-  buffer_header[10] = (msg_bytes >> 9);                  // msg length in words hi
-  buffer_header[11] = msg_bytes >> 1;                    // msg length in words lo
-  buffer_header[12] = total_bytes & 0xff;                // data length in bytes // DPARKER is this used???
-
-  return total_bytes;
-}
-
-unsigned int BuildModbusOutputHighSpeedDataLog(void) {
-  unsigned int data_bytes;
-  static unsigned pulse_index = 0;  // index for eash tracking
-  
-  data_bytes = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData) + 2;
-
-  buffer_header[0] = (transaction_number >> 8) & 0xff;	 // transaction hi byte
-  buffer_header[1] = transaction_number & 0xff;	         // transaction lo byte
-  buffer_header[2] = 0;	                                 // protocol hi 
-  buffer_header[3] = 0;	                                 // protocol lo 
-  buffer_header[4] = ((data_bytes + 7) >> 8);              // This is the length of data HB
-  buffer_header[5] = data_bytes + 7;                       // This is the length of data LB
-  buffer_header[6] = MODBUS_WR_PULSE_LOG;                  // 
-  buffer_header[7] = 0x10;                                 // function code 
-  buffer_header[8] = 0;                                    // ref # hi
-  buffer_header[9] = 0;	                                  // ref # lo
-  buffer_header[10] = data_bytes >> 9;                     // msg length in words hi
-  buffer_header[11] = data_bytes >> 1;                     // msg length in words lo
-  buffer_header[12] = data_bytes & 0xff;                   // data length in bytes // DPARKER is this used???
-  buffer_header[13] = (pulse_index >> 8) & 0xff;           // pulse index high word
-  buffer_header[14] = pulse_index & 0xff;                  // pulse index low word
-  
-  pulse_index++;  // overflows at 65535
-  
-  return data_bytes + 13;
-
-}
-
-/****************************************************************************
-  Function:
-    BuildModbusOutput_read_command()
-
-  Description:
-    Build modbus command, return 0 if we don't want to send anything
- 
-***************************************************************************/
-unsigned int BuildModbusOutput_read_command(void)
-{ 
-  /* modbus header for read:  transaction ID(word), protocol ID(word, 0x0000), length(word, bytes to follow), 
-     unit id (byte, 0xff), function code (byte, 0x03), reference number(word), word count (byte) */
-
-  buffer_header[0] = (transaction_number >> 8) & 0xff;	  // transaction hi byte
-  buffer_header[1] = transaction_number & 0xff;	          // transaction lo byte
-  buffer_header[2] = 0;	                                  // protocol hi 
-  buffer_header[3] = 0;	                                  // protocol lo 
-  buffer_header[4] = 0;
-  buffer_header[5] = 6;
-  buffer_header[6] = MODBUS_RD_COMMAND_DETAIL;
-  buffer_header[7] = 0x3;                                 // function code 
-  buffer_header[8] = 1;                                   // ref # hi
-  buffer_header[9] = MODBUS_RD_COMMAND_DETAIL;            // ref # lo, redundant for now
-  buffer_header[10] = 0;                                  // data length in words hi 
-  buffer_header[11] = 4;                                  // data length in words lo
-  buffer_header[12] = 0;                                  // data length in bytes // DPARKER is this used???
-         
-  return (15);	// always 15 bytes for read command
-}
 
 #define SIZE_BOARD_MIRROR    104
 #define SIZE_DEBUG_DATA      80
@@ -753,23 +491,8 @@ void InitModbusData(void)
   // It will return 0x0000 if the message was added to the queue or 0xFFFF if it was not (buffer full)
   ***************************************************************************/
 
-unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset)
-{
-    
-  if (queue_buffer_room(QUEUE_CAL_TO_GUI) > 0)
-    {
-      eth_cal_to_GUI[eth_cal_to_GUI_put_index].index  = index;
-      eth_cal_to_GUI[eth_cal_to_GUI_put_index].scale = scale;
-      eth_cal_to_GUI[eth_cal_to_GUI_put_index].offset = offset;
-        
-      eth_cal_to_GUI_put_index++;
-      eth_cal_to_GUI_put_index = eth_cal_to_GUI_put_index & (ETH_CAL_TO_GUI_BUFFER_SIZE - 1);
-    
-      return (0);
-    }
-  else
-    return (0xffff);
-        
+unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset) {
+  return (0xffff);
 }
 
 
