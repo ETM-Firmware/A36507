@@ -1072,6 +1072,7 @@ void DoA36507(void) {
     // Run at 1 second interval
     if (can_master_millisecond_counter >= 1000) {
       can_master_millisecond_counter = 0;
+      SendToEventLog(0xD1DF);
     }
 
     // Run once a second at 0 milliseconds

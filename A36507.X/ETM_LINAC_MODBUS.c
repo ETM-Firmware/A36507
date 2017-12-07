@@ -33,8 +33,8 @@ enum {
   MODBUS_WR_PULSE_SYNC,
   MODBUS_WR_ETHERNET,
   MODBUS_WR_DEBUG_DATA,
-  MODBUS_WR_CAL_DATA,
   MODBUS_WR_EVENTS,
+  MODBUS_WR_CAL_DATA,
   MODBUS_WR_CYCLE_STOP,
   
   MODBUS_WR_PULSE_LOG,
@@ -65,8 +65,6 @@ static unsigned char         modbus_command_request = 0;  /* how many commands f
 
 static unsigned char         eth_message_from_GUI_put_index;
 static unsigned char         eth_message_from_GUI_get_index;
-static unsigned char         eth_cal_to_GUI_put_index;
-static unsigned char         eth_cal_to_GUI_get_index;
 static unsigned char         send_high_speed_data_buffer;  /* bit 0 high for buffer A, bit 1 high for buffer B */
 
 
