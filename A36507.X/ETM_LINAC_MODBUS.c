@@ -52,7 +52,7 @@ typedef struct {
 ETMEthernetMessageFromGUI    eth_message_from_GUI[ ETH_GUI_MESSAGE_BUFFER_SIZE ];
 
 
-static unsigned char         modbus_send_index = 0;  // DPARKER why is this global
+static unsigned char         last_index_sent = 0;  // DPARKER why is this global
 static unsigned char         modbus_command_request = 0;  /* how many commands from GUI */
 static unsigned char         eth_message_from_GUI_put_index;
 static unsigned char         eth_message_from_GUI_get_index;
@@ -62,10 +62,9 @@ static unsigned char         pulse_log_buffer_select;
 static unsigned char         pulse_log_ready_to_send = 0;
 
 // This is used to time the "standard" ethernet messages at 1 per 100mS
-static unsigned long timer_write_holding_var;
+unsigned long timer_write_holding_var;
 
 #define HEADER_LENGTH_CHAR 15
-static unsigned char buffer_header[HEADER_LENGTH_CHAR];
 
 
 static void AddMessageFromGUI(unsigned char * buffer_ptr) {
@@ -122,6 +121,7 @@ static unsigned int NewMessageInEventLog(void) {
   return 1;
 }
 
+
 static unsigned int EventLogMessageSize(void) {
   unsigned int events_to_send = 0;
 
@@ -142,6 +142,47 @@ static unsigned int EventLogMessageSize(void) {
   return (events_to_send << 3);
 }
 
+
+void SetActiveDebuggingID(unsigned char modbus_index) {
+  switch (modbus_index) 
+    {
+    case MODBUS_WR_HVLAMBDA:
+      etm_can_active_debugging_board_id = ETM_CAN_ADDR_HV_LAMBDA_BOARD;
+      break;
+      
+    case MODBUS_WR_ION_PUMP:
+      etm_can_active_debugging_board_id = ETM_CAN_ADDR_ION_PUMP_BOARD;
+      break;
+      
+    case MODBUS_WR_AFC:
+      etm_can_active_debugging_board_id = ETM_CAN_ADDR_AFC_CONTROL_BOARD;
+      break;
+      
+    case MODBUS_WR_COOLING:
+      etm_can_active_debugging_board_id = ETM_CAN_ADDR_COOLING_INTERFACE_BOARD;
+      break;
+      
+    case MODBUS_WR_HTR_MAGNET:
+      etm_can_active_debugging_board_id = ETM_CAN_ADDR_HEATER_MAGNET_BOARD;
+      break;
+      
+    case MODBUS_WR_GUN_DRIVER:
+      etm_can_active_debugging_board_id = ETM_CAN_ADDR_GUN_DRIVER_BOARD;
+      break;
+      
+    case MODBUS_WR_MAGNETRON_CURRENT:
+      etm_can_active_debugging_board_id = ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD;
+      break;
+      
+    case MODBUS_WR_PULSE_SYNC:
+      etm_can_active_debugging_board_id = ETM_CAN_ADDR_PULSE_SYNC_BOARD;
+      break;
+      
+    case MODBUS_WR_ETHERNET:
+      etm_can_active_debugging_board_id = ETM_CAN_ADDR_ETHERNET_BOARD;
+      break;
+    }
+}
 
 
 // DPARKER - figure out pulse data
@@ -166,7 +207,7 @@ static unsigned char GetNextSendIndex(void) {
 
 #define SIZE_BOARD_MIRROR    104
 #define SIZE_DEBUG_DATA      80
-#define SIZE_HIGH_SPEED_DATA TBD
+
 
 static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
   static unsigned pulse_index = 0;        // index for eash tracking
@@ -177,7 +218,6 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
   tx_data->tx_ready = 0;
   
   tx_data->header_length = HEADER_LENGTH_CHAR;
-  tx_data->header_ptr = buffer_header;
   
 
   switch (data_type)
@@ -270,6 +310,7 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
 	tx_data->data_ptr = (unsigned char *)&high_speed_data_buffer_b[0];
       }
       tx_data->data_length = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData);
+      tx_data->data_length = 0;
       tx_data->tx_ready = 0;
       break;
 
@@ -311,39 +352,42 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
       break;
     }
 
+
   if (tx_data->tx_ready) {
- 
+    last_index_sent = data_type;
+    debug_data_ecb.debug_reg[11]++; 
+    
     // DPARKER the header message still needs some clean up to make the specifiaction clear and uniform
 
    // Prepare the header message
-    buffer_header[0] = (transaction_number >> 8) & 0xff;	    // transaction hi byte
-    buffer_header[1] = transaction_number & 0xff;	    // transaction lo byte
-    buffer_header[2] = 0;	                            // protocol hi - 0 
-    buffer_header[3] = 0;	                            // protocol lo - 0
-    buffer_header[4] = ((tx_data->data_length + HEADER_LENGTH_CHAR - 8) >> 8);              // This is the length of data remaining in the message
-    buffer_header[5] = (tx_data->data_length + HEADER_LENGTH_CHAR - 8);                       // This is the length of data remaining in the message
-    buffer_header[6] = data_type;                              // Unit Identifier - What Type of Data is this 
+    tx_data->header_data[0] = (transaction_number >> 8) & 0xff;	    // transaction hi byte
+    tx_data->header_data[1] = transaction_number & 0xff;	    // transaction lo byte
+    tx_data->header_data[2] = 0;	                            // protocol hi - 0 
+    tx_data->header_data[3] = 0;	                            // protocol lo - 0
+    tx_data->header_data[4] = ((tx_data->data_length + HEADER_LENGTH_CHAR - 8) >> 8);              // This is the length of data remaining in the message
+    tx_data->header_data[5] = (tx_data->data_length + HEADER_LENGTH_CHAR - 8);                       // This is the length of data remaining in the message
+    tx_data->header_data[6] = data_type;                              // Unit Identifier - What Type of Data is this 
     if (data_type == MODBUS_RD_COMMAND_DETAIL) {
-      buffer_header[7] = 0x3;                                // function code 0x03 = Read Multiple Holding Registers, 
+      tx_data->header_data[7] = 0x3;                                // function code 0x03 = Read Multiple Holding Registers, 
     } else {
-      buffer_header[7] = 0x10;                               // function code 0x10 = Write Multiple Holding Registers, 
+      tx_data->header_data[7] = 0x10;                               // function code 0x10 = Write Multiple Holding Registers, 
     }
     // DATA STARTS HERE - HOW SHOULD THIS BE FORMATED FOR GENERIC ETM MESSAGES
-    buffer_header[8] = 0;                                    // Reserved for pulse index High Word
-    buffer_header[9] = 0;	                                   // Reserved for pulse index low word
+    tx_data->header_data[8] = 0;                                    // Reserved for pulse index High Word
+    tx_data->header_data[9] = 0;	                                   // Reserved for pulse index low word
     // This header data is not sent out
-    buffer_header[10] = tx_data->data_length >> 9;                     // msg length in words hi
-    buffer_header[11] = tx_data->data_length >> 1;                     // msg length in words lo
-    buffer_header[12] = (tx_data->data_length +15) & 0xff;                   // data length in bytes // DPARKER is this used???
-    buffer_header[13] = (pulse_index >> 8) & 0xff;           // pulse index high word
-    buffer_header[14] = pulse_index & 0xff;                  // pulse index low word
+    tx_data->header_data[10] = tx_data->data_length >> 9;                     // msg length in words hi
+    tx_data->header_data[11] = tx_data->data_length >> 1;                     // msg length in words lo
+    tx_data->header_data[12] = (tx_data->data_length +15) & 0xff;                   // data length in bytes // DPARKER is this used???
+    tx_data->header_data[13] = (pulse_index >> 8) & 0xff;           // pulse index high word
+    tx_data->header_data[14] = pulse_index & 0xff;                  // pulse index low word
     
     
     if (data_type == MODBUS_RD_COMMAND_DETAIL) {
-      buffer_header[9] = MODBUS_RD_COMMAND_DETAIL;
-      buffer_header[10] = 0;                     // msg length in words hi
-      buffer_header[11] = 4;                     // msg length in words lo
-      buffer_header[12] = 0;                   // data length in bytes // DPARKER is this used???
+      tx_data->header_data[9] = MODBUS_RD_COMMAND_DETAIL;
+      tx_data->header_data[10] = 0;                     // msg length in words hi
+      tx_data->header_data[11] = 4;                     // msg length in words lo
+      tx_data->header_data[12] = 0;                   // data length in bytes // DPARKER is this used???
     }
 
     transaction_number++;
@@ -352,17 +396,17 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
 
 
 
-ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
-  ETMModbusTXData data_to_send;
+void ETMModbusApplicationSpecificTXData(ETMModbusTXData* tx_data_to_send) {
+  //ETMModbusTXData data_to_send;
   unsigned char send_message;
-
+  unsigned char modbus_tx_index;
   // See if there are any high speed messages to be sent
 
   send_message = 0;
 
   if (pulse_log_ready_to_send) {
-    modbus_send_index = MODBUS_WR_PULSE_LOG;
-    send_message = 1;
+    modbus_tx_index = MODBUS_WR_PULSE_LOG;
+    send_message = 0;
     pulse_log_ready_to_send = 0;
   } else if (0) {
     // FUTURE Event log counter is greater than 32
@@ -372,28 +416,32 @@ ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
     // FUTURE Scope trace B is ready to send
   } else if (0) {
     // FUTURE Scope trace High Voltage is ready to send
+  } else if (0) {
+    // FUTURE Magnetron Current Scope
   } else if (modbus_command_request) {
-    modbus_send_index = MODBUS_RD_COMMAND_DETAIL;
+    modbus_tx_index = MODBUS_RD_COMMAND_DETAIL;
     send_message = 1;
+    debug_data_ecb.debug_reg[12]++;
     modbus_command_request = 0;
   } else {
     // Execute regularly scheduled command - No need to check to see if they were recieved we will resend them again soon enough
     if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var)) {
+      debug_data_ecb.debug_reg[13]++;
       // 100ms has passed - Send the next Message
-      modbus_send_index = GetNextSendIndex();
+      modbus_tx_index = GetNextSendIndex();
       send_message = 1;
     }
   }
 
 
   if (send_message) { 
-    PrepareTXMessage(&data_to_send, modbus_send_index);
-    if (modbus_send_index != MODBUS_WR_EVENTS) {
+    PrepareTXMessage(tx_data_to_send, modbus_tx_index);
+    if (modbus_tx_index != MODBUS_WR_EVENTS) {
       //ETMTCPModbusWaitForResponse();  // Event log is not repeatable so no need to wait for response
     }
   }
   
-  return data_to_send;
+  //return data_to_send;
 }
 
 
@@ -401,57 +449,20 @@ ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
 
 void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]) {
   
-  if (data_RX[6] == modbus_send_index) {
-    if (modbus_send_index == MODBUS_RD_COMMAND_DETAIL) {
-      AddMessageFromGUI(&data_RX[9]);
-    } else { 
-      /* write commands return command count in the reference field */
-      modbus_command_request = (data_RX[8] << 8) | data_RX[9];
-    }
-    
-    etm_can_active_debugging_board_id = data_RX[10];
-    switch (data_RX[10]) 
-      {
-      case MODBUS_WR_HVLAMBDA:
-	etm_can_active_debugging_board_id = ETM_CAN_ADDR_HV_LAMBDA_BOARD;
-	break;
-	
-      case MODBUS_WR_ION_PUMP:
-	etm_can_active_debugging_board_id = ETM_CAN_ADDR_ION_PUMP_BOARD;
-	break;
-	
-      case MODBUS_WR_AFC:
-	etm_can_active_debugging_board_id = ETM_CAN_ADDR_AFC_CONTROL_BOARD;
-	break;
-	
-      case MODBUS_WR_COOLING:
-	etm_can_active_debugging_board_id = ETM_CAN_ADDR_COOLING_INTERFACE_BOARD;
-	break;
-	
-      case MODBUS_WR_HTR_MAGNET:
-	etm_can_active_debugging_board_id = ETM_CAN_ADDR_HEATER_MAGNET_BOARD;
-	break;
-	
-      case MODBUS_WR_GUN_DRIVER:
-	etm_can_active_debugging_board_id = ETM_CAN_ADDR_GUN_DRIVER_BOARD;
-	break;
-	
-      case MODBUS_WR_MAGNETRON_CURRENT:
-	etm_can_active_debugging_board_id = ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD;
-	break;
-	
-      case MODBUS_WR_PULSE_SYNC:
-	etm_can_active_debugging_board_id = ETM_CAN_ADDR_PULSE_SYNC_BOARD;
-	break;
-	
-      case MODBUS_WR_ETHERNET:
-	etm_can_active_debugging_board_id = ETM_CAN_ADDR_ETHERNET_BOARD;
-	break;
-      }
-  } else {
+  if (data_RX[6] != last_index_sent) {
     // does not match the sent command
-    // DPARKER what to do here
+    // DPARKER - increment some sort of error count
+    return;
+  } 
+
+  if (last_index_sent == MODBUS_RD_COMMAND_DETAIL) {
+    AddMessageFromGUI(&data_RX[9]);
+  } else { 
+    /* write commands return command count in the reference field */
+    modbus_command_request = (data_RX[8] << 8) | data_RX[9];
   }
+    
+  SetActiveDebuggingID(data_RX[10]);
 }
 
 

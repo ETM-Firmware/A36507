@@ -76,6 +76,16 @@ void TCPmodbus_task(void);
 void ETMTCPClient(void);
 
 
+
+typedef struct {
+  unsigned int sm_process_response_timeout;
+  unsigned int sm_socket_obtained_timeout;
+  unsigned int sm_process_response_timeout_last_command;
+} TYPE_ETM_ETHERNET_DEBUG;
+
+TYPE_ETM_ETHERNET_DEBUG etm_ethernet_debug;
+
+
 unsigned char rx_data[MAX_RX_SIZE];
 
 // Declare AppConfig structure and some other supporting stack variables
@@ -213,9 +223,12 @@ void ETMTCPModbusTask(void) {
 void ETMTCPClient(void) {
   unsigned int w;
   unsigned int len;
-  
+
+
+
   ETMModbusTXData tx_data;
-  
+
+  static  unsigned char last_id;
   static DWORD		Timer;
   static TCP_SOCKET	MySocket = INVALID_SOCKET;
   static enum _ETMTCPState {
@@ -251,6 +264,7 @@ void ETMTCPClient(void) {
 	  TCPDisconnect(MySocket);
 	  MySocket = INVALID_SOCKET;
 	  ETMTCPState = SM_HOME;
+	  etm_ethernet_debug.sm_socket_obtained_timeout++;
 	}
 	break;
       }
@@ -258,19 +272,21 @@ void ETMTCPClient(void) {
       Timer = ETMTickGet();
       
       tx_data.tx_ready = 0;
-      tx_data = ETMModbusApplicationSpecificTXData();
+      //tx_data = ETMModbusApplicationSpecificTXData();
+      ETMModbusApplicationSpecificTXData(&tx_data);
 
       if ((tx_data.header_length + tx_data.data_length) > TCPIsPutReady(MySocket)) {
 	// The socket can not be written to
 	break;
       }
       
+      // don't want to send anything for now, stay in this state
       if (tx_data.tx_ready == 0) {
-	// don't want to send anything for now, stay in this state
 	break;
       }
+      last_id = tx_data.header_data[6];
 
-      TCPPutArray(MySocket, tx_data.header_ptr, tx_data.header_length);
+      TCPPutArray(MySocket, &tx_data.header_data[0], tx_data.header_length);
       TCPPutArray(MySocket, tx_data.data_ptr, tx_data.data_length);
       
       // Send the packet
@@ -310,6 +326,8 @@ void ETMTCPClient(void) {
 	  TCPDisconnect(MySocket);
 	  MySocket = INVALID_SOCKET;
 	  ETMTCPState = SM_HOME;
+	  etm_ethernet_debug.sm_process_response_timeout++;
+	  etm_ethernet_debug.sm_process_response_timeout_last_command = last_id;
 	}
       }
       
@@ -340,4 +358,26 @@ void ETMTCPModbusWaitForResponse(void) {
 }
 
 
+#define ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT 0
+#define ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT  1
+#define ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID    2
+unsigned int ETMTCPModbusGetErrorInfo(unsigned char error) {
+  switch (error) 
+    {
+    case ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT:
+      return etm_ethernet_debug.sm_process_response_timeout;
+      break;
+
+    case ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT:
+      return etm_ethernet_debug.sm_socket_obtained_timeout;
+      break;
+
+    case ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID:
+      return etm_ethernet_debug.sm_process_response_timeout_last_command;
+      break;
+
+    }
+
+  return 0;
+}
 

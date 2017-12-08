@@ -1,6 +1,7 @@
 #include "A36507.h"
 #include "FIRMWARE_VERSION.h"
 #include "A36507_CONFIG.h"
+#include "TCPmodbus.h"
 
 unsigned int test_uart_data_recieved;
 unsigned int test_ref_det_recieved;
@@ -943,13 +944,13 @@ void UpdateDebugData(void) {
 
   debug_data_ecb.debug_reg[8]  = 8; 
   debug_data_ecb.debug_reg[9]  = 9; 
-  debug_data_ecb.debug_reg[10] = 10; 
-  debug_data_ecb.debug_reg[11] = 11; 
+  debug_data_ecb.debug_reg[10] = ETMTCPModbusGetErrorInfo(ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID);
+  //debug_data_ecb.debug_reg[11] = 11; 
 
-  debug_data_ecb.debug_reg[12] = 12; 
-  debug_data_ecb.debug_reg[13] = 0;
-  debug_data_ecb.debug_reg[14] = 0;
-  debug_data_ecb.debug_reg[15] = 0;
+  //debug_data_ecb.debug_reg[12] = 12; 
+  //debug_data_ecb.debug_reg[13] = 0;
+  debug_data_ecb.debug_reg[14] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT);
+  debug_data_ecb.debug_reg[15] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT);
 }
 
 

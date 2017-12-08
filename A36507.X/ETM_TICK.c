@@ -66,7 +66,7 @@ void ETMTickInitialize(unsigned long fcy_clk, char timer_select) {
   case ETM_TICK_USE_TIMER_1:
     etm_tick_timer_select = ETM_TICK_USE_TIMER_1;
     etm_tick_TMR_ptr = &TMR1;
-    T1CON = 0x8000; // Timer on, 1:1 prescale
+    T1CON = 0x8010; // Timer on, 1:8 prescale
     break;
 #endif
 
@@ -74,7 +74,7 @@ void ETMTickInitialize(unsigned long fcy_clk, char timer_select) {
   case ETM_TICK_USE_TIMER_2:
     etm_tick_timer_select = ETM_TICK_USE_TIMER_2;
     etm_tick_TMR_ptr = &TMR2;
-    T2CON = 0x8000; // Timer on, 1:1 prescale, 16 bit timer
+    T2CON = 0x8010; // Timer on, 1:8 prescale, 16 bit timer
     break;
 #endif
     
@@ -82,7 +82,7 @@ void ETMTickInitialize(unsigned long fcy_clk, char timer_select) {
   case ETM_TICK_USE_TIMER_3:
     etm_tick_timer_select = ETM_TICK_USE_TIMER_3;
     etm_tick_TMR_ptr = &TMR3;
-    T3CON = 0x8000; // Timer on, 1:1 prescale, 16 bit timer
+    T3CON = 0x8010; // Timer on, 1:8 prescale, 16 bit timer
     break;
 #endif
     
@@ -90,7 +90,7 @@ void ETMTickInitialize(unsigned long fcy_clk, char timer_select) {
   case ETM_TICK_USE_TIMER_4:
     etm_tick_timer_select = ETM_TICK_USE_TIMER_4;
     etm_tick_TMR_ptr = &TMR4;
-    T4CON = 0x8000; // Timer on, 1:1 prescale, 16 bit timer
+    T4CON = 0x8010; // Timer on, 1:8 prescale, 16 bit timer
     break;
 #endif
     
@@ -98,7 +98,7 @@ void ETMTickInitialize(unsigned long fcy_clk, char timer_select) {
   case ETM_TICK_USE_TIMER_5:
     etm_tick_timer_select = ETM_TICK_USE_TIMER_5;
     etm_tick_TMR_ptr = &TMR5;
-    T5CON = 0x8000; // Timer on, 1:1 prescale, 16 bit timer
+    T5CON = 0x8010; // Timer on, 1:8 prescale, 16 bit timer
     break;
 #endif
     

@@ -20,7 +20,7 @@ typedef struct {
 
 
 typedef struct {
-  unsigned char *header_ptr;
+  unsigned char header_data[24];        // Max header size is 24 bytes
   unsigned char *data_ptr;
   unsigned char tx_ready;
   unsigned char  header_length;
@@ -32,7 +32,8 @@ typedef struct {
 
 #define MAX_RX_SIZE    48                // This is the maximum size of recieved data (including header)
 
-ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
+void ETMModbusApplicationSpecificTXData(ETMModbusTXData* tx_data_to_send);
+//ETMModbusTXData ETMModbusApplicationSpecificTXData(void);
 /*
   This function must be defined in the user application file.
   It is used to generate the TX data
@@ -86,5 +87,12 @@ unsigned char ETMTCPModbusWaitingForResponse(void);
 /*
   This flag will return true until the response has been recieved
 */
+
+
+#define ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT 0
+#define ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT  1
+#define ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID    2
+unsigned int ETMTCPModbusGetErrorInfo(unsigned char error);
+
 
 #endif
