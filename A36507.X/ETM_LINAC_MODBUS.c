@@ -8,18 +8,11 @@
 #include "ETM_IO_PORTS.h"  //DPARKER Fix this
 
 
-//static unsigned char queue_buffer_room(unsigned char q_index);
-//static unsigned char queue_is_empty(unsigned char q_index);
-
-
-ETMEthernetMessageFromGUI GetNextMessage(void);
-void InitModbusData(void);
-
-static void queue_put_command(unsigned char * buffer_ptr);
-
-
-unsigned int NewMessageInEventLog(void);
-unsigned int EventLogMessageSize(void);
+static void AddMessageFromGUI(unsigned char * buffer_ptr);
+static unsigned int NewMessageInEventLog(void);
+static unsigned int EventLogMessageSize(void);
+static unsigned char GetNextSendIndex(void);
+static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type);
 
 enum {
   MODBUS_WR_CYCLE_START,
@@ -38,7 +31,10 @@ enum {
   MODBUS_WR_CYCLE_STOP,
   
   MODBUS_WR_PULSE_LOG,
-  MODBUS_WR_,
+  MODBUS_WR_SCOPE_A,
+  MODBUS_WR_SCOPE_B,
+  MODBUS_WR_SCOPE_HV,
+  MODBUS_WR_SCOPE_MAGNETRON_CURRENT,
   MODBUS_RD_COMMAND_DETAIL,
 };
 
@@ -56,41 +52,23 @@ typedef struct {
 ETMEthernetMessageFromGUI    eth_message_from_GUI[ ETH_GUI_MESSAGE_BUFFER_SIZE ];
 
 
-#define ETH_CAL_TO_GUI_BUFFER_SIZE  8
-ETMEthernetCalToGUI          eth_cal_to_GUI[ ETH_CAL_TO_GUI_BUFFER_SIZE ];
-
-static unsigned char         modbus_send_index = 0;
-//static unsigned char         modbus_refresh_index = 1;
+static unsigned char         modbus_send_index = 0;  // DPARKER why is this global
 static unsigned char         modbus_command_request = 0;  /* how many commands from GUI */
-
 static unsigned char         eth_message_from_GUI_put_index;
 static unsigned char         eth_message_from_GUI_get_index;
-static unsigned char         send_high_speed_data_buffer;  /* bit 0 high for buffer A, bit 1 high for buffer B */
+
+// DPARKER work on high speed logging commands
+static unsigned char         pulse_log_buffer_select;
+static unsigned char         pulse_log_ready_to_send = 0;
+
+// This is used to time the "standard" ethernet messages at 1 per 100mS
+static unsigned long timer_write_holding_var;
+
+#define HEADER_LENGTH_CHAR 15
+static unsigned char buffer_header[HEADER_LENGTH_CHAR];
 
 
-unsigned long timer_write_holding_var;
-
-unsigned char *data_ptr;
-
-unsigned char buffer_header[MAX_RX_SIZE];
-
-
-//ETMModbusTXData etm_modbus_tx_data;
-
-
-
-/****************************************************************************
-  Function:
-    static void queue_put_command(ETMEthernetMessageFromGUI command)
-
-  Input:
-    pointer to data
-    
-  Description:
-  Remarks:
-    None
-***************************************************************************/
-static void queue_put_command(unsigned char * buffer_ptr) {
+static void AddMessageFromGUI(unsigned char * buffer_ptr) {
   
   if (((eth_message_from_GUI_put_index + 1) & 0xF) == eth_message_from_GUI_get_index) {
     // The command buffer is full
@@ -120,7 +98,7 @@ static void queue_put_command(unsigned char * buffer_ptr) {
   Remarks:
     None
 ***************************************************************************/
-ETMEthernetMessageFromGUI GetNextMessage(void) {
+ETMEthernetMessageFromGUI GetNextMessageFromGUI(void) {
   ETMEthernetMessageFromGUI command;
   
   if (eth_message_from_GUI_put_index == eth_message_from_GUI_get_index)  {
@@ -137,14 +115,14 @@ ETMEthernetMessageFromGUI GetNextMessage(void) {
 
 
 
-unsigned int NewMessageInEventLog(void) {
+static unsigned int NewMessageInEventLog(void) {
   if (event_log.gui_index == event_log.write_index) {
     return 0;
   }
   return 1;
 }
 
-unsigned int EventLogMessageSize(void) {
+static unsigned int EventLogMessageSize(void) {
   unsigned int events_to_send = 0;
 
   if (event_log.gui_index > event_log.write_index) {
@@ -166,27 +144,14 @@ unsigned int EventLogMessageSize(void) {
 
 
 
-
+// DPARKER - figure out pulse data
 void SendPulseData(unsigned int buffer_select) {
-  if (buffer_select == SEND_BUFFER_A) {
-    send_high_speed_data_buffer = 0x01;
-  } else {
-    send_high_speed_data_buffer = 0x02;
-  }
+  pulse_log_buffer_select = buffer_select;
+  pulse_log_ready_to_send = 1;
 }
 
 
-
-#define SIZE_BOARD_MIRROR    104
-#define SIZE_DEBUG_DATA      80
-#define SIZE_HIGH_SPEED_DATA TBD
-
-
-unsigned char scheduled_modbus_message_counter = 0;
-
-
-
-unsigned char GetNextMessageType(void) {
+static unsigned char GetNextSendIndex(void) {
   static unsigned char scheduled_modbus_message_counter = 0;
 
   scheduled_modbus_message_counter++;
@@ -199,22 +164,11 @@ unsigned char GetNextMessageType(void) {
 }
 
 
+#define SIZE_BOARD_MIRROR    104
+#define SIZE_DEBUG_DATA      80
+#define SIZE_HIGH_SPEED_DATA TBD
 
-
-
-
-
-#define HEADER_LENGTH_CHAR 15
-
-void BuildModbusHeader(unsigned int data_bytes, unsigned int data_id) {
-
-
-
-  
-}
-
-
-void PrepareStandardMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
+static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
   static unsigned pulse_index = 0;        // index for eash tracking
   static unsigned transaction_number = 0; // Index for each transaction
 
@@ -307,6 +261,42 @@ void PrepareStandardMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
       }
       break;
 
+    case MODBUS_WR_PULSE_LOG:
+      // DPARKER - Test the pulse log
+      pulse_index++;  // overflows at 65535
+      if (pulse_log_buffer_select == SEND_BUFFER_A) {
+	tx_data->data_ptr = (unsigned char *)&high_speed_data_buffer_a[0];
+      } else {
+	tx_data->data_ptr = (unsigned char *)&high_speed_data_buffer_b[0];
+      }
+      tx_data->data_length = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData);
+      tx_data->tx_ready = 0;
+      break;
+
+    case MODBUS_WR_SCOPE_A:
+      tx_data->data_length = 0;
+      tx_data->data_ptr = (unsigned char *)&local_data_ecb; // DUMMY LOCATION
+      tx_data->tx_ready = 0;
+      break;
+
+    case MODBUS_WR_SCOPE_B:
+      tx_data->data_length = 0;
+      tx_data->data_ptr = (unsigned char *)&local_data_ecb; // DUMMY LOCATION
+      tx_data->tx_ready = 0;
+      break;
+
+    case MODBUS_WR_SCOPE_HV:
+      tx_data->data_length = 0;
+      tx_data->data_ptr = (unsigned char *)&local_data_ecb; // DUMMY LOCATION
+      tx_data->tx_ready = 0;
+      break;
+
+    case MODBUS_WR_SCOPE_MAGNETRON_CURRENT:
+      tx_data->data_length = 0;
+      tx_data->data_ptr = (unsigned char *)&local_data_ecb; // DUMMY LOCATION
+      tx_data->tx_ready = 0;
+      break;
+
     case MODBUS_RD_COMMAND_DETAIL:
       tx_data->data_ptr = (unsigned char *)&local_data_ecb;  // Dummy data location so that we don't crash the processor if this gets executed for some reason
       tx_data->data_length = 0;
@@ -356,9 +346,6 @@ void PrepareStandardMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
       buffer_header[12] = 0;                   // data length in bytes // DPARKER is this used???
     }
 
-    if (data_type == MODBUS_WR_PULSE_LOG) {
-      pulse_index++;  // overflows at 65535
-    }
     transaction_number++;
   }
 }
@@ -372,17 +359,11 @@ ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
   // See if there are any high speed messages to be sent
 
   send_message = 0;
-  if (send_high_speed_data_buffer) {
-    /*
-    total_bytes = BuildModbusOutputHighSpeedDataLog();
-    if (send_high_speed_data_buffer & 0x01) {
-      data_ptr = (unsigned char *)&high_speed_data_buffer_a[0];
-    } else {
-      data_ptr = (unsigned char *)&high_speed_data_buffer_b[0];
-    } 
-    msg_size_bytes = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData);
-    */
-    send_high_speed_data_buffer = 0;
+
+  if (pulse_log_ready_to_send) {
+    modbus_send_index = MODBUS_WR_PULSE_LOG;
+    send_message = 1;
+    pulse_log_ready_to_send = 0;
   } else if (0) {
     // FUTURE Event log counter is greater than 32
   } else if (0) {
@@ -399,14 +380,14 @@ ETMModbusTXData ETMModbusApplicationSpecificTXData(void) {
     // Execute regularly scheduled command - No need to check to see if they were recieved we will resend them again soon enough
     if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var)) {
       // 100ms has passed - Send the next Message
-      modbus_send_index = GetNextMessageType();
+      modbus_send_index = GetNextSendIndex();
       send_message = 1;
     }
   }
 
 
   if (send_message) { 
-    PrepareStandardMessage(&data_to_send, modbus_send_index);
+    PrepareTXMessage(&data_to_send, modbus_send_index);
     if (modbus_send_index != MODBUS_WR_EVENTS) {
       //ETMTCPModbusWaitForResponse();  // Event log is not repeatable so no need to wait for response
     }
@@ -422,7 +403,7 @@ void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]) {
   
   if (data_RX[6] == modbus_send_index) {
     if (modbus_send_index == MODBUS_RD_COMMAND_DETAIL) {
-      queue_put_command(&data_RX[9]);
+      AddMessageFromGUI(&data_RX[9]);
     } else { 
       /* write commands return command count in the reference field */
       modbus_command_request = (data_RX[8] << 8) | data_RX[9];
@@ -475,49 +456,7 @@ void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]) {
 
 
 
-/****************************************************************************
-  Function:
-    static void InitModbusData(void)
-
-  Description:
-    This routine initializes modbus related data
- 
-  Precondition:
-    None
-
-  Parameters:
-    None - None
-
-  Returns:
-    None
-
-  Remarks:
-    None
-***************************************************************************/
-void InitModbusData(void)
-{
- 
-  eth_message_from_GUI_put_index = 0;
-  eth_message_from_GUI_get_index = 0;
- 
-}
-
-
-
-
-/****************************************************************************
-  Function:
-		unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset)
-
-  Input:
-    pointer to data
-    
-  Description:
-  Remarks:
-  // This will add  a transmit message to the Send Calibration Data queue
-  // It will return 0x0000 if the message was added to the queue or 0xFFFF if it was not (buffer full)
-  ***************************************************************************/
-
+// DPARKER Remove this after can module has been updates
 unsigned int SendCalibrationDataToGUI(unsigned int index, unsigned int scale, unsigned int offset) {
   return (0xffff);
 }
@@ -532,6 +471,8 @@ void ETMLinacModbusInitialize(void) {
   IPCONFIG ip_config;
   TYPE_ENC28J60_CONFIG ENC28J60_config;
   
+
+  // DPARKER Load this from EEPROM or USE DEFAULT????
   ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168. 70. 15
   ip_config.ip_addr        = 0x6346A8C0;  // 192.168. 70. 99
   ip_config.mask           = 0x00FFFFFF;  // 255.255.255.  0
@@ -550,10 +491,13 @@ void ETMLinacModbusInitialize(void) {
   ENC28J60_config.reset_pin = _PIN_RA15;
   ENC28J60_config.spi_port = TCPMODBUS_USE_SPI_PORT_1;
 
+  // DPARKER make this part of the system configuration
+  if (ETMTickNotInitialized()) {
+    ETMTickInitialize(FCY_CLK, ETM_TICK_USE_TIMER_1);  
+  }
 
-  ETMTickInitialize(FCY_CLK, ETM_TICK_USE_TIMER_1);  // DPARKER make this part of the configuration
-
-  InitModbusData(); 
+  eth_message_from_GUI_put_index = 0;
+  eth_message_from_GUI_get_index = 0; 
 
   ETMTCPModbusENC28J60Initialize(&ENC28J60_config);
 

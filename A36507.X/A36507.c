@@ -1590,7 +1590,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
   }
   // Personality is now a register offset
 
-  next_message = GetNextMessage();
+  next_message = GetNextMessageFromGUI();
   if (next_message.index == 0xFFFF) {
     // there was no message
     return;

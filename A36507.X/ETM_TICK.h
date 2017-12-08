@@ -37,6 +37,12 @@ void ETMTickInitialize(unsigned long fcy_clk, char timer_select);
   This configures the timers and sets up the module
 */
 
+unsigned int ETMTickNotInitialized(void);
+/*
+  Will return 1 if the module has NOT already been initialized
+ 
+  Will return 0 otherwise
+*/
 
 unsigned int ETMTickGreaterThanNMilliseconds(unsigned int delay_milliseconds, unsigned long start_tick);
 /*

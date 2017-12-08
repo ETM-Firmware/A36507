@@ -13,6 +13,45 @@ unsigned int etm_tick_delay_100us;
 
 unsigned int ETMTickPrivateGreaterThan(unsigned long start_tick, unsigned long difference);
 
+
+
+
+unsigned int ETMTickNotInitialized(void) {
+
+#ifdef T1CON
+  if (etm_tick_timer_select == ETM_TICK_USE_TIMER_1) {
+    return 0;
+  }
+#endif
+
+#ifdef T2CON
+  if (etm_tick_timer_select == ETM_TICK_USE_TIMER_2) {
+    return 0;
+  }
+#endif
+
+#ifdef T3CON
+  if (etm_tick_timer_select == ETM_TICK_USE_TIMER_3) {
+    return 0;
+  }
+#endif
+
+#ifdef T4CON
+  if (etm_tick_timer_select == ETM_TICK_USE_TIMER_4) {
+    return 0;
+  }
+#endif
+
+#ifdef T5CON
+  if (etm_tick_timer_select == ETM_TICK_USE_TIMER_5) {
+    return 0;
+  }
+#endif
+  
+  return 1;
+}
+
+
 void ETMTickInitialize(unsigned long fcy_clk, char timer_select) {
   unsigned long temp;
   temp = fcy_clk / 1000 / 8;
