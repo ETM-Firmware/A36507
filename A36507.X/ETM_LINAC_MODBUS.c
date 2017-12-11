@@ -64,7 +64,7 @@ static unsigned char         pulse_log_ready_to_send = 0;
 // This is used to time the "standard" ethernet messages at 1 per 100mS
 unsigned long timer_write_holding_var;
 
-#define HEADER_LENGTH_CHAR 15
+#define HEADER_LENGTH_CHAR 12
 
 
 static void AddMessageFromGUI(unsigned char * buffer_ptr) {
@@ -303,6 +303,7 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
 
     case MODBUS_WR_PULSE_LOG:
       // DPARKER - Test the pulse log
+      // DPARKER - I Don't think that pulse index is needed
       pulse_index++;  // overflows at 65535
       if (pulse_log_buffer_select == SEND_BUFFER_A) {
 	tx_data->data_ptr = (unsigned char *)&high_speed_data_buffer_a[0];
@@ -354,11 +355,11 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
 
 
   if (tx_data->tx_ready) {
-    last_index_sent = data_type;
-    debug_data_ecb.debug_reg[11]++; 
-    
-    // DPARKER the header message still needs some clean up to make the specifiaction clear and uniform
 
+    transaction_number++;
+    last_index_sent = data_type;
+    debug_data_ecb.debug_reg[13]++;  // Dparker move this to some debugging information
+    
    // Prepare the header message
     tx_data->header_data[0] = (transaction_number >> 8) & 0xff;	    // transaction hi byte
     tx_data->header_data[1] = transaction_number & 0xff;	    // transaction lo byte
@@ -368,29 +369,33 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
     tx_data->header_data[5] = (tx_data->data_length + HEADER_LENGTH_CHAR - 8);                       // This is the length of data remaining in the message
     tx_data->header_data[6] = data_type;                              // Unit Identifier - What Type of Data is this 
     if (data_type == MODBUS_RD_COMMAND_DETAIL) {
-      tx_data->header_data[7] = 0x3;                                // function code 0x03 = Read Multiple Holding Registers, 
+      tx_data->header_data[7] = 0x3;                                  // function code 0x03 = Read Multiple Holding Registers, 
     } else {
-      tx_data->header_data[7] = 0x10;                               // function code 0x10 = Write Multiple Holding Registers, 
+      tx_data->header_data[7] = 0x10;                                 // function code 0x10 = Write Multiple Holding Registers, 
     }
     // DATA STARTS HERE - HOW SHOULD THIS BE FORMATED FOR GENERIC ETM MESSAGES
-    tx_data->header_data[8] = 0;                                    // Reserved for pulse index High Word
-    tx_data->header_data[9] = 0;	                                   // Reserved for pulse index low word
+    tx_data->header_data[8] = (pulse_index >> 8) & 0xff;           // pulse index high word
+    tx_data->header_data[9] = pulse_index & 0xff;                  // pulse index low word
+    tx_data->header_data[10] = 0;                                  // unused at this time
+    tx_data->header_data[11] = 0;                                  // unused at this time
+    
+    
+    /*
     // This header data is not sent out
-    tx_data->header_data[10] = tx_data->data_length >> 9;                     // msg length in words hi
-    tx_data->header_data[11] = tx_data->data_length >> 1;                     // msg length in words lo
+    tx_data->header_data[10] = 0;//tx_data->data_length >> 9;                     // msg length in words hi
+    tx_data->header_data[11] = 0;//tx_data->data_length >> 1;                     // msg length in words lo
     tx_data->header_data[12] = (tx_data->data_length +15) & 0xff;                   // data length in bytes // DPARKER is this used???
     tx_data->header_data[13] = (pulse_index >> 8) & 0xff;           // pulse index high word
     tx_data->header_data[14] = pulse_index & 0xff;                  // pulse index low word
     
     
     if (data_type == MODBUS_RD_COMMAND_DETAIL) {
-      tx_data->header_data[9] = MODBUS_RD_COMMAND_DETAIL;
+      tx_data->header_data[9] = 0;//MODBUS_RD_COMMAND_DETAIL;
       tx_data->header_data[10] = 0;                     // msg length in words hi
       tx_data->header_data[11] = 4;                     // msg length in words lo
       tx_data->header_data[12] = 0;                   // data length in bytes // DPARKER is this used???
     }
-
-    transaction_number++;
+    */
   }
 }
 
@@ -421,12 +426,11 @@ void ETMModbusApplicationSpecificTXData(ETMModbusTXData* tx_data_to_send) {
   } else if (modbus_command_request) {
     modbus_tx_index = MODBUS_RD_COMMAND_DETAIL;
     send_message = 1;
-    debug_data_ecb.debug_reg[12]++;
+    debug_data_ecb.debug_reg[14]++;
     modbus_command_request = 0;
   } else {
     // Execute regularly scheduled command - No need to check to see if they were recieved we will resend them again soon enough
     if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var)) {
-      debug_data_ecb.debug_reg[13]++;
       // 100ms has passed - Send the next Message
       modbus_tx_index = GetNextSendIndex();
       send_message = 1;
@@ -453,7 +457,7 @@ void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]) {
     // does not match the sent command
     // DPARKER - increment some sort of error count
     return;
-  } 
+  }
 
   if (last_index_sent == MODBUS_RD_COMMAND_DETAIL) {
     AddMessageFromGUI(&data_RX[9]);

@@ -936,21 +936,21 @@ void UpdateDebugData(void) {
     debug_data_ecb.debug_reg[2]  = 0;
   }
   debug_data_ecb.debug_reg[3]  = test_ref_det_recieved; 
-  
-  debug_data_ecb.debug_reg[4]  = test_ref_det_good_message; 
+  debug_data_ecb.debug_reg[4]  = test_ref_det_good_message;
   debug_data_ecb.debug_reg[5]  = global_data_A36507.most_recent_ref_detector_reading; 
-  debug_data_ecb.debug_reg[6]  = test_uart_data_recieved; 
-  debug_data_ecb.debug_reg[7]  = 7; 
 
-  debug_data_ecb.debug_reg[8]  = 8; 
-  debug_data_ecb.debug_reg[9]  = 9; 
-  debug_data_ecb.debug_reg[10] = ETMTCPModbusGetErrorInfo(ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID);
-  //debug_data_ecb.debug_reg[11] = 11; 
+  debug_data_ecb.debug_reg[6]  = ETMTCPModbusGetErrorInfo(ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID); 
+  debug_data_ecb.debug_reg[7]  = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT); 
+  debug_data_ecb.debug_reg[8]  = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT); 
+  debug_data_ecb.debug_reg[9]  = ETMTCPModbusGetErrorInfo(COUNT_SM_SOCKET_OBTAINED_MSG_TX); 
+  debug_data_ecb.debug_reg[10] = ETMTCPModbusGetErrorInfo(COUNT_SM_PROCESS_RESPONSE_MSG_RX); 
+  debug_data_ecb.debug_reg[11] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_DISCONNECT);
 
-  //debug_data_ecb.debug_reg[12] = 12; 
-  //debug_data_ecb.debug_reg[13] = 0;
-  debug_data_ecb.debug_reg[14] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT);
-  debug_data_ecb.debug_reg[15] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT);
+
+  debug_data_ecb.debug_reg[12] = 12; 
+  // ETM_LINAC_MODBUS tx_transactions          //debug_data_ecb.debug_reg[13] = 
+  // ETM_LINAC_MODBUS modbus_command_requests  //debug_data_ecb.debug_reg[14] = 
+  // ETM_LINAC_MODBUS 100ms command internvals //debug_data_ecb.debug_reg[15] = 
 }
 
 

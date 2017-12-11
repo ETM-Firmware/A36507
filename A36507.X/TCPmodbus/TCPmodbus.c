@@ -81,6 +81,10 @@ typedef struct {
   unsigned int sm_process_response_timeout;
   unsigned int sm_socket_obtained_timeout;
   unsigned int sm_process_response_timeout_last_command;
+  unsigned int sm_socket_obtained_messages_sent;
+  unsigned int sm_process_response_messages_recieved;
+  unsigned int sm_disconnect_count;
+
 } TYPE_ETM_ETHERNET_DEBUG;
 
 TYPE_ETM_ETHERNET_DEBUG etm_ethernet_debug;
@@ -291,8 +295,8 @@ void ETMTCPClient(void) {
       
       // Send the packet
       TCPFlush(MySocket);
+      etm_ethernet_debug.sm_socket_obtained_messages_sent++;
       ETMTCPState = SM_PROCESS_RESPONSE;
-
       break;
 
 
@@ -315,8 +319,8 @@ void ETMTCPClient(void) {
 	w -= len;
 	
 	ETMModbusApplicationSpecificRXData(rx_data);
-	
 	modbus_cmd_need_repeat = 0;
+	etm_ethernet_debug.sm_process_response_messages_recieved++;
 	ETMTCPState = SM_SOCKET_OBTAINED; // repeat sending
 	
       } else {
@@ -338,6 +342,7 @@ void ETMTCPClient(void) {
       // Close the socket so it can be used by other modules
       // For this application, we wish to stay connected, but this state will still get entered if the remote server decides to disconnect
       TCPDisconnect(MySocket);
+      etm_ethernet_debug.sm_disconnect_count++;
       MySocket = INVALID_SOCKET;
       ETMTCPState = SM_DONE;
       break;
@@ -374,6 +379,18 @@ unsigned int ETMTCPModbusGetErrorInfo(unsigned char error) {
 
     case ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID:
       return etm_ethernet_debug.sm_process_response_timeout_last_command;
+      break;
+
+    case COUNT_SM_SOCKET_OBTAINED_MSG_TX:
+      return etm_ethernet_debug.sm_socket_obtained_messages_sent;
+      break;
+
+    case COUNT_SM_PROCESS_RESPONSE_MSG_RX:
+      return etm_ethernet_debug.sm_process_response_messages_recieved;
+      break;
+
+    case ERROR_COUNT_SM_DISCONNECT:
+      return etm_ethernet_debug.sm_disconnect_count;
       break;
 
     }

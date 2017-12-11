@@ -92,6 +92,9 @@ unsigned char ETMTCPModbusWaitingForResponse(void);
 #define ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT 0
 #define ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT  1
 #define ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID    2
+#define COUNT_SM_SOCKET_OBTAINED_MSG_TX         3
+#define COUNT_SM_PROCESS_RESPONSE_MSG_RX        4
+#define ERROR_COUNT_SM_DISCONNECT               5
 unsigned int ETMTCPModbusGetErrorInfo(unsigned char error);
 
 

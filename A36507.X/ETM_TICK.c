@@ -150,6 +150,10 @@ unsigned int ETMTickRunOnceEveryNMilliseconds(unsigned int interval_milliseconds
 
   if (ETMTickPrivateGreaterThan(*ptr_holding_var, test)) {
     *ptr_holding_var = *ptr_holding_var + test;
+    while (ETMTickPrivateGreaterThan(*ptr_holding_var, test)) {
+      // If it has been a long time since you made this test, this will ensure that it only tests true once.
+      *ptr_holding_var = *ptr_holding_var + test;
+    }
     return 1;
   }
  
