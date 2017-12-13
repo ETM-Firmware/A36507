@@ -56,26 +56,17 @@
 /*
   Extensive rework by Dan Parker 11/21/2017
 */
-
-
 #include <xc.h>
 #include "TCPIPConfig.h"
 #include "TCPIP.h"
-#include "ETM_TICK.h"
-
 #include "TCPmodbus.h"
+//#include "ETM.h"  // Requires ETM Library Version 5 or greater.
+#include "ETM_TICK.h"
 #include "ETM_IO_PORTS.h"
 
 
-#define TCP_CONNECTED_TIMEOUT_MILLISECONDS       5000
-#define SM_PROCESS_RESPONSE_TIMEOUT_MILLISECONDS 1000      
 
-
-static void InitAppConfig(IPCONFIG* ip_config);
-void TCPmodbus_task(void);
-void ETMTCPClient(void);
-
-
+static void ETMTCPClient(void);
 
 typedef struct {
   unsigned int sm_process_response_timeout;
@@ -84,45 +75,21 @@ typedef struct {
   unsigned int sm_socket_obtained_messages_sent;
   unsigned int sm_process_response_messages_recieved;
   unsigned int sm_disconnect_count;
-
 } TYPE_ETM_ETHERNET_DEBUG;
 
-TYPE_ETM_ETHERNET_DEBUG etm_ethernet_debug;
-
+static TYPE_ETM_ETHERNET_DEBUG etm_ethernet_debug;
+static unsigned int  tcp_connected_timeout_milliseconds;
+static unsigned int  sm_process_response_timeout_milliseconds;
 
 unsigned char rx_data[MAX_RX_SIZE];
 
 // Declare AppConfig structure and some other supporting stack variables
 APP_CONFIG AppConfig;
-static unsigned short wOriginalAppConfigChecksum;    // Checksum of the ROM defaults for AppConfig
-
-void ETMTCPClient(void);
-
-unsigned char         modbus_cmd_need_repeat = 0;  
 
 
-
-
-/*********************************************************************
- * Function:        void InitAppConfig(void)
- *
- * PreCondition:    MPFSInit() is already called.
- *
- * Input:           None
- *
- * Output:          Write/Read non-volatile config variables.
- *
- * Side Effects:    None
- *
- * Overview:        None
- *
- * Note:            None
- ********************************************************************/
-static void InitAppConfig(IPCONFIG* ip_config) {
-    
-  // Start out zeroing all AppConfig bytes to ensure all fields are 
-  // deterministic for checksum generation
-        
+void ETMTCPModbusInitialize(IPCONFIG* ip_config, unsigned int connection_timeout_milliseconds, unsigned int response_timeout_milliseconds) {
+  
+  // Initialize Stack and application related NV variables into AppConfig.
   AppConfig.Flags.bIsDHCPEnabled = 0;
   AppConfig.Flags.bInConfigMode = 0;
 
@@ -161,29 +128,16 @@ static void InitAppConfig(IPCONFIG* ip_config) {
   AppConfig.NetBIOSName[15] = ip_config->net_bios_name[15];
 
   FormatNetBIOSName(AppConfig.NetBIOSName);
-  
-  // Compute the checksum of the AppConfig defaults as loaded from ROM
-  wOriginalAppConfigChecksum = CalcIPChecksum((BYTE*)&AppConfig, sizeof(AppConfig));
-}
 
+  tcp_connected_timeout_milliseconds = connection_timeout_milliseconds;
+  sm_process_response_timeout_milliseconds = response_timeout_milliseconds;
 
-//
-// called once for initilization.
-//
-void ETMTCPModbusInitialize(IPCONFIG* ip_config) {
-  
-  // Initialize Stack and application related NV variables into AppConfig.
-  InitAppConfig(ip_config);
-    
   // Initialize core stack layers (MAC, ARP, TCP, UDP) and
   // application modules (HTTP, SNMP, etc.)
   StackInit();
 }
 
 
-//
-// Need to call this task periodically
-//
 void ETMTCPModbusTask(void) {
   // This task performs normal stack task including checking
   // for incoming packet, type of packet and calling
@@ -263,7 +217,7 @@ void ETMTCPClient(void) {
       // Wait for the remote server to accept our connection request
       if(!TCPIsConnected(MySocket)) {
 	// Time out if too much time is spent in this state
-	if(ETMTickGreaterThanNMilliseconds(TCP_CONNECTED_TIMEOUT_MILLISECONDS, Timer)) {
+	if(ETMTickGreaterThanNMilliseconds(tcp_connected_timeout_milliseconds, Timer)) {
 	  // Close the socket so it can be used by other modules
 	  TCPDisconnect(MySocket);
 	  MySocket = INVALID_SOCKET;
@@ -319,13 +273,12 @@ void ETMTCPClient(void) {
 	w -= len;
 	
 	ETMModbusApplicationSpecificRXData(rx_data);
-	modbus_cmd_need_repeat = 0;
 	etm_ethernet_debug.sm_process_response_messages_recieved++;
 	ETMTCPState = SM_SOCKET_OBTAINED; // repeat sending
 	
       } else {
 	// Time out if too much time is spent in this state
-	if(ETMTickGreaterThanNMilliseconds(SM_PROCESS_RESPONSE_TIMEOUT_MILLISECONDS, Timer)) {
+	if(ETMTickGreaterThanNMilliseconds(sm_process_response_timeout_milliseconds, Timer)) {
 	  // Close the socket so it can be used by other modules
 	  TCPDisconnect(MySocket);
 	  MySocket = INVALID_SOCKET;
@@ -354,18 +307,7 @@ void ETMTCPClient(void) {
     }
 }
 
-unsigned char ETMTCPModbusWaitingForResponse(void) {
-  return modbus_cmd_need_repeat;
-}
 
-void ETMTCPModbusWaitForResponse(void) {
-  modbus_cmd_need_repeat = 1;
-}
-
-
-#define ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT 0
-#define ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT  1
-#define ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID    2
 unsigned int ETMTCPModbusGetErrorInfo(unsigned char error) {
   switch (error) 
     {

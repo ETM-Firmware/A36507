@@ -73,6 +73,7 @@ static void AddMessageFromGUI(unsigned char * buffer_ptr) {
     // The command buffer is full
     // Drop this message??
     // DPARKER what to do here
+    // DPARKER ADD DEBUGGING INFORMATION HERE
     return;
   }
   
@@ -460,7 +461,7 @@ void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]) {
   }
 
   if (last_index_sent == MODBUS_RD_COMMAND_DETAIL) {
-    AddMessageFromGUI(&data_RX[9]);
+    AddMessageFromGUI(&data_RX[12]);
   } else { 
     /* write commands return command count in the reference field */
     modbus_command_request = (data_RX[8] << 8) | data_RX[9];
@@ -516,5 +517,8 @@ void ETMLinacModbusInitialize(void) {
 
   ETMTCPModbusENC28J60Initialize(&ENC28J60_config);
 
-  ETMTCPModbusInitialize(&ip_config);
+  #define CONNECTION_TIMEOUT_MILLISECONDS  5000
+  #define RESPONSE_TIMEOUT_MILLISECONDS     200
+
+  ETMTCPModbusInitialize(&ip_config, CONNECTION_TIMEOUT_MILLISECONDS, RESPONSE_TIMEOUT_MILLISECONDS);
 }
