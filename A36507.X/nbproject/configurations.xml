@@ -28,6 +28,8 @@
       <itemPath>ETM_LINAC_MODBUS.c</itemPath>
       <itemPath>ETM_TICK.c</itemPath>
       <itemPath>ETM_TICK_ASM.s</itemPath>
+      <itemPath>../../ETM_LIBRARY/Source/ETM_CORE.X/ETM_MATH.s</itemPath>
+      <itemPath>ETM_ANALOG_PRIVATE.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -37,6 +39,7 @@
   </logicalFolder>
   <sourceRootList>
     <Elem>.</Elem>
+    <Elem>../../ETM_LIBRARY/Source/ETM_CORE.X</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>

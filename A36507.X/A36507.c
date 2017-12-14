@@ -2,6 +2,18 @@
 #include "FIRMWARE_VERSION.h"
 #include "A36507_CONFIG.h"
 #include "TCPmodbus.h"
+#include "ETM_ANALOG_PRIVATE.h"
+
+
+
+TYPE_PUBLIC_ANALOG_INPUT analog_5V_vmon;
+unsigned int test_0;
+unsigned int test_1;
+unsigned int test_2;
+unsigned int test_3;
+
+
+
 
 unsigned int test_uart_data_recieved;
 unsigned int test_ref_det_recieved;
@@ -1365,8 +1377,29 @@ void InitializeA36507(void) {
   _ADIF = 0;
   _ADON = 1;
 
+
+  ETMAnalogInputInitialize(&analog_5V_vmon, 
+			   MACRO_DEC_TO_SCALE_FACTOR_16(2.440215),
+			   OFFSET_ZERO,
+			   ETM_ANALOG_AVERAGE_8_SAMPLES);
+
+
+
   // Wait for data to be read
   while (_ADIF == 0);
+  
+  
+  ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUF0);
+  ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUF2);
+  ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUF4);
+  ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUF6);
+  ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUF8);
+  ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUFA);
+  ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUFC);
+  ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUFE);
+  ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUFE);
+
+  test_0 = ETMAnalogInputGetReading(&analog_5V_vmon);
 
   global_data_A36507.analog_input_5v_mon.filtered_adc_reading  = ADCBUF0 + ADCBUF2 + ADCBUF4 + ADCBUF6 + ADCBUF8 + ADCBUFA + ADCBUFC + ADCBUFE;
   global_data_A36507.analog_input_3v3_mon.filtered_adc_reading = ADCBUF1 + ADCBUF3 + ADCBUF5 + ADCBUF7 + ADCBUF9 + ADCBUFB + ADCBUFD + ADCBUFF;
@@ -1399,6 +1432,7 @@ void InitializeA36507(void) {
   _U1RXIE = 1;
   _U1RXIP = 6;
   U1MODEbits.UARTEN = 1;	// And turn the peripheral on
+
 
 }
  
