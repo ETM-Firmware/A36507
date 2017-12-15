@@ -152,8 +152,8 @@
 
 
 typedef struct {
-  AnalogInput analog_input_5v_mon;                    // 1mV per LSB
-  AnalogInput analog_input_3v3_mon;                   // 1mV per LSB
+  TYPE_PUBLIC_ANALOG_INPUT analog_input_5v_mon;                    // 1mV per LSB
+  TYPE_PUBLIC_ANALOG_INPUT analog_input_3v3_mon;                   // 1mV per LSB
 
   unsigned int control_state;
   //unsigned int thyratron_warmup_counter_seconds;

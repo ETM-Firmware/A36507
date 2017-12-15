@@ -2,7 +2,7 @@
 #include "FIRMWARE_VERSION.h"
 #include "A36507_CONFIG.h"
 #include "TCPmodbus.h"
-#include "ETM_ANALOG_PRIVATE.h"
+#include "ETM_ANALOG.h"
 #include "ETM_TICK.h"
 
 TYPE_PUBLIC_ANALOG_INPUT analog_3_3V_vmon;
@@ -1164,7 +1164,7 @@ void DoA36507(void) {
     if (can_master_millisecond_counter == 250) {
       // Write Warmup Done Timers to EEPROM
       global_data_A36507.last_recorded_warmup_seconds = mem_time_seconds_now;
-      ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 5, (unsigned int*)&global_data_A36507.last_recorded_warmup_seconds);
+      //ETMEEPromWritePage(EEPROM_PAGE_HEATER_TIMERS, 5, (unsigned int*)&global_data_A36507.last_recorded_warmup_seconds);
     } // End of tasks that happen when millisecond = 250
     
 
@@ -1181,7 +1181,7 @@ void DoA36507(void) {
 	system_hv_on_seconds++;
 	system_xray_on_seconds++;
       }
-      ETMEEPromWritePage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&system_powered_seconds);
+      //ETMEEPromWritePage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&system_powered_seconds);
     } // End of tasks that happen when millisecond = 500
   
   } // End of 10ms Tasks
@@ -1315,8 +1315,8 @@ void InitializeA36507(void) {
     _LATG2 = 1;
     __delay32(25);
   }
-  ETMEEPromUseExternal();
-  ETMEEPromConfigureExternalDevice(EEPROM_SIZE_8K_BYTES, FCY_CLK, ETM_I2C_400K_BAUD, EEPROM_I2C_ADDRESS_0, 1);
+  //ETMEEPromUseExternal();
+  //ETMEEPromConfigureExternalDevice(EEPROM_SIZE_8K_BYTES, FCY_CLK, ETM_I2C_400K_BAUD, EEPROM_I2C_ADDRESS_0, 1);
   ConfigureDS3231(&U6_DS3231, I2C_PORT, RTC_DEFAULT_CONFIG, FCY_CLK, ETM_I2C_400K_BAUD);
   
   // Read the current time
@@ -1325,8 +1325,8 @@ void InitializeA36507(void) {
   
   // Initialize the Can module
   ETMCanMasterInitialize(CAN_PORT_1, FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
-  ETMCanMasterLoadConfiguration(36507, 251, ETMEEPromReadWord(0x0181), FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, ETMEEPromReadWord(0x0180));
-  global_data_A36507.system_serial_number = ETMEEPromReadWord(EEPROM_REGISTER_TOP_LEVEL_SERIAL_NUMBER);
+  ETMCanMasterLoadConfiguration(36507, 251, 0, FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, 0);
+  global_data_A36507.system_serial_number = 1;//ETMEEPromReadWord(EEPROM_REGISTER_TOP_LEVEL_SERIAL_NUMBER);
 
 
 
@@ -1382,7 +1382,7 @@ void InitializeA36507(void) {
   
   ETMAnalogInputInitialize(&analog_5V_vmon, 
 			   MACRO_DEC_TO_SCALE_FACTOR_16(2.440215),
-			   OFFSET_ZERO,
+			   ETM_ANALOG_OFFSET_ZERO,
 			   ETM_ANALOG_AVERAGE_8_SAMPLES);
 
 
@@ -1409,11 +1409,11 @@ void InitializeA36507(void) {
 
   test_0 = ETMAnalogInputGetReading(&analog_5V_vmon);
 
-  global_data_A36507.analog_input_5v_mon.filtered_adc_reading  = ADCBUF0 + ADCBUF2 + ADCBUF4 + ADCBUF6 + ADCBUF8 + ADCBUFA + ADCBUFC + ADCBUFE;
-  global_data_A36507.analog_input_3v3_mon.filtered_adc_reading = ADCBUF1 + ADCBUF3 + ADCBUF5 + ADCBUF7 + ADCBUF9 + ADCBUFB + ADCBUFD + ADCBUFF;
+  //global_data_A36507.analog_input_5v_mon.filtered_adc_reading  = ADCBUF0 + ADCBUF2 + ADCBUF4 + ADCBUF6 + ADCBUF8 + ADCBUFA + ADCBUFC + ADCBUFE;
+  //global_data_A36507.analog_input_3v3_mon.filtered_adc_reading = ADCBUF1 + ADCBUF3 + ADCBUF5 + ADCBUF7 + ADCBUF9 + ADCBUFB + ADCBUFD + ADCBUFF;
 
-  global_data_A36507.analog_input_5v_mon.filtered_adc_reading  <<= 1;
-  global_data_A36507.analog_input_3v3_mon.filtered_adc_reading <<= 1;  
+  //global_data_A36507.analog_input_5v_mon.filtered_adc_reading  <<= 1;
+  //global_data_A36507.analog_input_3v3_mon.filtered_adc_reading <<= 1;  
 
 
   while (!ETMAnalogInputFaultUnderFixed(&analog_5V_vmon)) {
@@ -1427,14 +1427,14 @@ void InitializeA36507(void) {
   Nop();
 
 
-  ETMAnalogScaleCalibrateADCReading(&global_data_A36507.analog_input_5v_mon);
-  ETMAnalogScaleCalibrateADCReading(&global_data_A36507.analog_input_3v3_mon);
+  //ETMAnalogScaleCalibrateADCReading(&global_data_A36507.analog_input_5v_mon);
+  //ETMAnalogScaleCalibrateADCReading(&global_data_A36507.analog_input_3v3_mon);
 
   
   _ADON = 0;
 
   // Load System powered time from EEPROM
-  ETMEEPromReadPage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&system_powered_seconds);
+  //ETMEEPromReadPage(EEPROM_PAGE_ON_TIME, 6, (unsigned int*)&system_powered_seconds);
 
 #define UART1_BAUDRATE             112000        // 113K Baud Rate
 #define A36507_U1MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_NO_PAR_8BIT & UART_1STOPBIT)
@@ -1460,7 +1460,7 @@ void InitializeA36507(void) {
 void CalculateHeaterWarmupTimers(void) {
   unsigned long difference;
   // Read the warmup timers stored in EEPROM
-  ETMEEPromReadPage(EEPROM_PAGE_HEATER_TIMERS, 5, (unsigned int*)&global_data_A36507.last_recorded_warmup_seconds);
+  //ETMEEPromReadPage(EEPROM_PAGE_HEATER_TIMERS, 5, (unsigned int*)&global_data_A36507.last_recorded_warmup_seconds);
   ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
   mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
 
@@ -1485,18 +1485,20 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   // Personality is a register offset
   
   // Check the status of the EEPROM
+  /*
   if (ETMEEPromReadWord(EEPROM_REGISTER_EEPROM_OK_CHECK) != 0xACAC) {
     // DPARKER consider doing more error checking here
     LoadDefaultSystemCalibrationToEEProm();
     __delay32(1000000);
   }
-  
+
   global_data_A36507.eeprom_failure = 0;
   if (ETMEEPromReadWord(EEPROM_REGISTER_EEPROM_OK_CHECK) != 0xACAC) {
     // There is a EEPROM failure
     global_data_A36507.eeprom_failure = 1;
   }
-
+  */
+  /*
   // Load data for HV Lambda
   local_hv_lambda_low_en_set_point    = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_LOW_ENERGY_SET_POINT + (2*personality)));
   local_hv_lambda_high_en_set_point   = ETMEEPromReadWord((EEPROM_REGISTER_LAMBDA_HIGH_ENERGY_SET_POINT + (2*personality)));
@@ -1520,6 +1522,7 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
 
   // Load data for Pulse Sync
   ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  */
 }
 
 
@@ -1562,6 +1565,7 @@ void ZeroSystemPoweredTime(void) {
 
 
 void LoadDefaultSystemCalibrationToEEProm(void) {
+  /*
   ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HTR_MAG_AFC, 16, (unsigned int*)&eeprom_default_values_htr_mag_afc);
   ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HV_LAMBDA, 16, (unsigned int*)&eeprom_default_values_hv_lambda);
   ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_GUN_DRV, 16, (unsigned int*)&eeprom_default_values_gun_driver);
@@ -1569,6 +1573,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
   ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, (unsigned int*)&eeprom_default_values_p_sync_per_1);
   ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, (unsigned int*)&eeprom_default_values_p_sync_per_1);
   ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, (unsigned int*)&eeprom_default_values_p_sync_per_1);
+  */
 }
 
 #define REGISTER_HEATER_CURRENT_AT_STANDBY 0x0000
@@ -1656,8 +1661,8 @@ void ExecuteEthernetCommand(unsigned int personality) {
     if ((next_message.index & 0xF000) == 0xE000) {
       // It is a message for the ECB
       eeprom_register = next_message.index & 0x0FFF;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_0);
-      ETMEEPromWriteWord(eeprom_register + 1, next_message.data_1);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_0);
+      //ETMEEPromWriteWord(eeprom_register + 1, next_message.data_1);
     } else {
       // It is a message for a slave
       SendCalibrationSetPointToSlave(next_message.index, next_message.data_1, next_message.data_0);
@@ -1669,9 +1674,10 @@ void ExecuteEthernetCommand(unsigned int personality) {
       // It is a message for the ECB
       eeprom_register = next_message.index & 0x0FFF;
       eeprom_register -= 0x0800;
-      SendCalibrationDataToGUI(next_message.index - 0x0800, ETMEEPromReadWord(eeprom_register + 1), ETMEEPromReadWord(eeprom_register));
+      
+      //SendCalibrationDataToGUI(next_message.index - 0x0800, ETMEEPromReadWord(eeprom_register + 1), ETMEEPromReadWord(eeprom_register));
     } else {
-      ReadCalibrationSetPointFromSlave(next_message.index);
+      //ReadCalibrationSetPointFromSlave(next_message.index);
     }
   } else {
     // This message needs to be processsed by the ethernet control board
@@ -1679,168 +1685,168 @@ void ExecuteEthernetCommand(unsigned int personality) {
     case REGISTER_HEATER_CURRENT_AT_STANDBY:
       local_heater_current_full_set_point = next_message.data_2;
       eeprom_register = next_message.index;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_ELECTROMAGNET_CURRENT_HIGH_ENERGY:
       local_magnet_current_set_point_high_energy = next_message.data_2;
       eeprom_register = next_message.index + personality;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_ELECTROMAGNET_CURRENT_LOW_ENERGY:
       local_magnet_current_set_point_low_energy = next_message.data_2;
       eeprom_register = next_message.index + personality;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
 
     case REGISTER_HOME_POSITION:
       local_afc_home_position = next_message.data_2;
       eeprom_register = next_message.index + personality;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_AFC_OFFSET:
       //etm_can_afc_mirror.afc_offset = next_message.data_2;
       eeprom_register = next_message.index;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
       
     case REGISTER_AFC_AFT_CONTROL_VOLTAGE_HIGH_ENERGY:
       local_afc_aft_control_voltage_high_energy = next_message.data_2;
       eeprom_register = next_message.index;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_AFC_AFT_CONTROL_VOLTAGE_LOW_ENERGY:
       local_afc_aft_control_voltage_low_energy = next_message.data_2;
       eeprom_register = next_message.index;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_HIGH_ENERGY_SET_POINT:
       local_hv_lambda_high_en_set_point = next_message.data_2;
       eeprom_register = next_message.index + 2 * personality;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_LOW_ENERGY_SET_POINT:
       local_hv_lambda_low_en_set_point = next_message.data_2;
       eeprom_register = next_message.index + 2 * personality;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_GUN_DRIVER_HEATER_VOLTAGE:
       local_gun_drv_heater_v_set_point = next_message.data_2;
       eeprom_register = next_message.index;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_GUN_DRIVER_HIGH_ENERGY_PULSE_TOP_VOLTAGE:
       local_gun_drv_high_en_pulse_top_v = next_message.data_2;
       eeprom_register = next_message.index + personality * 3;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_GUN_DRIVER_LOW_ENERGY_PULSE_TOP_VOLTAGE:
       local_gun_drv_low_en_pulse_top_v = next_message.data_2;
       eeprom_register = next_message.index + personality * 3;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_GUN_DRIVER_CATHODE_VOLTAGE:
       local_gun_drv_cathode_set_point = next_message.data_2;
       eeprom_register = next_message.index + personality * 3;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_A_B:
       local_pulse_sync_timing_reg_0_word_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_C_D:
       local_pulse_sync_timing_reg_0_word_1 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_RF_TRIGGER_AND_THYRATRON_PULSE_DELAY_HIGH_ENERGY:
       local_pulse_sync_timing_reg_0_word_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_HIGH_ENERGY_A_B:
       local_pulse_sync_timing_reg_1_word_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_HIGH_ENERGY_C_D:
       local_pulse_sync_timing_reg_1_word_1 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_HIGH_ENERGY:
       local_pulse_sync_timing_reg_1_word_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_A_B:
       local_pulse_sync_timing_reg_2_word_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_LOW_ENERGY_C_D:
       local_pulse_sync_timing_reg_2_word_1 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_RF_TRIGGER_AND_THYRATRON_PULSE_DELAY_LOW_ENERGY:
       local_pulse_sync_timing_reg_2_word_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_A_B:
       local_pulse_sync_timing_reg_3_word_0 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_GRID_PULSE_WIDTH_LOW_ENERGY_C_D:
       local_pulse_sync_timing_reg_3_word_1 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_LOW_ENERGY:
       local_pulse_sync_timing_reg_3_word_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
-      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
 
     case REGISTER_ECB_SYSTEM_SERIAL_NUMBER:
-      ETMEEPromWriteWord(next_message.index, next_message.data_2);
-      global_data_A36507.system_serial_number = ETMEEPromReadWord(next_message.index);
+      //ETMEEPromWriteWord(next_message.index, next_message.data_2);
+      //global_data_A36507.system_serial_number = ETMEEPromReadWord(next_message.index);
       //global_data_A36507.system_serial_number = next_message.data_2;
       break;
 
     case REGISTER_REMOTE_IP_ADDRESS:
-      ETMEEPromWriteWord(next_message.index, next_message.data_2);
-      ETMEEPromWriteWord(next_message.index + 1, next_message.data_1);
+      //ETMEEPromWriteWord(next_message.index, next_message.data_2);
+      //ETMEEPromWriteWord(next_message.index + 1, next_message.data_1);
       break;
       
     case REGISTER_IP_ADDRESS:
-      ETMEEPromWriteWord(next_message.index, next_message.data_2);
-      ETMEEPromWriteWord(next_message.index + 1, next_message.data_1);
+      //ETMEEPromWriteWord(next_message.index, next_message.data_2);
+      //ETMEEPromWriteWord(next_message.index + 1, next_message.data_1);
       break;
 
 
@@ -2174,10 +2180,10 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
     psync_grid_stop_low_intensity_0 = psync_grid_stop_high_intensity_0;
   }
   
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  //ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  //ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  //ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
+  //ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
 }
 
 
@@ -2185,51 +2191,51 @@ void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
 void WriteConfigToMirror(void) {
   unsigned int temp_data[16];
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_HTR_MAG_AFC, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HTR_MAG_AFC, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_HTR_MAG_AFC, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HTR_MAG_AFC, 16, temp_data);
   
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_HV_LAMBDA, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HV_LAMBDA, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_HV_LAMBDA, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HV_LAMBDA, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_GUN_DRV, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_GUN_DRV, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_GUN_DRV, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_GUN_DRV, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_1, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_1, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_2, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_2, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_3, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_3, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_4, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_4, 16, temp_data);
 }
 
 void ReadConfigFromMirror(void) {
   unsigned int temp_data[16];
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HTR_MAG_AFC, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HTR_MAG_AFC, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HTR_MAG_AFC, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HTR_MAG_AFC, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HV_LAMBDA, 16, temp_data); 
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HV_LAMBDA, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HV_LAMBDA, 16, temp_data); 
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HV_LAMBDA, 16, temp_data);
  
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_GUN_DRV, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_GUN_DRV, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_GUN_DRV, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_GUN_DRV, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_1, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_1, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_2, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_2, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_3, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_3, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, temp_data);
 
-  ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_4, 16, temp_data);
-  ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, temp_data);
+  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_4, 16, temp_data);
+  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, temp_data);
 }
 
 
