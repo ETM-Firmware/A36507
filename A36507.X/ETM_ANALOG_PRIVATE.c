@@ -1,6 +1,7 @@
 #include "ETM_ANALOG_PRIVATE.h"
 #include "ETM_SCALE.h"
 #include "ETM_MATH.h"
+#include "ETM_TICK.h"
 
 
 typedef struct {
@@ -8,32 +9,35 @@ typedef struct {
   unsigned int  adc_accumulator_counter;
   unsigned int  filtered_adc_reading;
   unsigned int  reading_scaled_and_calibrated;
-  unsigned int  samples_to_filter_2_to_n;
-
+  unsigned int  samples_to_average_2_to_n;
+  unsigned long previous_sample_time;
+  
   // -------- These are used to calibrate and scale the ADC Reading to Engineering Units ---------
-  unsigned int fixed_scale;
-  signed int   fixed_offset;
-  unsigned int calibration_internal_scale;
-  signed int   calibration_internal_offset;
-  unsigned int calibration_external_scale;
-  signed int   calibration_external_offset;
+  // Word 8
+  unsigned int  fixed_scale;
+  signed int    fixed_offset;
+  unsigned int  calibration_internal_scale;
+  signed int    calibration_internal_offset;
+  unsigned int  calibration_external_scale;
+  signed int    calibration_external_offset;
 
 
-  // --------  These are used for fixed fault detection ------------------ 
-  unsigned int fixed_over_trip_point;          // If the value exceeds this it will trip immediatly
-  unsigned int fixed_under_trip_point;         // If the value is less than this it will trip immediatly
-  unsigned int fixed_over_trip_counter;        // This counts the number of samples over the fixed_over_trip_point (will decrement each sample over test is false)
-  unsigned int fixed_under_trip_counter;       // This counts the number of samples under the fixed_under_trip_point (will decrement each sample under test is false)
-  unsigned int fixed_counter_fault_limit;      // The over / under trip counter must reach this value to generate a fault
+  // --------  These are used for fixed fault detection ------------------
+  // Word 14
+  unsigned int  fixed_over_trip_point;          // If the value exceeds this it will trip
+  unsigned int  fixed_under_trip_point;         // If the value is less than this it will trip
+  unsigned long fixed_over_trip_timer;          // This counts the time over fixed_over_trip_point (will decrement when test is false)
+  unsigned long fixed_under_trip_timer;         // This counts the time under fixed_under_trip_point (will decrement when test is false)
+  unsigned long fixed_fault_time;               // The over / under trip counter must reach this time to generate a condition
 
 
   // --------  These are used for relative fault detection ------------------ 
-  unsigned int target_value;                      // This is the target value (probably set point) in engineering units
-  unsigned int relative_over_trip_point;
-  unsigned int relative_under_trip_point;
-  unsigned int relative_over_trip_counter;        // This counts the number of samples over the relative_over_trip_point (will decrement each sample over test is false)
-  unsigned int relative_under_trip_counter;       // This counts the number of samples under the relative_under_trip_point (will decrement each sample under test is false)
-  unsigned int relative_counter_fault_limit;      // The over / under trip counter must reach this value to generate a fault
+  // Word 22
+  unsigned int  relative_over_trip_point;       // If the value exceeds this it will trip
+  unsigned int  relative_under_trip_point;      // If the value is less than this it will trip
+  unsigned long relative_over_trip_timer;       // This counts the time over relative_over_trip_point (will decrement when test is false)
+  unsigned long relative_under_trip_timer;      // This counts the time under relative_under_trip_point (will decrement when test is false)
+  unsigned long relative_fault_time;            // The over / under trip counter must reach this time to generate a condition
 
 } TYPE_ANALOG_INPUT;
 
@@ -58,12 +62,12 @@ typedef struct {
 
 
 #define ETM_ANALOG_NO_TRIP_SCALE                               MACRO_DEC_TO_CAL_FACTOR_2(1)
-#define ETM_ANALOG_MAX_FAULT_LIMIT                             0x7FFF
+#define ETM_ANALOG_MAX_FAULT_LIMIT                             0x3FFFFFFF
 
 void ETMAnalogInputInitialize(TYPE_PUBLIC_ANALOG_INPUT*  input_ptr,
 			      unsigned int  fixed_scale, 
 			      signed int    fixed_offset, 
-			      unsigned int  filter_samples_2_n) {
+			      unsigned int  average_samples_2_n) {
   
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;  
 
@@ -75,18 +79,18 @@ void ETMAnalogInputInitialize(TYPE_PUBLIC_ANALOG_INPUT*  input_ptr,
   ptr_analog_input->calibration_external_scale  = ETM_ANALOG_CALIBRATION_SCALE_1;
   ptr_analog_input->calibration_external_offset = ETM_ANALOG_OFFSET_ZERO;
   
-  if (filter_samples_2_n > 15) {
-    filter_samples_2_n = 15;
+  if (average_samples_2_n > 15) {
+    average_samples_2_n = 15;
   }
 
-  ptr_analog_input->samples_to_filter_2_to_n     = filter_samples_2_n;
+  ptr_analog_input->samples_to_average_2_to_n     = average_samples_2_n;
   ptr_analog_input->adc_accumulator              = 0;
   ptr_analog_input->adc_accumulator_counter      = 0;  
 
-  ptr_analog_input->fixed_over_trip_counter      = 0;  
-  ptr_analog_input->fixed_under_trip_counter     = 0;
-  ptr_analog_input->relative_over_trip_counter   = 0;
-  ptr_analog_input->relative_under_trip_counter  = 0;
+  ptr_analog_input->fixed_over_trip_timer        = 0;  
+  ptr_analog_input->fixed_under_trip_timer       = 0;
+  ptr_analog_input->relative_over_trip_timer     = 0;
+  ptr_analog_input->relative_under_trip_timer    = 0;
 
   ptr_analog_input->fixed_over_trip_point        = ETM_ANALOG_NO_OVER_TRIP;
   ptr_analog_input->fixed_under_trip_point       = ETM_ANALOG_NO_UNDER_TRIP;
@@ -94,8 +98,8 @@ void ETMAnalogInputInitialize(TYPE_PUBLIC_ANALOG_INPUT*  input_ptr,
   ptr_analog_input->relative_over_trip_point     = ETM_ANALOG_NO_OVER_TRIP;
   ptr_analog_input->relative_under_trip_point    = ETM_ANALOG_NO_UNDER_TRIP;
   
-  ptr_analog_input->fixed_counter_fault_limit    = ETM_ANALOG_MAX_FAULT_LIMIT;
-  ptr_analog_input->relative_counter_fault_limit = ETM_ANALOG_MAX_FAULT_LIMIT;
+  ptr_analog_input->fixed_fault_time             = ETM_ANALOG_MAX_FAULT_LIMIT;
+  ptr_analog_input->relative_fault_time          = ETM_ANALOG_MAX_FAULT_LIMIT;
 
 }
 
@@ -122,10 +126,12 @@ void ETMAnalogInputInitializeFixedTripLevels(TYPE_PUBLIC_ANALOG_INPUT* input_ptr
 
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;
 
-  if (fixed_counter_fault_limit > ETM_ANALOG_MAX_FAULT_LIMIT) {
-    fixed_counter_fault_limit = ETM_ANALOG_MAX_FAULT_LIMIT;
+  ptr_analog_input->fixed_fault_time = fixed_counter_fault_limit;
+  ptr_analog_input->fixed_fault_time *= etm_tick_delay_1ms;
+  
+  if (ptr_analog_input->fixed_fault_time > ETM_ANALOG_MAX_FAULT_LIMIT) {
+    ptr_analog_input->fixed_fault_time = ETM_ANALOG_MAX_FAULT_LIMIT;
   }
-  ptr_analog_input->fixed_counter_fault_limit = fixed_counter_fault_limit;
   
   ptr_analog_input->fixed_under_trip_point = fixed_under_trip_point;  
   ptr_analog_input->fixed_over_trip_point = fixed_over_trip_point;  
@@ -140,11 +146,12 @@ void ETMAnalogInputInitializeRelativeTripLevels(TYPE_PUBLIC_ANALOG_INPUT* input_
 						unsigned int relative_counter_fault_limit) {
   unsigned int compare_point;
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;
-  
-  if (relative_counter_fault_limit > ETM_ANALOG_MAX_FAULT_LIMIT) {
-    relative_counter_fault_limit = ETM_ANALOG_MAX_FAULT_LIMIT;
+ 
+  ptr_analog_input->relative_fault_time = relative_counter_fault_limit * etm_tick_delay_1ms;
+  if (ptr_analog_input->relative_fault_time > ETM_ANALOG_MAX_FAULT_LIMIT) {
+    ptr_analog_input->relative_fault_time = ETM_ANALOG_MAX_FAULT_LIMIT;
   }
-  ptr_analog_input->relative_counter_fault_limit = relative_counter_fault_limit;
+ 
   
   
   compare_point = ETMScaleFactor2(target_value, relative_trip_point_scale, 0);
@@ -159,15 +166,17 @@ void ETMAnalogInputInitializeRelativeTripLevels(TYPE_PUBLIC_ANALOG_INPUT* input_
 
 
 void ETMAnalogInputUpdate(TYPE_PUBLIC_ANALOG_INPUT* input_ptr, unsigned int adc_reading) {
+  unsigned long current_time;
+  unsigned long delta_time;
   unsigned int temp;
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;
   
   ptr_analog_input->adc_accumulator += adc_reading;
   ptr_analog_input->adc_accumulator_counter++;
   
-  if (ptr_analog_input->adc_accumulator_counter >= (0x1 << ptr_analog_input->samples_to_filter_2_to_n)) {
+  if (ptr_analog_input->adc_accumulator_counter >= (0x1 << ptr_analog_input->samples_to_average_2_to_n)) {
     // Average over 2^N readings
-    ptr_analog_input->adc_accumulator >>= ptr_analog_input->samples_to_filter_2_to_n;
+    ptr_analog_input->adc_accumulator >>= ptr_analog_input->samples_to_average_2_to_n;
     ptr_analog_input->filtered_adc_reading = ptr_analog_input->adc_accumulator;
     ptr_analog_input->adc_accumulator_counter = 0;
     ptr_analog_input->adc_accumulator = 0;
@@ -185,6 +194,64 @@ void ETMAnalogInputUpdate(TYPE_PUBLIC_ANALOG_INPUT* input_ptr, unsigned int adc_
     temp = ETMScaleFactor16(temp, ptr_analog_input->fixed_scale, ptr_analog_input->fixed_offset);
     
     ptr_analog_input->reading_scaled_and_calibrated = temp;
+
+
+    // Now check for faults
+    current_time = ETMTickGet();
+    delta_time = current_time - ptr_analog_input->previous_sample_time;
+    ptr_analog_input->previous_sample_time = current_time;
+
+    // Check Over Fixed 
+    if (ptr_analog_input->reading_scaled_and_calibrated > ptr_analog_input->fixed_over_trip_point) {
+      if (ptr_analog_input->fixed_over_trip_timer < (ptr_analog_input->fixed_fault_time << 1)) {
+	ptr_analog_input->fixed_over_trip_timer += delta_time;
+      } 
+    } else {
+      if (ptr_analog_input->fixed_over_trip_timer <= delta_time) {
+	ptr_analog_input->fixed_over_trip_timer = 0;
+      } else {
+	ptr_analog_input->fixed_over_trip_timer -= delta_time;
+      }
+    }
+
+    // Check Under Fixed
+    if (ptr_analog_input->reading_scaled_and_calibrated < ptr_analog_input->fixed_under_trip_point) {
+      if (ptr_analog_input->fixed_under_trip_timer < (ptr_analog_input->fixed_fault_time << 1)) {
+	ptr_analog_input->fixed_under_trip_timer += delta_time;
+      } 
+    } else {
+      if (ptr_analog_input->fixed_under_trip_timer <= delta_time) {
+	ptr_analog_input->fixed_under_trip_timer = 0;
+      } else {
+	ptr_analog_input->fixed_under_trip_timer -= delta_time;
+      }
+    }
+
+    // Check Over Relative 
+    if (ptr_analog_input->reading_scaled_and_calibrated > ptr_analog_input->relative_over_trip_point) {
+      if (ptr_analog_input->relative_over_trip_timer < (ptr_analog_input->relative_fault_time << 1)) {
+	ptr_analog_input->relative_over_trip_timer += delta_time;
+      } 
+    } else {
+      if (ptr_analog_input->relative_over_trip_timer <= delta_time) {
+	ptr_analog_input->relative_over_trip_timer = 0;
+      } else {
+	ptr_analog_input->relative_over_trip_timer -= delta_time;
+      }
+    }
+
+    // Check Under Relative
+    if (ptr_analog_input->reading_scaled_and_calibrated < ptr_analog_input->relative_under_trip_point) {
+      if (ptr_analog_input->relative_under_trip_timer < (ptr_analog_input->relative_fault_time << 1)) {
+	ptr_analog_input->relative_under_trip_timer += delta_time;
+      } 
+    } else {
+      if (ptr_analog_input->relative_under_trip_timer <= delta_time) {
+	ptr_analog_input->relative_under_trip_timer = 0;
+      } else {
+	ptr_analog_input->relative_under_trip_timer -= delta_time;
+      }
+    }
   }
 }
 
@@ -195,6 +262,7 @@ unsigned int ETMAnalogInputGetReading(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) {
 }
 
 
+#if(0)
 void ETMAnalogInputUpdateFaults(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) {
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;
 
@@ -255,11 +323,13 @@ void ETMAnalogInputUpdateFaults(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) {
   }
 }
 
+#endif
+
 
 unsigned int ETMAnalogInputFaultOverFixed(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) {
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;
 
-  if (ptr_analog_input->fixed_over_trip_counter >= ptr_analog_input->fixed_counter_fault_limit) {
+  if (ptr_analog_input->fixed_over_trip_timer >= ptr_analog_input->fixed_fault_time) {
     return 1;
   }
   return 0;
@@ -269,7 +339,7 @@ unsigned int ETMAnalogInputFaultOverFixed(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) {
 unsigned int ETMAnalogInputFaultUnderFixed(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) {
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;
 
-  if (ptr_analog_input->fixed_under_trip_counter >= ptr_analog_input->fixed_counter_fault_limit) {
+  if (ptr_analog_input->fixed_under_trip_timer >= ptr_analog_input->fixed_fault_time) {
     return 1;
   }
   return 0;
@@ -279,7 +349,7 @@ unsigned int ETMAnalogInputFaultUnderFixed(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) 
 unsigned int ETMAnalogInputFaultOverRelative(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) {
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;
 
-  if (ptr_analog_input->relative_over_trip_counter >= ptr_analog_input->relative_counter_fault_limit) {
+  if (ptr_analog_input->relative_over_trip_timer >= ptr_analog_input->relative_fault_time) {
     return 1;
   }
   return 0;
@@ -289,7 +359,7 @@ unsigned int ETMAnalogInputFaultOverRelative(TYPE_PUBLIC_ANALOG_INPUT* input_ptr
 unsigned int ETMAnalogInputFaultUnderRelative(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) {
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;
 
-  if (ptr_analog_input->relative_under_trip_counter >= ptr_analog_input->relative_counter_fault_limit) {
+  if (ptr_analog_input->relative_under_trip_timer >= ptr_analog_input->relative_fault_time) {
     return 1;
   }
   return 0;
@@ -299,10 +369,10 @@ unsigned int ETMAnalogInputFaultUnderRelative(TYPE_PUBLIC_ANALOG_INPUT* input_pt
 void ETMAnalogInputClearFaultCounters(TYPE_PUBLIC_ANALOG_INPUT* input_ptr) {
   TYPE_ANALOG_INPUT *ptr_analog_input = (TYPE_ANALOG_INPUT*)input_ptr;
 
-  ptr_analog_input->fixed_over_trip_counter = 0;
-  ptr_analog_input->fixed_under_trip_counter = 0;
-  ptr_analog_input->relative_over_trip_counter = 0;
-  ptr_analog_input->relative_under_trip_counter = 0;
+  ptr_analog_input->fixed_over_trip_timer = 0;
+  ptr_analog_input->fixed_under_trip_timer = 0;
+  ptr_analog_input->relative_over_trip_timer = 0;
+  ptr_analog_input->relative_under_trip_timer = 0;
 }  
 
 

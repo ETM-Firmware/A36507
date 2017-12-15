@@ -2,35 +2,33 @@
 #define __ETM_ANALOG_PRIVATE
 
 
+/*
+  This module provides functions for handeling Analog Inputs and Outputs
+
+  Possible faults on analog input
+  Over condition - Absolute (out of range for at least N milliseconds
+  Under condition - Absolute (out of range for at least N milliseconds)
+  
+  Over condition - Relative to Set Point (out of range for at least N milliseconds)
+  Under condition - Relative to Set Point (out of range for at least N milliseconds)
+*/
+
+
 #define ETM_ANALOG_VERSION    04
 
 typedef struct {
-  unsigned int private_data_no_touching[24]; // Touch at your own risk
+  unsigned int private_data_no_touching[32]; // Touch at your own risk
 } TYPE_PUBLIC_ANALOG_INPUT;
 
 typedef struct {
-  unsigned int private_data_no_touching[12]; // Touch at your own risk
+  unsigned int private_data_no_touching[14]; // Touch at your own risk
 } TYPE_PUBLIC_ANALOG_OUTPUT;
-
-
-
-/*
-  Possible faults on analog input
-  
-  Over condition - Absolute (X samples out of range)
-  Under condition - Absolute (X samples out of range)
-  
-  Over condition - Relative (Y samples out of range)
-  Under condition - Relative (Y samples out of range)
-
-*/
-
 
 
 void ETMAnalogInputInitialize(TYPE_PUBLIC_ANALOG_INPUT*  ptr_analog_input, 
 				 unsigned int  fixed_scale, 
 				 signed int    fixed_offset, 
-				 unsigned int  filter_samples_2_n);
+				 unsigned int  average_samples_2_n);
 /*
   Initialize the Analog Input
   fixed_scale and fixed_offset are the Application Specfic Analog scaling
@@ -48,17 +46,22 @@ void ETMAnalogInputLoadCalibration(TYPE_PUBLIC_ANALOG_INPUT*  ptr_analog_input,
   Optionally load non-default calibration data.
   If you don't call this, default calibration values will be used (gain of 1 and offset of 0)
   This could come from the EEPROM at board board of from external control system
+
+  This subroutine must be called after ETMAnalogInputInitialize
 */
 
 
 void ETMAnalogInputInitializeFixedTripLevels(TYPE_PUBLIC_ANALOG_INPUT* ptr_analog_input,
 					     unsigned int fixed_over_trip_point, 
 					     unsigned int fixed_under_trip_point, 
-					     unsigned int fixed_counter_fault_limit);
+					     unsigned int fixed_fault_time_milliseconds);
 /*
   Optionally load fixed over and under trip limits
   If you don't call this, these faults won't be enabled
-  See ETMAnalogInputUpdateFaults for more info
+  set fixed_fault_time_milliseconds to Zero to indicated a fault on the first evaluation that the condition is true
+
+  This subroutine must be called after ETMAnalogInputInitialize
+  The ETM_TICK module must be initialized before you call this function or timing will not work properly
 */
 
 
@@ -66,31 +69,29 @@ void ETMAnalogInputInitializeRelativeTripLevels(TYPE_PUBLIC_ANALOG_INPUT* ptr_an
 						unsigned int target_value,
 						unsigned int relative_trip_point_scale, 
 						unsigned int relative_trip_point_floor, 
-						unsigned int relative_counter_fault_limit);
+						unsigned int relative_fault_time_milliseconds);
 /*
   Optionally load relative over and under trip limits
   If you don't call this, these faults won't be enabled
   You must call this subroutine to change the target value
   The trip limits are target_value +/- (CALCULATED_TRIP_LEVEL)
   CALCULATED_TRIP_LEVEL = maximum((target_value * relative_trip_point_scale), relative_trip_point_floor)
-  See ETMAnalogInputUpdateFaults for more info
+  set relative_fault_time_milliseconds to Zero to indicated a fault on the first evaluation that the condition is true
+
+  This subroutine must be called after ETMAnalogInputInitialize
+  The ETM_TICK module must be initialized before you call this function or timing will not work properly
 */
 
 
 void ETMAnalogInputUpdate(TYPE_PUBLIC_ANALOG_INPUT* ptr_analog_input, unsigned int adc_reading);
 /*
   Loads a raw ADC reading and average, scales, calibrates and updates .reading_scaled_and_calibrated as configured above
+  Updates the relevant fault timer (over/under fixed/relative)
 */
 
 unsigned int ETMAnalogInputGetReading(TYPE_PUBLIC_ANALOG_INPUT* ptr_analog_input);
 /*
-  Returns the filtered, scaled and calibratated ADC Reading
-*/
-
-void ETMAnalogInputUpdateFaults(TYPE_PUBLIC_ANALOG_INPUT* ptr_analog_input);
-/*
-  Compares .reading_scaled_and_calibrated to the over and under limits
-  Updates the counters for Fixed Over, Fixed Under, Relative Over, Relative Under
+  Returns the averaged / scaled / calibratated ADC Reading
 */
 
 unsigned int ETMAnalogInputFaultOverFixed(TYPE_PUBLIC_ANALOG_INPUT* ptr_analog_input);
@@ -120,7 +121,7 @@ unsigned int ETMAnalogInputFaultUnderRelative(TYPE_PUBLIC_ANALOG_INPUT* ptr_anal
 
 void ETMAnalogInputClearFaultCounters(TYPE_PUBLIC_ANALOG_INPUT* ptr_analog_input);
 /*
-  Sets all of the fault counters back to zero
+  Sets all of the fault timers back to zero
 */
 
 
@@ -147,6 +148,8 @@ void ETMAnalogOutputLoadCalibration(TYPE_PUBLIC_ANALOG_OUTPUT* ptr_analog_output
 /*
   Optionally load non-default calibration data.
   This could come from the EEPROM at board board of from external control system
+
+  This subroutine must be called after ETMAnalogOutputInitialize
 */
 
 
@@ -155,6 +158,8 @@ void ETMAnalogOutputSetPoint(TYPE_PUBLIC_ANALOG_OUTPUT* ptr_analog_output, unsig
   Confirms that new_set_point is within the valid set point range
   If above the max value, will be set to max.
   If bellow the min value, will be set to min.
+
+  This subroutine must be called after ETMAnalogOutputInitialize
 */
 
 unsigned int ETMAnalogOuputGetDACValue(TYPE_PUBLIC_ANALOG_OUTPUT* ptr_analog_output);
@@ -165,7 +170,14 @@ unsigned int ETMAnalogOuputGetDACValue(TYPE_PUBLIC_ANALOG_OUTPUT* ptr_analog_out
 */
 
 void ETMAnalogOutputDisable(TYPE_PUBLIC_ANALOG_OUTPUT* ptr_analog_output);
+/*
+  Sets the disable flag which causes ETMAnalogOuputGetDACValue to return the DAC setting for 'disabled_set_point' from ETMAnalogOutputInitialize
+*/
+
 void ETMAnalogOutputEnable(TYPE_PUBLIC_ANALOG_OUTPUT* ptr_analog_output);
+/*
+  Clears the disable flag which causes ETMAnalogOuputGetDACValue to return the DAC setting for most recent set point from ETMAnalogOutputSetPoint
+*/
 
 
 #define ETM_ANALOG_CALIBRATION_SCALE_1                         MACRO_DEC_TO_CAL_FACTOR_2(1)
@@ -174,19 +186,19 @@ void ETMAnalogOutputEnable(TYPE_PUBLIC_ANALOG_OUTPUT* ptr_analog_output);
 #define ETM_ANALOG_NO_UNDER_TRIP                               0x0000
 #define ETM_ANALOG_NO_FLOOR                                    0xFFFF
 
-#define ETM_ANALOG_AVERAGE_1_SAMPLES                            0
-#define ETM_ANALOG_AVERAGE_2_SAMPLES                            1
-#define ETM_ANALOG_AVERAGE_4_SAMPLES                            2
-#define ETM_ANALOG_AVERAGE_8_SAMPLES                            3
-#define ETM_ANALOG_AVERAGE_16_SAMPLES                           4
-#define ETM_ANALOG_AVERAGE_32_SAMPLES                           5
-#define ETM_ANALOG_AVERAGE_64_SAMPLES                           6
-#define ETM_ANALOG_AVERAGE_128_SAMPLES                          7
-#define ETM_ANALOG_AVERAGE_256_SAMPLES                          8
-#define ETM_ANALOG_AVERAGE_512_SAMPLES                          9
-#define ETM_ANALOG_AVERAGE_1024_SAMPLES                         10
-#define ETM_ANALOG_AVERAGE_2048_SAMPLES                         11
-#define ETM_ANALOG_AVERAGE_4096_SAMPLES                         12
+#define ETM_ANALOG_AVERAGE_1_SAMPLES                           0
+#define ETM_ANALOG_AVERAGE_2_SAMPLES                           1
+#define ETM_ANALOG_AVERAGE_4_SAMPLES                           2
+#define ETM_ANALOG_AVERAGE_8_SAMPLES                           3
+#define ETM_ANALOG_AVERAGE_16_SAMPLES                          4
+#define ETM_ANALOG_AVERAGE_32_SAMPLES                          5
+#define ETM_ANALOG_AVERAGE_64_SAMPLES                          6
+#define ETM_ANALOG_AVERAGE_128_SAMPLES                         7
+#define ETM_ANALOG_AVERAGE_256_SAMPLES                         8
+#define ETM_ANALOG_AVERAGE_512_SAMPLES                         9
+#define ETM_ANALOG_AVERAGE_1024_SAMPLES                        10
+#define ETM_ANALOG_AVERAGE_2048_SAMPLES                        11
+#define ETM_ANALOG_AVERAGE_4096_SAMPLES                        12
 
 
 

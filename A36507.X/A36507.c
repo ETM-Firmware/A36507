@@ -3,9 +3,9 @@
 #include "A36507_CONFIG.h"
 #include "TCPmodbus.h"
 #include "ETM_ANALOG_PRIVATE.h"
+#include "ETM_TICK.h"
 
-
-
+TYPE_PUBLIC_ANALOG_INPUT analog_3_3V_vmon;
 TYPE_PUBLIC_ANALOG_INPUT analog_5V_vmon;
 unsigned int test_0;
 unsigned int test_1;
@@ -1377,13 +1377,21 @@ void InitializeA36507(void) {
   _ADIF = 0;
   _ADON = 1;
 
-
+  ETMTickInitialize(FCY_CLK, ETM_TICK_USE_TIMER_1);
+  
+  
   ETMAnalogInputInitialize(&analog_5V_vmon, 
 			   MACRO_DEC_TO_SCALE_FACTOR_16(2.440215),
 			   OFFSET_ZERO,
 			   ETM_ANALOG_AVERAGE_8_SAMPLES);
 
 
+
+  ETMAnalogInputInitializeFixedTripLevels(&analog_5V_vmon,
+					  ETM_ANALOG_NO_OVER_TRIP, 
+					  7000, 
+					  10000);
+  
 
   // Wait for data to be read
   while (_ADIF == 0);
@@ -1406,6 +1414,18 @@ void InitializeA36507(void) {
 
   global_data_A36507.analog_input_5v_mon.filtered_adc_reading  <<= 1;
   global_data_A36507.analog_input_3v3_mon.filtered_adc_reading <<= 1;  
+
+
+  while (!ETMAnalogInputFaultUnderFixed(&analog_5V_vmon)) {
+    ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUFE);
+  }
+  
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+
 
   ETMAnalogScaleCalibrateADCReading(&global_data_A36507.analog_input_5v_mon);
   ETMAnalogScaleCalibrateADCReading(&global_data_A36507.analog_input_3v3_mon);
