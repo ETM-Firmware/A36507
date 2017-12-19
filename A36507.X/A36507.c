@@ -12,7 +12,13 @@ unsigned int test_1;
 unsigned int test_2;
 unsigned int test_3;
 
+unsigned int scope_data_raw[260];
 
+TYPE_SCOPE_DATA   *scope_channel_1;  // Points to scope_data_raw[0];
+TYPE_SCOPE_DATA   *scope_channel_2;  // Points to scope_data_raw[130]
+TYPE_HV_VMON_DATA *scope_hvps;       // Points to scope_data_raw[0];
+
+TYPE_MAGNETRON_CURRENT_DATA  magnetron_current_data[4]; // We can save up to 4 pulses in ram
 
 
 unsigned int test_uart_data_recieved;

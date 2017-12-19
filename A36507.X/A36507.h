@@ -20,6 +20,113 @@
 #define FCY_CLK  20000000
 
 
+typedef struct {
+  unsigned int hvps_voltage;
+  unsigned int electromagnet_current;
+  unsigned int gun_driver_pulse_top_voltage;
+  unsigned int gun_cathode_voltage;
+  unsigned int spare_trigger_on;
+  unsigned int gun_pulse_mid_point_and_afc_sample_time;
+  unsigned int gun_pulse_min_width;
+  unsigned int gun_pulse_max_width;
+  unsigned int afc_home_position;
+  unsigned int prf_set_point;
+  unsigned int unused_0;
+  unsigned int unused_1;
+  unsigned int unused_2;
+  unsigned int unused_3;
+  unsigned int unused_4;
+} TYPE_DOSE_LEVEL;
+
+typedef struct {
+  unsigned int  magnetron_heater_current_at_standby;
+  unsigned int  gun_driver_heater_voltage;
+  unsigned int  afc_offset_control_comp;
+  unsigned int  pfn_trigger_time;
+  unsigned int  hvps_trigger_time_1;
+  unsigned int  hvps_trigger_time_2;
+  unsigned int  magnetron_current_sample_time_1;
+  unsigned int  magnetron_current_sample_time_2;
+  unsigned long run_time_set_point;
+  unsigned int  unused_0;
+  unsigned int  unused_1;
+  unsigned int  unused_2;
+  unsigned int  unused_3;
+  unsigned int  unused_4;
+} TYPE_DOSE_FIXED_SETTINGS;
+
+
+typedef struct {
+  unsigned int dose_comp_0[15];
+  unsigned int dose_comp_1[15];
+  unsigned int dose_comp_2[15];
+  unsigned int dose_comp_3[15];
+} TYPE_DOSE_COMPENSATION;
+
+
+typedef struct {
+  TYPE_DOSE_LEVEL          dose_level_0;
+  TYPE_DOSE_LEVEL          dose_level_1;
+  TYPE_DOSE_LEVEL          dose_level_2;
+  TYPE_DOSE_LEVEL          dose_level_3;
+  TYPE_DOSE_FIXED_SETTINGS fixed_dose_settings;
+  TYPE_DOSE_COMPENSATION   dose_compensation;
+} TYPE_RF_CONFIGURATION;
+
+
+typedef struct {
+  unsigned long system_counter_seconds_hv_on;
+  unsigned long system_counter_seconds_powered;
+  unsigned long system_counter_seconds_xray_on;
+  unsigned long system_counter_arc_total;
+  unsigned long system_counter_pulse_total;
+  unsigned int  gun_driver_warmup_remaining;
+  unsigned int  magnetron_warmup_remaining;
+  unsigned int  pfn_warmup_remaining;
+} TYPE_SYSTEM_COUNTERS;
+
+
+typedef struct {
+  ETMCanStatusRegister             status;
+  unsigned int                     log_data[24];
+  unsigned int                     config_data[8];
+} TYPE_ETM_CAL_SLAVE_MIRROR;
+
+typedef struct {
+  unsigned int                     custom[16];
+  unsigned int                     standard[48];
+  unsigned int                     memory[4];
+  unsigned int                     power_rail[4];
+} TYPE_DEBUG_DATA;
+
+
+#define SCOPE_DATA_SIZE   64
+typedef struct {
+  unsigned int                    buffer_a[SCOPE_DATA_SIZE];
+  unsigned int                    buffer_b[SCOPE_DATA_SIZE];
+  unsigned char                   buffer_a_ready_to_send;
+  unsigned char                   buffer_a_sent;
+  unsigned char                   buffer_b_ready_to_send;
+  unsigned char                   buffer_b_sent;
+} TYPE_SCOPE_DATA;
+
+#define HVPS_DATA_SIZE   256
+typedef struct {
+  unsigned char                   buffer_a[HVPS_DATA_SIZE];
+  unsigned char                   buffer_b[HVPS_DATA_SIZE];
+  unsigned char                   buffer_a_ready_to_send;
+  unsigned char                   buffer_a_sent;
+  unsigned char                   buffer_b_ready_to_send;
+  unsigned char                   buffer_b_sent;
+} TYPE_HV_VMON_DATA;
+
+
+typedef struct {
+  unsigned int                    pulse_id;
+  unsigned int                    pulse_info; // what there an arc on this pulse???
+  unsigned int                    data[50];
+  unsigned char                   data_n;                    
+} TYPE_MAGNETRON_CURRENT_DATA;
 
 
 /*
