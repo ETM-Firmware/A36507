@@ -752,7 +752,7 @@ unsigned int CheckCoolingFault(void) {
 unsigned int CheckGunHeaterOffFault(void) {
   // Check to see if there is an active over current condition in the ion pump
 
-  //#ifndef __IGNORE_ION_PUMP_MODULE
+#ifndef __IGNORE_ION_PUMP_MODULE
   if (_ION_PUMP_OVER_CURRENT_ACTIVE) {
     global_data_A36507.gun_heater_holdoff_timer = 0;
     return 1;
@@ -771,7 +771,8 @@ unsigned int CheckGunHeaterOffFault(void) {
       return 1;
     }
   }
-
+#endif
+  
   return 0;
 }
 
