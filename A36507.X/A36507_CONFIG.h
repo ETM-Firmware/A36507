@@ -12,7 +12,7 @@
 #define MAX_HV_ON_FAULTS                     10   // Attempts to reset faults with HV on (but Xray Off) before latching 
 
 #define MAGNETRON_HEATER_WARM_UP_TIME        300   // 5 minutes
-#define THYRATRON_WARM_UP_TIME               900   // 10 seconds   was  900   // 15 minutes
+#define THYRATRON_WARM_UP_TIME               600   // 10 seconds   was  900   // 15 minutes
 #define GUN_DRIVER_HEATER_WARM_UP_TIME       300   // 5 minutes
 
 #define GUN_HEATER_HOLDOFF_AT_STARTUP        500   // 5 seconds
