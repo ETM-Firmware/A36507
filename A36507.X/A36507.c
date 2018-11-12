@@ -27,6 +27,10 @@ unsigned int test_ref_det_good_message;
 
 
 
+void SendWatchdogResponse(unsigned int pulse_count);
+unsigned int LookForWatchdogMessage(void);
+
+
 void CRCTest(void);
 
 unsigned int LookForDoseMessageFromReferenceDetector(void);
@@ -35,6 +39,8 @@ void WriteConfigToMirror(void);
 void ReadConfigFromMirror(void);
 
 BUFFERBYTE64 uart1_input_buffer;
+BUFFERBYTE64 uart2_input_buffer;
+BUFFERBYTE64 uart2_output_buffer;
 
 
 unsigned int a_ready;
@@ -179,16 +185,76 @@ RTC_DS3231 U6_DS3231;
 
 int main(void) {
   
-  CRCTest();
+  //CRCTest();
   Nop();
   Nop();
   Nop();
   Nop();
 
-  global_data_A36507.control_state = STATE_STARTUP;
+  //global_data_A36507.control_state = STATE_STARTUP;
+
+
+#define UART2_BAUDRATE             112000        // 113K Baud Rate
+#define A36507_U2MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_NO_PAR_8BIT & UART_1STOPBIT)
+#define A36507_U2STA_VALUE         (UART_INT_TX & UART_TX_PIN_NORMAL & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
+#define A36507_U2BRG_VALUE         (((FCY_CLK/UART2_BAUDRATE)/16)-1)
+
+
+  _U2RXIF = 0;
+  _U2RXIE = 1;
+  _U2RXIP = 5;
+
+  _U2TXIF = 0;
+  _U2TXIE = 1;
+  _U2TXIP = 6;
+  U2MODE = 0x0000;
+  U2STA = A36507_U2STA_VALUE;
+  U1STA = A36507_U2STA_VALUE;
+  U2BRG = A36507_U2BRG_VALUE;
+  U2STAbits.UTXEN = 1;
+  U2STAbits.UTXISEL = 1;
+  U2MODE = A36507_U2MODE_VALUE;
+  U2MODEbits.UARTEN = 1;	// And turn the peripheral on
+  test_0 = U2STA;
+  test_1 = U2STA;
+  test_2 = U2STA;
+  test_3 = U2STA;
+
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  BufferByte64Initialize(&uart2_input_buffer);
+  BufferByte64Initialize(&uart2_output_buffer);
+
+  _TRISG13 = 0;
   
   while (1) {
-    DoStateMachine();
+    //DoStateMachine();
+    if (LookForWatchdogMessage()) {
+      // Watchdog recieved.
+      Nop();
+      Nop();
+      Nop();
+      Nop();
+      Nop();
+      Nop();
+      SendWatchdogResponse(100);
+
+      if (_LATG13) {
+	_LATG13 = 0;
+      } else {
+	_LATG13 = 1;
+      }
+
+      Nop();
+      Nop();
+      Nop();
+      Nop();
+
+      
+
+    }
   }
 }
 
@@ -980,6 +1046,11 @@ void DoA36507(void) {
   etm_can_master_sync_message.sync_2 = 0x0123;
   etm_can_master_sync_message.sync_3 = 0x4567;
 
+  if (LookForWatchdogMessage()) {
+    // Clear the watchdog counter
+    SendWatchdogResponse(0);
+  }
+  
   ETMCanMasterDoCan();
   //TCPmodbus_task();
   ETMLinacModbusUpdate();
@@ -1274,6 +1345,7 @@ void UpdateHeaterScale() {
 
 void InitializeA36507(void) {
   unsigned int loop_counter;
+  unsigned int temp16;
 
 
 
@@ -1458,6 +1530,47 @@ void InitializeA36507(void) {
   _U1RXIE = 1;
   _U1RXIP = 6;
   U1MODEbits.UARTEN = 1;	// And turn the peripheral on
+
+
+  // Setup uart2 for watchdog
+  
+
+  //#define UART2_BAUDRATE             112000        // 113K Baud Rate
+  //#define A36507_U2MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_NO_PAR_8BIT & UART_1STOPBIT)
+  //#define A36507_U2STA_VALUE         (UART_INT_TX & UART_TX_PIN_NORMAL & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
+  //#define A36507_U2BRG_VALUE         (((FCY_CLK/UART1_BAUDRATE)/16)-1)
+
+
+  _U2RXIF = 0;
+  _U2RXIE = 1;
+  _U2RXIP = 5;
+
+  _U2TXIF = 0;
+  _U2TXIE = 1;
+  _U2TXIP = 6;
+  U2MODE = 0x0000;
+  U2STA = A36507_U2STA_VALUE;
+  U2BRG = A36507_U2BRG_VALUE;
+  U2STAbits.UTXEN = 1;
+  U2STAbits.UTXISEL = 1;
+  U2MODE = A36507_U2MODE_VALUE;
+  U2STA = 0x0000;
+    U2MODEbits.UARTEN = 1;	// And turn the peripheral on
+  temp16 = U2STA;
+  test_0 = U2STA;
+  test_1 = U2STA;
+  test_2 = U2STA;
+  test_3 = U2STA;
+
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  BufferByte64Initialize(&uart2_input_buffer);
+  BufferByte64Initialize(&uart2_output_buffer);
+
+
+
 
 
 }
@@ -1832,7 +1945,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
       eeprom_register = next_message.index + personality * 0x10;
       //ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
-
+
     case REGISTER_PULSE_SYNC_AFC_AND_SPARE_PULSE_DELAY_LOW_ENERGY:
       local_pulse_sync_timing_reg_3_word_2 = next_message.data_2;
       eeprom_register = next_message.index + personality * 0x10;
@@ -2246,6 +2359,27 @@ void ReadConfigFromMirror(void) {
 
 
 
+void __attribute__((interrupt, no_auto_psv)) _U2RXInterrupt(void) {
+  _U2RXIF = 0;
+  while (U2STAbits.URXDA) {
+    BufferByte64WriteByte(&uart2_input_buffer, U2RXREG);
+  }
+}
+
+
+void __attribute__((interrupt(__save__(CORCON,SR)),no_auto_psv)) _U2TXInterrupt(void) {
+  _U2TXIF = 0;
+  while ((!U2STAbits.UTXBF) && (BufferByte64BytesInBuffer(&uart2_output_buffer))) {
+    /*
+      There is at least one byte available for writing in the outputbuffer and the transmit buffer is not full.
+      Move a byte from the output buffer into the transmit buffer
+    */
+    U2TXREG = BufferByte64ReadByte(&uart2_output_buffer);
+  }
+}
+
+
+
 
 void __attribute__((interrupt, no_auto_psv)) _U1RXInterrupt(void) {
   _U1RXIF = 0;
@@ -2373,3 +2507,93 @@ void CRCTest(void) {
 }
 
 
+
+
+void SendWatchdogResponse(unsigned int pulse_count) {
+  unsigned char data_to_send[10];
+  unsigned int crc_calc;
+  data_to_send[0] = 0xF1;
+  data_to_send[1] = 0xF2;
+  data_to_send[2] = 0xF3;
+  data_to_send[3] = 0;
+  data_to_send[4] = 0;
+  data_to_send[5] = 0xF4;
+  crc_calc = ETMCRC16(&data_to_send[0], 6);
+
+  BufferByte64WriteByte(&uart2_output_buffer, data_to_send[0]);
+  BufferByte64WriteByte(&uart2_output_buffer, data_to_send[1]);
+  BufferByte64WriteByte(&uart2_output_buffer, data_to_send[2]);
+  BufferByte64WriteByte(&uart2_output_buffer, data_to_send[3]);
+  BufferByte64WriteByte(&uart2_output_buffer, data_to_send[4]);
+  BufferByte64WriteByte(&uart2_output_buffer, data_to_send[5]);
+  BufferByte64WriteByte(&uart2_output_buffer, (crc_calc >> 8));
+  BufferByte64WriteByte(&uart2_output_buffer, (crc_calc & 0x00FF));
+  
+  
+  if (!U2STAbits.UTXBF) {
+    /*
+      The transmit buffer is not full.
+      Move a byte from the output buffer into the transmit buffer
+      All subsequent bytes will be moved from the output buffer to the transmit buffer by the U1 TX Interrupt
+    */
+    U2TXREG = BufferByte64ReadByte(&uart2_output_buffer);
+    Nop();
+    Nop();
+    Nop();
+    Nop();
+  }
+}
+
+
+unsigned int LookForWatchdogMessage(void) {
+  unsigned int crc_received = 0;
+  unsigned int crc_calc = 0;
+  unsigned int message_received = 0;
+  // Look for messages in the UART Buffer;
+  // If multiple messages are found the old data is overwritten by the newer data
+  unsigned char message[9];
+  
+  while (BufferByte64BytesInBuffer(&uart2_input_buffer) >= 9) {
+    // Look for message
+    test_uart_data_recieved++;
+    message[0] = BufferByte64ReadByte(&uart2_input_buffer);
+    if (message[0] != 0xF1) {
+      continue;
+    }
+    message[1] = BufferByte64ReadByte(&uart2_input_buffer);
+    if (message[1] != 0xF2) {
+      continue;
+    }
+    message[2] = BufferByte64ReadByte(&uart2_input_buffer);
+    if (message[2] != 0xF3) {
+      continue;
+    }
+    message[3] = BufferByte64ReadByte(&uart2_input_buffer);
+    message[4] = BufferByte64ReadByte(&uart2_input_buffer);
+
+
+    message[5] = BufferByte64ReadByte(&uart2_input_buffer);
+    if (message[5] != 0xF4) {
+      continue;
+    }
+    message[6] = BufferByte64ReadByte(&uart2_input_buffer);
+    message[7] = BufferByte64ReadByte(&uart2_input_buffer);
+    
+    crc_received = message[7];
+    crc_received <<= 8;
+    crc_received += message[6];
+
+    crc_calc = ETMCRC16(&message[0], 6);
+    test_ref_det_recieved++;
+    if (crc_received == crc_calc) {
+      test_ref_det_good_message++;
+      // The CRC Matched
+      // Update the dose data for the previous pulse
+      global_data_A36507.most_recent_watchdog_reading = message[4];
+      global_data_A36507.most_recent_watchdog_reading <<= 8;
+      global_data_A36507.most_recent_watchdog_reading += message[3];
+      message_received = 1;
+    }
+  }
+  return message_received;
+}

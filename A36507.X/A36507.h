@@ -138,11 +138,11 @@ typedef struct {
   Timer1 - Used by Ethernet Module
 
   Timer4 - Used to time CAN transmits - This is configured by ETM CAN module
-  Timer5 - Used as timeout on status update receives - This is configured by ETM CAN module
+  Timer5 - Used as timeoeout on status update receives - This is configured by ETM CAN module
 
   Timer2 - Used for Ethernet Board 10ms timing 
 
-  UART1 - Reserved for TCU Communication
+  UART1 - Reserved for TCU Communication - Used for Bidirection Watchdog Function
   UART2 - Reserved for Serial GUI
 
 
@@ -320,6 +320,8 @@ typedef struct {
   unsigned int most_recent_ref_detector_reading;
 
   unsigned int eeprom_failure;
+
+  unsigned int most_recent_watchdog_reading;
   
 } A36507GlobalVars;
 
