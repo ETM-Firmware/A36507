@@ -135,12 +135,12 @@ typedef struct {
   CAN1 - Can module
   CAN2 - Reserved in case we need CAN 2
 
-  Timer1 - Used by Ethernet Module
+  Timer1 - Used by ETMTick
 
   Timer4 - Used to time CAN transmits - This is configured by ETM CAN module
   Timer5 - Used as timeoeout on status update receives - This is configured by ETM CAN module
 
-  Timer2 - Used for Ethernet Board 10ms timing 
+  Timer2 - Unused at this time
 
   UART1 - Reserved for TCU Communication - Used for Bidirection Watchdog Function
   UART2 - Reserved for Serial GUI
@@ -272,19 +272,21 @@ typedef struct {
   unsigned int warmup_done;
   unsigned int gun_heater_holdoff_timer;
 
+  
+  // This is a 15 word Block that is written / read from EEPROM as a group
+  unsigned long system_powered_seconds;
+  unsigned long system_hv_on_seconds;
+  unsigned long system_xray_on_seconds;
+  unsigned pulse_counter_48_bit:48;
+  unsigned long arc_counter;
   unsigned long last_recorded_warmup_seconds;
-  unsigned int  thyratron_warmup_remaining;
-  unsigned int  magnetron_warmup_remaining;
-  unsigned int  gun_warmup_remaining;
-
-  //unsigned long system_powered_seconds;
-  //unsigned long system_hv_on_seconds;
-  //unsigned long system_xray_on_seconds;
-
+  unsigned thyratron_warmup_remaining:12;
+  unsigned magnetron_warmup_remaining:10;
+  unsigned gun_warmup_remaining:10;
+    
   RTC_TIME time_now;
   //unsigned long time_seconds_now;
   
-
   //unsigned int send_pulse_sync_config;
   unsigned int drive_up_timer;
 
@@ -325,6 +327,8 @@ typedef struct {
   
 } A36507GlobalVars;
 
+
+/*
 //#define thyratron_warmup_counter_seconds                     local_data_ecb.log_data[4]
 //#define magnetron_heater_warmup_counter_seconds              local_data_ecb.log_data[5]
 //#define gun_driver_heater_warmup_counter_seconds             local_data_ecb.log_data[6]
@@ -334,6 +338,9 @@ typedef struct {
 #define average_output_power_watts                           local_data_ecb.log_data[14]
 #define personality_select_from_pulse_sync                   local_data_ecb.log_data[15]
 
+*/
+
+
 extern A36507GlobalVars global_data_A36507;
 
 
@@ -341,6 +348,8 @@ extern A36507GlobalVars global_data_A36507;
 #define _FAULT_REPEATED_DRIVE_UP_FAULT                  _FAULT_1
 #define _FAULT_REPEATED_HV_ON_FAULT                     _FAULT_2
 #define _FAULT_EEPROM_FAILURE                           _FAULT_3
+// FAULT 4 is reserved for magnetron over power
+#define _FAULT_WATCHDOG_ERROR                           _FAULT_5
 
 // DPAKRER  - Need to evaluate how these are used under new control system
 #define _STATUS_PERSONALITY_LOADED                      _LOGGED_0
