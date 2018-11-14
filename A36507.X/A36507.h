@@ -274,11 +274,11 @@ typedef struct {
 
   
   // This is a 15 word Block that is written / read from EEPROM as a group
+  unsigned long long pulse_counter_48_bit;  // DPARKER Change this to a 64 bit number and ignore the high word and reaarage the data so the high word isn't sent to the EEPROM
+  unsigned long arc_counter;
   unsigned long system_powered_seconds;
   unsigned long system_hv_on_seconds;
   unsigned long system_xray_on_seconds;
-  unsigned pulse_counter_48_bit:48;
-  unsigned long arc_counter;
   unsigned long last_recorded_warmup_seconds;
   unsigned thyratron_warmup_remaining:12;
   unsigned magnetron_warmup_remaining:10;
@@ -312,7 +312,7 @@ typedef struct {
 
   unsigned int reset_requested;
   
-  //unsigned int personality_select_from_pulse_sync;
+  unsigned int personality_select_from_pulse_sync;
 
   unsigned int drive_up_fault_counter;
   unsigned int high_voltage_on_fault_counter;
@@ -324,8 +324,17 @@ typedef struct {
   unsigned int eeprom_failure;
 
   unsigned int most_recent_watchdog_reading;
+
+  unsigned int access_mode;
+  unsigned int service_passcode;
+  unsigned int etm_passcode;
+
+  unsigned int eeprom_write_status;
+
   
 } A36507GlobalVars;
+
+#define ECB_COUNTER_AND_TIMERS_RAM_POINTER (unsigned int*)(&global_data_A36507.pulse_counter_48_bit + 2)
 
 
 /*
@@ -335,10 +344,11 @@ typedef struct {
 #define system_powered_seconds                               (*(unsigned long*)&local_data_ecb.log_data[8])
 #define system_hv_on_seconds                                 (*(unsigned long*)&local_data_ecb.log_data[10])
 #define system_xray_on_seconds                               (*(unsigned long*)&local_data_ecb.log_data[12])
-#define average_output_power_watts                           local_data_ecb.log_data[14]
+
 #define personality_select_from_pulse_sync                   local_data_ecb.log_data[15]
 
 */
+#define average_output_power_watts                           local_data_ecb.log_data[14]
 
 
 extern A36507GlobalVars global_data_A36507;

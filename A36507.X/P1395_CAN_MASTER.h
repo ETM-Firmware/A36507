@@ -219,23 +219,24 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 
 
 // This "defines" data that may need to be displayed on the GUI
-#define local_hv_lambda_high_en_set_point               mirror_hv_lambda.local_data[0]
-#define local_hv_lambda_low_en_set_point                mirror_hv_lambda.local_data[1]
+#define local_hvps_set_point_dose_0                     mirror_hv_lambda.local_data[0]
+#define local_hvps_set_point_dose_1                     mirror_hv_lambda.local_data[1]
 
-#define local_afc_home_position                         mirror_afc.local_data[0]
-#define local_afc_aft_control_voltage_high_energy       mirror_afc.local_data[1]
-#define local_afc_aft_control_voltage_low_energy        mirror_afc.local_data[2]
+#define local_afc_home_position_dose_0                  mirror_afc.local_data[0]
+#define local_afc_home_position_dose_1                  mirror_afc.local_data[3]
+#define local_afc_aft_control_voltage_dose_all          mirror_afc.local_data[1]
 
 
-#define local_heater_current_full_set_point             mirror_htr_mag.local_data[0]
+#define local_magnetron_heater_current_dose_all         mirror_htr_mag.local_data[0]
 #define local_heater_current_scaled_set_point           mirror_htr_mag.local_data[1]
-#define local_magnet_current_set_point_high_energy      mirror_htr_mag.local_data[2]
-#define local_magnet_current_set_point_low_energy       mirror_htr_mag.local_data[3]
+#define local_magnet_current_set_point_dose_0           mirror_htr_mag.local_data[2]
+#define local_magnet_current_set_point_dose_1           mirror_htr_mag.local_data[3]
 
-#define local_gun_drv_high_en_pulse_top_v               mirror_gun_drv.local_data[0]
-#define local_gun_drv_low_en_pulse_top_v                mirror_gun_drv.local_data[1]
-#define local_gun_drv_heater_v_set_point                mirror_gun_drv.local_data[2]
-#define local_gun_drv_cathode_set_point                 mirror_gun_drv.local_data[3]
+#define local_gun_drv_top_v_dose_0                      mirror_gun_drv.local_data[0]
+#define local_gun_drv_top_v_dose_1                      mirror_gun_drv.local_data[1]
+#define local_gun_drv_heater_v_dose_all                 mirror_gun_drv.local_data[2]
+#define local_gun_drv_cathode_v_dose_0                  mirror_gun_drv.local_data[3]
+#define local_gun_drv_cathode_v_dose_1                  mirror_gun_drv.local_data[4]  // This is loaded but unused by anything at this point in time
 
 
 #define psync_grid_start_high_intensity_3               *(unsigned char*)&mirror_pulse_sync.local_data[0]
@@ -268,25 +269,17 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 
 
 
+#define local_pulse_sync_gun_trig_start_max_dose_0     mirror_pulse_sync.local_data[0]
+#define local_pulse_sync_gun_trig_stop_max_dose_0      mirror_pulse_sync.local_data[1]
+#define local_pulse_sync_gun_trig_start_max_dose_1     mirror_pulse_sync.local_data[2]
+#define local_pulse_sync_gun_trig_stop_max_dose_1      mirror_pulse_sync.local_data[3]
 
+#define local_pulse_sync_afc_trig_dose_0               mirror_pulse_sync.local_data[4]
+#define local_pulse_sync_afc_trig_dose_1               mirror_pulse_sync.local_data[5]
 
-
-
-#define local_pulse_sync_timing_reg_0_word_0            mirror_pulse_sync.local_data[0]
-#define local_pulse_sync_timing_reg_0_word_1            mirror_pulse_sync.local_data[1]
-#define local_pulse_sync_timing_reg_0_word_2            mirror_pulse_sync.local_data[2]
-#define local_pulse_sync_timing_reg_1_word_0            mirror_pulse_sync.local_data[4]
-#define local_pulse_sync_timing_reg_1_word_1            mirror_pulse_sync.local_data[5]
-#define local_pulse_sync_timing_reg_1_word_2            mirror_pulse_sync.local_data[6]
-#define local_pulse_sync_timing_reg_2_word_0            mirror_pulse_sync.local_data[8]
-#define local_pulse_sync_timing_reg_2_word_1            mirror_pulse_sync.local_data[9]
-#define local_pulse_sync_timing_reg_2_word_2            mirror_pulse_sync.local_data[10]
-#define local_pulse_sync_timing_reg_3_word_0            mirror_pulse_sync.local_data[12]
-#define local_pulse_sync_timing_reg_3_word_1            mirror_pulse_sync.local_data[13]
-#define local_pulse_sync_timing_reg_3_word_2            mirror_pulse_sync.local_data[14]
-
-
-
+#define local_pulse_sync_hvps_trig_start_dose_all      mirror_pulse_sync.local_data[8]
+#define local_pulse_sync_pfn_trig_dose_all             mirror_pulse_sync.local_data[9]
+#define local_pulse_sync_pulse_mon_trig_start_dose_all mirror_pulse_sync.local_data[10]
 
 
 #define _HV_LAMBDA_NOT_READY               mirror_hv_lambda.status.control_notice_bits.control_not_ready
