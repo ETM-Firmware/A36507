@@ -3,14 +3,14 @@
 
 #include "P1395_CAN_CORE.h"
 
-#define __IGNORE_ION_PUMP_MODULE
-#define __IGNORE_AFC_MODULE
+//#define __IGNORE_ION_PUMP_MODULE
+//#define __IGNORE_AFC_MODULE
 #define __IGNORE_GUN_DRIVER_MODULE
-#define __IGNORE_COOLING_INTERFACE_MODULE
-#define __IGNORE_HEATER_MAGNET_MODULE
+//#define __IGNORE_COOLING_INTERFACE_MODULE
+//#define __IGNORE_HEATER_MAGNET_MODULE
 //#define __IGNORE_HV_LAMBDA_MODULE
-#define __IGNORE_PULSE_CURRENT_MODULE
-#define __IGNORE_PULSE_SYNC_MODULE
+//#define __IGNORE_PULSE_CURRENT_MODULE
+//#define __IGNORE_PULSE_SYNC_MODULE
 #define __IGNORE_TCU
 
 
@@ -239,6 +239,7 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define local_gun_drv_cathode_v_dose_1                  mirror_gun_drv.local_data[4]  // This is loaded but unused by anything at this point in time
 
 
+/*
 #define psync_grid_start_high_intensity_3               *(unsigned char*)&mirror_pulse_sync.local_data[0]
 #define psync_grid_start_high_intensity_2               *((unsigned char*)&mirror_pulse_sync.local_data[0] + 1)
 #define psync_grid_start_high_intensity_1               *(unsigned char*)&mirror_pulse_sync.local_data[1]
@@ -266,7 +267,7 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define psync_grid_stop_low_intensity_0                 *((unsigned char*)&mirror_pulse_sync.local_data[13] + 1)
 #define psync_mag_delay_low                             *(unsigned char*)&mirror_pulse_sync.local_data[14]
 #define psync_afc_delay_low                             *((unsigned char*)&mirror_pulse_sync.local_data[14] + 1)
-
+*/
 
 
 #define local_pulse_sync_gun_trig_start_max_dose_0     mirror_pulse_sync.local_data[0]

@@ -259,6 +259,21 @@ typedef struct {
 
 
 typedef struct {
+  // This is a 16 word Block that is written / read from EEPROM as a group
+  unsigned long long pulse_counter_48_bit;  // DPARKER Change this to a 64 bit number and ignore the high word and reaarage the data so the high word isn't sent to the EEPROM
+  unsigned long arc_counter;
+  unsigned long system_hv_on_seconds;
+  unsigned long system_powered_seconds;
+  unsigned long system_xray_on_seconds;
+  unsigned long last_recorded_warmup_seconds;
+  unsigned long holding_bits_for_warmup; // Higest 12 bits = thyratron warmup, middle 10 bits = magnetron heater warmup, lowest 10 bits = gun heater warmup
+  unsigned int reserved_crc_eeprom_page_0;
+
+  unsigned int thyratron_warmup_remaining; 
+  unsigned int magnetron_warmup_remaining;
+  unsigned int gun_warmup_remaining;
+
+  
   TYPE_PUBLIC_ANALOG_INPUT analog_input_5v_mon;                    // 1mV per LSB
   TYPE_PUBLIC_ANALOG_INPUT analog_input_3v3_mon;                   // 1mV per LSB
 
@@ -273,17 +288,6 @@ typedef struct {
   unsigned int gun_heater_holdoff_timer;
 
   
-  // This is a 15 word Block that is written / read from EEPROM as a group
-  unsigned long long pulse_counter_48_bit;  // DPARKER Change this to a 64 bit number and ignore the high word and reaarage the data so the high word isn't sent to the EEPROM
-  unsigned long arc_counter;
-  unsigned long system_powered_seconds;
-  unsigned long system_hv_on_seconds;
-  unsigned long system_xray_on_seconds;
-  unsigned long last_recorded_warmup_seconds;
-  unsigned thyratron_warmup_remaining:12;
-  unsigned magnetron_warmup_remaining:10;
-  unsigned gun_warmup_remaining:10;
-    
   RTC_TIME time_now;
   //unsigned long time_seconds_now;
   
@@ -334,7 +338,7 @@ typedef struct {
   
 } A36507GlobalVars;
 
-#define ECB_COUNTER_AND_TIMERS_RAM_POINTER (unsigned int*)(&global_data_A36507.pulse_counter_48_bit + 2)
+#define ECB_COUNTER_AND_TIMERS_RAM_POINTER (((unsigned int*)(&global_data_A36507.pulse_counter_48_bit)) + 1)
 
 
 /*

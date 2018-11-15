@@ -148,7 +148,7 @@ void CalculateHeaterWarmupTimers(void);
   This reads the last time a heater was warm from EEPROM and caluclates how long it needs to be warmed up for
 */
 
-void ReadSystemConfigurationFromEEProm(unsigned int personality);
+void ReadSystemConfigurationFromEEProm(void);
 /*
   This loads the configuration for a given personality from the external EEPROM
 */
@@ -171,16 +171,8 @@ void ZeroSystemPoweredTime(void);
 void LoadDefaultSystemCalibrationToEEProm(void);
 /*
   Loads the default system calibration parmaeters from flash program memmory into the EEPROM
-  This is used to restore "factory defaults" if all goes to hell
-  DPARKER - need to add pulse sync personalities 2,3,4 
+  This is used to setup the eeprom when the machine is first set up or to return the EEPORM to a known state.
 */
-
-void CalculatePulseSyncParams(unsigned char start, unsigned char stop);
-
-
-//void LogModuleFault(unsigned int board_address);
-//P1395BoardBits board_not_configured_latch;
-//P1395BoardBits board_not_ready_latch;
 
 
 // ------------------- Global Variables ------------------------------ //
@@ -222,48 +214,14 @@ void DoStateMachine(void) {
     InitializeA36507();
     global_data_A36507.gun_heater_holdoff_timer = 0;
     _SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR = 1;
-    global_data_A36507.control_state = STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC;
+    global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
     SendToEventLog(LOG_ID_ENTERED_STATE_STARTUP);
     if (_STATUS_LAST_RESET_WAS_POWER_CYCLE) {
       _SYNC_CONTROL_CLEAR_DEBUG_DATA = 1;
     }
     break;
 
-  case STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC:
-    SendToEventLog(LOG_ID_ENTERED_STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC);
-    _SYNC_CONTROL_RESET_ENABLE = 1;
-    _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 1;
-    _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 1;
-    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 1;
-    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
-    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 1;
-    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
-    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
-    _STATUS_PERSONALITY_LOADED = 0;
-    global_data_A36507.startup_counter = 0;
-    while (global_data_A36507.control_state == STATE_WAIT_FOR_PERSONALITY_FROM_PULSE_SYNC) {
-      DoA36507();
-      FlashLeds();
-
-      if (_PULSE_SYNC_PERSONALITY_READY) {
-	global_data_A36507.personality_select_from_pulse_sync = _PULSE_SYNC_PERSONALITY_VALUE;
-	global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
-	SendToEventLog(LOG_ID_PERSONALITY_RECEIVED);
-      }
-      
-#ifdef __IGNORE_PULSE_SYNC_MODULE
-      global_data_A36507.personality_select_from_pulse_sync = 0;
-      global_data_A36507.control_state = STATE_WAITING_FOR_INITIALIZATION;
-#endif
-
-#define PERSONALITY_ERROR_READING  0x000F
-
-      if (global_data_A36507.personality_select_from_pulse_sync == PERSONALITY_ERROR_READING) {
-	global_data_A36507.control_state = STATE_FAULT_SYSTEM;
-	SendToEventLog(LOG_ID_PERSONALITY_ERROR);
-      }
-    }
-
+    
   case STATE_WAITING_FOR_INITIALIZATION:
     SendToEventLog(LOG_ID_ENTERED_STATE_WAITING_FOR_INITIALIZATION);
     _SYNC_CONTROL_RESET_ENABLE = 1;
@@ -276,11 +234,9 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     _STATUS_PERSONALITY_LOADED = 1;
     personality_loaded = 1;
-    //ReadSystemConfigurationFromEEProm(global_data_A36507.personality_select_from_pulse_sync);
     if (global_data_A36507.eeprom_failure) {
       global_data_A36507.control_state = STATE_FAULT_SYSTEM;
     }
-    CalculateHeaterWarmupTimers();     // Calculate all of the warmup counters based on previous warmup completed
     while (global_data_A36507.control_state == STATE_WAITING_FOR_INITIALIZATION) {
       DoA36507();
       FlashLeds();
@@ -874,29 +830,42 @@ unsigned int CheckHVOnFault(void) {
 
 
 void UpdateDebugData(void) {
-  debug_data_ecb.debug_reg[0]  = global_data_A36507.high_voltage_on_fault_counter; 
-  debug_data_ecb.debug_reg[1]  = global_data_A36507.drive_up_fault_counter;
-  if (_STATUS_LAST_RESET_WAS_POWER_CYCLE) {
-    debug_data_ecb.debug_reg[2]  = 1;
-  } else {
-    debug_data_ecb.debug_reg[2]  = 0;
-  }
-  debug_data_ecb.debug_reg[3]  = test_ref_det_recieved; 
-  debug_data_ecb.debug_reg[4]  = test_ref_det_good_message;
-  debug_data_ecb.debug_reg[5]  = global_data_A36507.most_recent_ref_detector_reading; 
+  /*
+  debug_data_ecb.debug_reg[0x0] = global_data_A36507.high_voltage_on_fault_counter; 
+  debug_data_ecb.debug_reg[0x1] = global_data_A36507.drive_up_fault_counter;
+  debug_data_ecb.debug_reg[0x3] = test_ref_det_recieved; 
+  debug_data_ecb.debug_reg[0x4] = test_ref_det_good_message;
+  debug_data_ecb.debug_reg[0x5] = global_data_A36507.most_recent_ref_detector_reading; 
+  debug_data_ecb.debug_reg[0x6] = ETMTCPModbusGetErrorInfo(ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID); 
+  debug_data_ecb.debug_reg[0x7] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT); 
+  debug_data_ecb.debug_reg[0x8] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT); 
+  debug_data_ecb.debug_reg[0x9] = ETMTCPModbusGetErrorInfo(COUNT_SM_SOCKET_OBTAINED_MSG_TX); 
+  debug_data_ecb.debug_reg[0xA] = ETMTCPModbusGetErrorInfo(COUNT_SM_PROCESS_RESPONSE_MSG_RX); 
+  debug_data_ecb.debug_reg[0xB] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_DISCONNECT);
+  debug_data_ecb.debug_reg[0xC] = 12;
+  debug_data_ecb.debug_reg[0xD] = 12;
+  debug_data_ecb.debug_reg[0xE] = 12;
+  debug_data_ecb.debug_reg[0xF] = 12; 
+  */
+  
+  debug_data_ecb.debug_reg[0x0] = local_hvps_set_point_dose_0;
+  debug_data_ecb.debug_reg[0x1] = local_hvps_set_point_dose_1;
+  debug_data_ecb.debug_reg[0x2] = 0;
+  debug_data_ecb.debug_reg[0x3] = local_magnet_current_set_point_dose_0;
+  debug_data_ecb.debug_reg[0x4] = local_magnet_current_set_point_dose_1;
+  debug_data_ecb.debug_reg[0x5] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_COUNT);
+  debug_data_ecb.debug_reg[0x6] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_ERROR);
+  debug_data_ecb.debug_reg[0x7] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_WRITE_I2C_COUNT);
+  debug_data_ecb.debug_reg[0x8] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_WRITE_I2C_ERROR);
+  debug_data_ecb.debug_reg[0x9] = 0;
+  debug_data_ecb.debug_reg[0xA] = 0;
+  debug_data_ecb.debug_reg[0xB] = 0;
+  debug_data_ecb.debug_reg[0xC] = 12;
+  debug_data_ecb.debug_reg[0xD] = 12;
+  debug_data_ecb.debug_reg[0xE] = 12;
+  debug_data_ecb.debug_reg[0xF] = 12; 
 
-  debug_data_ecb.debug_reg[6]  = ETMTCPModbusGetErrorInfo(ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID); 
-  debug_data_ecb.debug_reg[7]  = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT); 
-  debug_data_ecb.debug_reg[8]  = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT); 
-  debug_data_ecb.debug_reg[9]  = ETMTCPModbusGetErrorInfo(COUNT_SM_SOCKET_OBTAINED_MSG_TX); 
-  debug_data_ecb.debug_reg[10] = ETMTCPModbusGetErrorInfo(COUNT_SM_PROCESS_RESPONSE_MSG_RX); 
-  debug_data_ecb.debug_reg[11] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_DISCONNECT);
-
-
-  debug_data_ecb.debug_reg[12] = 12; 
-  // ETM_LINAC_MODBUS tx_transactions          //debug_data_ecb.debug_reg[13] = 
-  // ETM_LINAC_MODBUS modbus_command_requests  //debug_data_ecb.debug_reg[14] = 
-  // ETM_LINAC_MODBUS 100ms command internvals //debug_data_ecb.debug_reg[15] = 
+  
 }
 
 
@@ -972,28 +941,28 @@ void DoA36507(void) {
     _SYNC_CONTROL_GUN_DRIVER_DISABLE_HTR = 0;
   }
 
-  // Update the SYNC message with the control state
-  // DPARKER as far as I know, this is never used - consider removing
-  ETMCanMasterSetSyncState(global_data_A36507.control_state);
-
-
-  // Load log_data Memory for types that can not be mapped directly into memory
-  local_data_ecb.log_data[0] = global_data_A36507.control_state;
-  local_data_ecb.log_data[3] = ETMCanMasterGetPulsePRF();
-  local_data_ecb.log_data[4] = global_data_A36507.thyratron_warmup_remaining;
-  local_data_ecb.log_data[5] = global_data_A36507.magnetron_warmup_remaining;
-  local_data_ecb.log_data[6] = global_data_A36507.gun_warmup_remaining;
-  local_data_ecb.log_data[7] = _SYNC_CONTROL_WORD;
-  local_data_ecb.log_data[16] = *(unsigned int*)&board_com_ok;
-  local_data_ecb.log_data[17] = global_data_A36507.most_recent_ref_detector_reading;
-  local_data_ecb.log_data[19] = global_data_A36507.system_serial_number;
-  mirror_cooling.local_data[0] = MAX_SF6_REFILL_PULSES_IN_BOTTLE;
-
-  UpdateDebugData();  // Load the customized debugging data into the debugging registers
-
-  
+    
   if (ETMTickRunOnceEveryNMilliseconds(10, &ten_millisecond_holding_var)) {
     // 10ms Timer has expired -- run periodic checks and updates
+
+    // Load Local data into the registers for logging
+  
+    // Load log_data Memory for types that can not be mapped directly into memory
+    local_data_ecb.log_data[0] = global_data_A36507.control_state;
+    local_data_ecb.log_data[3] = ETMCanMasterGetPulsePRF();
+    local_data_ecb.log_data[4] = global_data_A36507.thyratron_warmup_remaining;
+    local_data_ecb.log_data[5] = global_data_A36507.magnetron_warmup_remaining;
+    local_data_ecb.log_data[6] = global_data_A36507.gun_warmup_remaining;
+    local_data_ecb.log_data[7] = _SYNC_CONTROL_WORD;
+    (*(unsigned long*)&local_data_ecb.log_data[8])  = global_data_A36507.system_powered_seconds;
+    (*(unsigned long*)&local_data_ecb.log_data[10]) = global_data_A36507.system_hv_on_seconds;
+    (*(unsigned long*)&local_data_ecb.log_data[12]) = global_data_A36507.system_xray_on_seconds;  
+    local_data_ecb.log_data[16] = *(unsigned int*)&board_com_ok;
+    local_data_ecb.log_data[17] = global_data_A36507.most_recent_ref_detector_reading;
+    local_data_ecb.log_data[19] = global_data_A36507.system_serial_number;
+    mirror_cooling.local_data[0] = MAX_SF6_REFILL_PULSES_IN_BOTTLE;
+    
+    UpdateDebugData();  // Load the customized debugging data into the debugging registers
     
     if (global_data_A36507.control_state == STATE_DRIVE_UP) {
       global_data_A36507.drive_up_timer++;
@@ -1088,7 +1057,7 @@ void DoA36507(void) {
 
       // Update the system power on counters
       global_data_A36507.system_powered_seconds++;
-      
+
       if (global_data_A36507.control_state == STATE_READY) {
 	global_data_A36507.system_hv_on_seconds++;
       }
@@ -1100,7 +1069,29 @@ void DoA36507(void) {
       
       // Write System timers, Arc Counter, Pulse Counter, and warmup timers to EEPROM
       global_data_A36507.last_recorded_warmup_seconds = mem_time_seconds_now;
-      ETMEEPromWritePageFast(EEPROM_PAGE_ECB_COUNTER_AND_TIMERS, ECB_COUNTER_AND_TIMERS_RAM_POINTER);
+
+      if (global_data_A36507.gun_warmup_remaining >= 0x3FF) {
+	global_data_A36507.gun_warmup_remaining = 0x3FF;
+      }
+
+      if (global_data_A36507.magnetron_warmup_remaining >= 0x3FF) {
+	global_data_A36507.magnetron_warmup_remaining = 0x3FF;
+      }
+
+      if (global_data_A36507.thyratron_warmup_remaining >= 0xFFF) {
+	global_data_A36507.thyratron_warmup_remaining = 0xFFF;
+      }
+      
+      global_data_A36507.holding_bits_for_warmup = global_data_A36507.thyratron_warmup_remaining;
+      global_data_A36507.holding_bits_for_warmup <<= 10;
+      global_data_A36507.holding_bits_for_warmup += global_data_A36507.magnetron_warmup_remaining;
+      global_data_A36507.holding_bits_for_warmup <<= 10;
+      global_data_A36507.holding_bits_for_warmup += global_data_A36507.gun_warmup_remaining;
+
+      if (global_data_A36507.eeprom_failure == 0) {
+	// Do not overwrite the values if we were unable to read them properly at boot
+	ETMEEPromWritePageFast(EEPROM_PAGE_ECB_COUNTER_AND_TIMERS, ECB_COUNTER_AND_TIMERS_RAM_POINTER);
+      }
     } // End of tasks that happen when millisecond = 500
     
   } // End of 10ms Tasks
@@ -1195,8 +1186,6 @@ void InitializeA36507(void) {
   unsigned int loop_counter;
   unsigned int eeprom_read[16];
 
-
-
   _FAULT_REGISTER      = 0;
   _CONTROL_REGISTER    = 0;
   _WARNING_REGISTER    = 0;
@@ -1262,16 +1251,25 @@ void InitializeA36507(void) {
     }
   }
 
-  // what to do here
-  ReadSystemConfigurationFromEEProm(0);  //Personality does not matter for this product
+  global_data_A36507.gun_warmup_remaining = (global_data_A36507.holding_bits_for_warmup & 0x03FF);
+  global_data_A36507.holding_bits_for_warmup >>= 10;
+  global_data_A36507.magnetron_warmup_remaining = (global_data_A36507.holding_bits_for_warmup & 0x3FF);
+  global_data_A36507.holding_bits_for_warmup >>= 10;
+  global_data_A36507.thyratron_warmup_remaining = (global_data_A36507.holding_bits_for_warmup & 0xFFF);
+
   
+  ClrWdt();
 
-
+  // what to do here
+  ReadSystemConfigurationFromEEProm();
 
   
   // Read the current time
   ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
   mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
+
+  CalculateHeaterWarmupTimers();     // Calculate all of the warmup counters based on previous warmup counters
+
   
   // Initialize the Can module
   if (ETMEEPromReadPage(EEPROM_PAGE_ECB_BOARD_CONFIGURATION, &eeprom_read[0]) == 0) {
@@ -1336,12 +1334,6 @@ void InitializeA36507(void) {
 
 
 
-  ETMAnalogInputInitializeFixedTripLevels(&analog_5V_vmon,
-					  ETM_ANALOG_NO_OVER_TRIP, 
-					  7000, 
-					  10000);
-  
-
   // Wait for data to be read
   while (_ADIF == 0);
   
@@ -1364,16 +1356,6 @@ void InitializeA36507(void) {
   //global_data_A36507.analog_input_5v_mon.filtered_adc_reading  <<= 1;
   //global_data_A36507.analog_input_3v3_mon.filtered_adc_reading <<= 1;  
 
-
-  while (!ETMAnalogInputFaultUnderFixed(&analog_5V_vmon)) {
-    ETMAnalogInputUpdate(&analog_5V_vmon, ADCBUFE);
-  }
-  
-  Nop();
-  Nop();
-  Nop();
-  Nop();
-  Nop();
 
 
   //ETMAnalogScaleCalibrateADCReading(&global_data_A36507.analog_input_5v_mon);
@@ -1415,9 +1397,6 @@ void InitializeA36507(void) {
 void CalculateHeaterWarmupTimers(void) {
   unsigned long difference;
   
-  ReadDateAndTime(&U6_DS3231, &global_data_A36507.time_now);
-  mem_time_seconds_now = RTCDateToSeconds(&global_data_A36507.time_now);
-
   // Calculate new warm up time remaining
   difference = mem_time_seconds_now - global_data_A36507.last_recorded_warmup_seconds;
   if (difference >= 0x0E00) {
@@ -1432,12 +1411,8 @@ void CalculateHeaterWarmupTimers(void) {
 }
 
 
-void ReadSystemConfigurationFromEEProm(unsigned int personality) {
+void ReadSystemConfigurationFromEEProm(void) {
   unsigned int dose_setting_data[16];
-
-  if (personality >= 3) {
-    personality = 0;
-  }
 
   // Read DOSE settings Zero, this is "HIGH DOSE" for MagneTX
   if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
@@ -1450,11 +1425,13 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   }
 
   local_hvps_set_point_dose_0                = dose_setting_data[0];
-  local_afc_home_position_dose_0             = dose_setting_data[11];
   local_magnet_current_set_point_dose_0      = dose_setting_data[1];
   local_gun_drv_top_v_dose_0                 = dose_setting_data[2];
   local_gun_drv_cathode_v_dose_0             = dose_setting_data[3];
-  // DPARKER - ADD PULSE SYNC PULSE WIDTH AND TRIGGER DATA
+  local_pulse_sync_afc_trig_dose_0           = dose_setting_data[5];
+  local_pulse_sync_gun_trig_start_max_dose_0 = dose_setting_data[7];
+  local_pulse_sync_gun_trig_stop_max_dose_0  = dose_setting_data[9];
+  local_afc_home_position_dose_0             = dose_setting_data[11];
 
 
   // Read DOSE settings One, this is "LOW DOSE" for MagneTX
@@ -1468,12 +1445,14 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   }
 
   local_hvps_set_point_dose_1                = dose_setting_data[0];
-  local_afc_home_position_dose_1             = dose_setting_data[11];
   local_magnet_current_set_point_dose_1      = dose_setting_data[1];
   local_gun_drv_top_v_dose_1                 = dose_setting_data[2];
   local_gun_drv_cathode_v_dose_1             = dose_setting_data[3];
-  // DPARKER - ADD PULSE SYNC PULSE WIDTH AND TRIGGER DATA
-  
+  local_pulse_sync_afc_trig_dose_1           = dose_setting_data[5];
+  local_pulse_sync_gun_trig_start_max_dose_1 = dose_setting_data[7];
+  local_pulse_sync_gun_trig_stop_max_dose_1  = dose_setting_data[9];
+  local_afc_home_position_dose_1             = dose_setting_data[11];
+
   
   // Read DOSE settings that apply to ALL ENERGY levels
   if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
@@ -1485,10 +1464,13 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
     }
   }
 
-  local_magnetron_heater_current_dose_all    = dose_setting_data[0];
-  local_afc_aft_control_voltage_dose_all     = dose_setting_data[9];
-  local_gun_drv_heater_v_dose_all            = dose_setting_data[1];
-  // DPARKER - ADD PULSE SYNC PULSE WIDTH AND TRIGGER DATA
+  local_magnetron_heater_current_dose_all        = dose_setting_data[0];
+  local_gun_drv_heater_v_dose_all                = dose_setting_data[1];
+  local_pulse_sync_hvps_trig_start_dose_all      = dose_setting_data[2];
+  local_pulse_sync_pfn_trig_dose_all             = dose_setting_data[4];
+  local_pulse_sync_pulse_mon_trig_start_dose_all = dose_setting_data[5];
+  local_afc_aft_control_voltage_dose_all         = dose_setting_data[9];
+  
 }
 
 
@@ -1531,31 +1513,31 @@ void ZeroSystemPoweredTime(void) {
 
 
 void LoadDefaultSystemCalibrationToEEProm(void) {
-  unsigned int dose_setting_data[16];
+  unsigned int eeprom_data[16];
 
   // Update dose setting Zero - High Dose data
 
-  dose_setting_data[0]  = DEFAULT_HV_LAMBDA_SET_POINT;
-  dose_setting_data[1]  = DEFAULT_ELECTROMAGNET_CURRENT;
-  dose_setting_data[2]  = DEFAULT_GUN_DRIVER_PULSE_TOP;
-  dose_setting_data[3]  = DEFAULT_GUN_DRIVER_CATHODE_VOLTAGE;
-  dose_setting_data[4]  = DEFAULT_SPARE_TRIGGER;
-  dose_setting_data[5]  = DEFAULT_PULSE_SYNC_AFC_SAMPLE_DELAY;
-  dose_setting_data[6]  = 0;
-  dose_setting_data[7]  = DEFAULT_GUN_START_MIN_DOSE;
-  dose_setting_data[8]  = DEFAULT_GUN_START_MAX_DOSE;
-  dose_setting_data[9]  = DEFAULT_GUN_STOP_MIN_DOSE;
-  dose_setting_data[10] = DEFAULT_GUN_STOP_MAX_DOSE;
-  dose_setting_data[11] = DEFAULT_AFC_HOME_POSITION;
-  dose_setting_data[12] = DEFAULT_PRF;
-  dose_setting_data[13] = 0;
-  dose_setting_data[14] = 0;
+  eeprom_data[0]  = DEFAULT_HV_LAMBDA_SET_POINT;
+  eeprom_data[1]  = DEFAULT_ELECTROMAGNET_CURRENT;
+  eeprom_data[2]  = DEFAULT_GUN_DRIVER_PULSE_TOP;
+  eeprom_data[3]  = DEFAULT_GUN_DRIVER_CATHODE_VOLTAGE;
+  eeprom_data[4]  = DEFAULT_SPARE_TRIGGER;
+  eeprom_data[5]  = DEFAULT_PULSE_SYNC_AFC_SAMPLE_DELAY;
+  eeprom_data[6]  = 0;
+  eeprom_data[7]  = DEFAULT_GUN_START_MIN_DOSE;
+  eeprom_data[8]  = DEFAULT_GUN_START_MAX_DOSE;
+  eeprom_data[9]  = DEFAULT_GUN_STOP_MIN_DOSE;
+  eeprom_data[10] = DEFAULT_GUN_STOP_MAX_DOSE;
+  eeprom_data[11] = DEFAULT_AFC_HOME_POSITION;
+  eeprom_data[12] = DEFAULT_PRF;
+  eeprom_data[13] = 0;
+  eeprom_data[14] = 0;
   
   global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
   
-  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
-    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
-      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
+  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_0, &eeprom_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_0, &eeprom_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_0, &eeprom_data[0]) == 0) {
 	// Unable to write the data
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
       }
@@ -1563,9 +1545,9 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
   }
 
 
-  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_1, &dose_setting_data[0]) == 0) {
-    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_1, &dose_setting_data[0]) == 0) {
-      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_1, &dose_setting_data[0]) == 0) {
+  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_1, &eeprom_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_1, &eeprom_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_1, &eeprom_data[0]) == 0) {
 	// Unable to write the data
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
       }
@@ -1573,31 +1555,88 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
   }
 
   
-  dose_setting_data[0]  = DEFAULT_MAGNETRON_HEATER_CURRENT;
-  dose_setting_data[1]  = DEFAULT_GUN_DRIVER_HEATER_CURRENT;
-  dose_setting_data[2]  = DEFAULT_HVPS_TRIGGER_START;
-  dose_setting_data[3]  = DEFAULT_HVPS_TRIGGER_STOP;
-  dose_setting_data[4]  = DEFAULT_TRIGGER_PFN;
-  dose_setting_data[5]  = DEFAULT_TRIGGER_MAGNETRON_AND_TARGET_CURRENT_START;
-  dose_setting_data[6]  = DEFAULT_TRIGGER_MAGNETRON_AND_TARGET_CURRENT_STOP;
-  dose_setting_data[7]  = DEFAULT_X_RAY_ON_TIME;
-  dose_setting_data[8]  = DEFAULT_GUN_BIAS_VOLTAGE;
-  dose_setting_data[9]  = DEFAULT_AFT_CONTROL_VOLTAGE;
-  dose_setting_data[10] = 0;
-  dose_setting_data[11] = 0;
-  dose_setting_data[12] = 0;
-  dose_setting_data[13] = 0;
-  dose_setting_data[14] = 0;
+  eeprom_data[0]  = DEFAULT_MAGNETRON_HEATER_CURRENT;
+  eeprom_data[1]  = DEFAULT_GUN_DRIVER_HEATER_CURRENT;
+  eeprom_data[2]  = DEFAULT_HVPS_TRIGGER_START;
+  eeprom_data[3]  = DEFAULT_HVPS_TRIGGER_STOP;
+  eeprom_data[4]  = DEFAULT_TRIGGER_PFN;
+  eeprom_data[5]  = DEFAULT_TRIGGER_MAGNETRON_AND_TARGET_CURRENT_START;
+  eeprom_data[6]  = DEFAULT_TRIGGER_MAGNETRON_AND_TARGET_CURRENT_STOP;
+  eeprom_data[7]  = DEFAULT_X_RAY_ON_TIME;
+  eeprom_data[8]  = DEFAULT_GUN_BIAS_VOLTAGE;
+  eeprom_data[9]  = DEFAULT_AFT_CONTROL_VOLTAGE;
+  eeprom_data[10] = 0;
+  eeprom_data[11] = 0;
+  eeprom_data[12] = 0;
+  eeprom_data[13] = 0;
+  eeprom_data[14] = 0;
 
 
-  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
-    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
-      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
+  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &eeprom_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &eeprom_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &eeprom_data[0]) == 0) {
 	// Unable to write the data
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
       }
     }
   }
+
+
+  eeprom_data[0]  = 0;
+  eeprom_data[1]  = 0;
+  eeprom_data[2]  = 0;
+  eeprom_data[3]  = 0;
+  eeprom_data[4]  = 0;
+  eeprom_data[5]  = 0;
+  eeprom_data[6]  = 0;
+  eeprom_data[7]  = 0;
+  eeprom_data[8]  = 0;
+  eeprom_data[9]  = 0;
+  eeprom_data[10] = 0;
+  eeprom_data[11] = 0;
+  eeprom_data[12] = 0;
+  eeprom_data[13] = 0;
+  eeprom_data[14] = 0;
+
+
+  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_COUNTER_AND_TIMERS, &eeprom_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_COUNTER_AND_TIMERS, &eeprom_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_COUNTER_AND_TIMERS, &eeprom_data[0]) == 0) {
+	// Unable to write the data
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
+      }
+    }
+  }
+
+  eeprom_data[0]  = 0x21;
+  eeprom_data[1]  = 0xFFFF;
+  eeprom_data[2]  = 0xFFFF;
+  eeprom_data[3]  = 0;
+  eeprom_data[4]  = 0;
+  eeprom_data[5]  = 0;
+  eeprom_data[6]  = 0;
+  eeprom_data[7]  = 0;
+  eeprom_data[8]  = 0;
+  eeprom_data[9]  = 0;
+  eeprom_data[10] = 0;
+  eeprom_data[11] = 0;
+  eeprom_data[12] = 0;
+  eeprom_data[13] = 0;
+  eeprom_data[14] = 0;
+  
+
+  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_BOARD_CONFIGURATION, &eeprom_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_BOARD_CONFIGURATION, &eeprom_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_BOARD_CONFIGURATION, &eeprom_data[0]) == 0) {
+	// Unable to write the data
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
+      }
+    }
+  }
+
+
+
+
 }
 
 
@@ -1805,6 +1844,8 @@ void ExecuteEthernetCommand(void) {
   if ((global_data_A36507.access_mode == ACCESS_MODE_SERVICE) || (global_data_A36507.access_mode == ACCESS_MODE_ETM)) {
     
     switch (next_message.index) {
+
+      // -------------------- DOSE 0 SETTINGS ----------------------- //
       
     case REGISTER_HVPS_SET_POINT_DOSE_0:
       global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
@@ -1880,10 +1921,86 @@ void ExecuteEthernetCommand(void) {
       // NOT IMPLIMENTED REGISTER_PULSE_SYNC_PRF_DOSE_0
 
 
-      // -------------------- DPARKER - ADD DOSE 1 ----------------------- //
+      // -------------------- DOSE 1 SETTINGS ----------------------- //
 
+      
+    case REGISTER_HVPS_SET_POINT_DOSE_1:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 0), next_message.data_2) == 0xFFFF) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	local_hvps_set_point_dose_1 = next_message.data_2;
+      }
+      break;
 
+    case REGISTER_ELECTROMAGNET_CURRENT_DOSE_1:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 1), next_message.data_2) == 0xFFFF) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	local_magnet_current_set_point_dose_1 = next_message.data_2;
+      }
+      break;
     
+    case REGISTER_GUN_DRIVER_PULSE_TOP_VOLTAGE_DOSE_1:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 2), next_message.data_2) == 0xFFFF) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	local_gun_drv_top_v_dose_1 = next_message.data_2;
+      }
+      break;
+
+    case REGISTER_GUN_DRIVER_CATHODE_VOLTAGE_DOSE_1:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 3), next_message.data_2) == 0xFFFF) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	local_gun_drv_cathode_v_dose_1 = next_message.data_2;
+      }
+      break;
+
+      // NOT IMPLIMENTED REGISTER_PULSE_SYNC_SPARE_TRIG_DOSE_1
+
+    case REGISTER_PULSE_SYNC_AFC_TRIGGER_DOSE_1:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 5), next_message.data_2) == 0xFFFF) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	local_pulse_sync_afc_trig_dose_1 = next_message.data_2;
+      }
+      break;
+    
+    
+      // NOT IMPLIMENTED REGISTER_PULSE_SYNC_GRID_START_MIN_DOSE_1
+    
+    case REGISTER_PULSE_SYNC_GRID_START_MAX_DOSE_1:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 7), next_message.data_2) == 0xFFFF) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	local_pulse_sync_gun_trig_start_max_dose_1 = next_message.data_2;
+      }
+      break;
+
+      // NOT IMPLIMENTED REGISTER_PULSE_SYNC_GRID_STOP_MIN_DOSE_1
+
+    case REGISTER_PULSE_SYNC_GRID_STOP_MAX_DOSE_1:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 9), next_message.data_2) == 0xFFFF) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	local_pulse_sync_gun_trig_stop_max_dose_1 = next_message.data_2;
+      }
+      break;    
+
+    case REGISTER_AFC_HOME_POSITION_DOSE_1:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 10), next_message.data_2) == 0xFFFF) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	local_afc_home_position_dose_1 = next_message.data_2;
+      }
+      break;
+
+      // NOT IMPLIMENTED REGISTER_PULSE_SYNC_PRF_DOSE_1
+
+
+
+      
+      // -------------------- DOSE ALL COMMANDS ----------------------- //
     
     
     case REGISTER_MAGNETRON_HEATER_CURRENT_DOSE_ALL:
@@ -2037,72 +2154,6 @@ void ExecuteEthernetCommand(void) {
 }
 
 
-#define HALF_TMIN   3   // 60nS 
-
-void CalculatePulseSyncParams(unsigned char start, unsigned char stop) {
-
-  unsigned char start_max;
-  unsigned char start_med;
-  unsigned char start_small;
-  unsigned char start_min;
-
-
-  unsigned char stop_max;
-  unsigned char stop_med;
-  unsigned char stop_small;
-  unsigned char stop_min;
-
-  unsigned int temp;
-
-
-  if (stop > (start + 2*HALF_TMIN)) { 
-    start_max = start;
-    stop_max  = stop;
-    
-    temp      = start;
-    temp     += stop;
-    temp    >>= 1;    // temp is now equal to the mid point
-    
-    start_min = temp - HALF_TMIN;
-    stop_min  = temp + HALF_TMIN;
-    
-    temp = (start_min - start_max)/3;  // temp is now the medium offset
-    start_med = start_max + temp;
-    stop_med  = stop_max - temp;
-    
-    temp *= 2;  // temp is now the small offset
-    start_small = start_max + temp;
-    stop_small  = stop_max - temp;
-    
-    psync_grid_start_high_intensity_3 = start_max;
-    psync_grid_start_high_intensity_2 = start_med;
-    psync_grid_start_high_intensity_1 = start_small;
-    psync_grid_start_high_intensity_0 = start_min;
-
-    psync_grid_start_low_intensity_3 = psync_grid_start_high_intensity_3;
-    psync_grid_start_low_intensity_2 = psync_grid_start_high_intensity_2;
-    psync_grid_start_low_intensity_1 = psync_grid_start_high_intensity_1;
-    psync_grid_start_low_intensity_0 = psync_grid_start_high_intensity_0;
- 
-    psync_grid_stop_high_intensity_3 = stop_max;      
-    psync_grid_stop_high_intensity_2 = stop_med;      
-    psync_grid_stop_high_intensity_1 = stop_small;      
-    psync_grid_stop_high_intensity_0 = stop_min;      
-
-    psync_grid_stop_low_intensity_3 = psync_grid_stop_high_intensity_3;
-    psync_grid_stop_low_intensity_2 = psync_grid_stop_high_intensity_2;
-    psync_grid_stop_low_intensity_1 = psync_grid_stop_high_intensity_1;
-    psync_grid_stop_low_intensity_0 = psync_grid_stop_high_intensity_0;
-  }
-  
-  //ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  //ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  //ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-  //ETMEEPromWritePage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4 + 0), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
-}
-
-
-
 void WriteConfigToMirror(void) {
   //unsigned int temp_data[16];
 
@@ -2225,7 +2276,7 @@ unsigned int LookForWatchdogMessage(void) {
   // If multiple messages are found the old data is overwritten by the newer data
   unsigned char message[9];
   
-  while (BufferByte64BytesInBuffer(&uart2_input_buffer) >= 9) {
+  while (BufferByte64BytesInBuffer(&uart2_input_buffer) >= 8) {
     // Look for message
     test_uart_data_recieved++;
     message[0] = BufferByte64ReadByte(&uart2_input_buffer);
@@ -2264,6 +2315,7 @@ unsigned int LookForWatchdogMessage(void) {
       global_data_A36507.most_recent_watchdog_reading <<= 8;
       global_data_A36507.most_recent_watchdog_reading += message[3];
       message_received = 1;
+      BufferByte64Initialize(&uart2_input_buffer);
     }
   }
   return message_received;

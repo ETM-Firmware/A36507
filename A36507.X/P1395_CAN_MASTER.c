@@ -5,6 +5,11 @@
 #include "ETM_SCALE.H"
 #include "ETM_LINAC_MODBUS.h"
 
+#define ETM_CAN_REGISTER_PULSE_SYNC_SET_1_MAGNETX_DOSE_0      0x3210
+#define ETM_CAN_REGISTER_PULSE_SYNC_SET_1_MAGNETX_DOSE_1      0x3211
+#define ETM_CAN_REGISTER_PULSE_SYNC_SET_1_MAGNETX_DOSE_ALL    0x3212
+
+
 unsigned int can_master_millisecond_counter;
 unsigned int previous_disable_xray_value;
 unsigned int personality_loaded;
@@ -144,10 +149,14 @@ void ETMCanMasterHtrMagnetUpdateOutput(void);         // This gets sent out 1 ti
 void ETMCanMasterGunDriverUpdatePulseTop(void);       // This gets sent out 1 time every 200ms
 void ETMCanMasterAFCUpdateHomeOffset(void);           // This gets sent out at 200ms / 6 = 1.2 Seconds
 void ETMCanMasterGunDriverUpdateHeaterCathode(void);  // This gets sent out at 200ms / 6 = 1.2 Seconds
-void ETMCanMasterPulseSyncUpdateHighRegZero(void);    // This gets sent out at 200ms / 6 = 1.2 Seconds
-void ETMCanMasterPulseSyncUpdateHighRegOne(void);     // This gets sent out at 200ms / 6 = 1.2 Seconds
-void ETMCanMasterPulseSyncUpdateLowRegZero(void);     // This gets sent out at 200ms / 6 = 1.2 Seconds
-void ETMCanMasterPulseSyncUpdateLowRegOne(void);      // This gets sent out at 200ms / 6 = 1.2 Seconds
+//void ETMCanMasterPulseSyncUpdateHighRegZero(void);    // This gets sent out at 200ms / 6 = 1.2 Seconds
+//void ETMCanMasterPulseSyncUpdateHighRegOne(void);     // This gets sent out at 200ms / 6 = 1.2 Seconds
+//void ETMCanMasterPulseSyncUpdateLowRegZero(void);     // This gets sent out at 200ms / 6 = 1.2 Seconds
+//void ETMCanMasterPulseSyncUpdateLowRegOne(void);      // This gets sent out at 200ms / 6 = 1.2 Seconds
+
+void ETMCanMasterPulseSyncUpdateMagneTXSetDose0(void);
+void ETMCanMasterPulseSyncUpdateMagneTXSetDose1(void);
+void ETMCanMasterPulseSyncUpdateMagneTXSetDoseAll(void);
 
 // DPARKER how are the LEDs set on Pulse Sync Board?? Missing that command
 
@@ -490,19 +499,22 @@ void ETMCanMasterTimedTransmit(void) {
 	  }
 
 	  if (master_low_speed_update_index == 2) {
-	    ETMCanMasterPulseSyncUpdateHighRegZero();	   
+	    //ETMCanMasterPulseSyncUpdateHighRegZero();
+	    ETMCanMasterPulseSyncUpdateMagneTXSetDose0();
 	  }
 
 	  if (master_low_speed_update_index == 3) {
-	    ETMCanMasterPulseSyncUpdateHighRegOne();	   
+	    //ETMCanMasterPulseSyncUpdateHighRegOne();
+	    ETMCanMasterPulseSyncUpdateMagneTXSetDose1();
 	  }
 
 	  if (master_low_speed_update_index == 4) {
-	    ETMCanMasterPulseSyncUpdateLowRegZero();	   
+	    //ETMCanMasterPulseSyncUpdateLowRegZero();
+	    ETMCanMasterPulseSyncUpdateMagneTXSetDoseAll();
 	  }
 
 	  if (master_low_speed_update_index == 5) {
-	    ETMCanMasterPulseSyncUpdateLowRegOne();	   
+	    //ETMCanMasterPulseSyncUpdateLowRegOne();	   
 	  }
 	  break;
 	}
@@ -536,8 +548,8 @@ void ETMCanMasterHVLambdaUpdateOutput(void) {
   
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_HV_LAMBDA_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_HV_LAMBDA_SET_1_LAMBDA_SET_POINT;
-  can_message.word2 = local_hv_lambda_low_en_set_point;
-  can_message.word1 = local_hv_lambda_high_en_set_point;
+  can_message.word2 = local_hvps_set_point_dose_1;
+  can_message.word1 = local_hvps_set_point_dose_0;
   can_message.word0 = 0;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();  // DPARKER - Figure out how to build this into ETMCanAddMessageToBuffer()
@@ -547,9 +559,9 @@ void ETMCanMasterAFCUpdateHomeOffset(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_AFC_SET_1_HOME_POSITION_AND_OFFSET;
-  can_message.word2 = local_afc_aft_control_voltage_high_energy;
-  can_message.word1 = local_afc_aft_control_voltage_low_energy;
-  can_message.word0 = local_afc_home_position;
+  can_message.word2 = local_afc_aft_control_voltage_dose_all;
+  can_message.word1 = local_afc_aft_control_voltage_dose_all;
+  can_message.word0 = local_afc_home_position_dose_0;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();
 }
@@ -558,9 +570,9 @@ void ETMCanMasterHtrMagnetUpdateOutput(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_HEATER_MAGNET_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_HEATER_MAGNET_SET_1_CURRENT_SET_POINT;
-  can_message.word2 = local_magnet_current_set_point_low_energy;
+  can_message.word2 = local_magnet_current_set_point_dose_1;
   can_message.word1 = local_heater_current_scaled_set_point;
-  can_message.word0 = local_magnet_current_set_point_high_energy;
+  can_message.word0 = local_magnet_current_set_point_dose_0;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();
 }
@@ -570,8 +582,8 @@ void ETMCanMasterGunDriverUpdatePulseTop(void) {
     can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_GUN_DRIVER_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_GUN_DRIVER_SET_1_GRID_TOP_SET_POINT;
   can_message.word2 = 0;
-  can_message.word1 = local_gun_drv_high_en_pulse_top_v;
-  can_message.word0 = local_gun_drv_low_en_pulse_top_v;
+  can_message.word1 = local_gun_drv_top_v_dose_0;
+  can_message.word0 = local_gun_drv_top_v_dose_1;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();
 }
@@ -581,12 +593,49 @@ void ETMCanMasterGunDriverUpdateHeaterCathode(void) {
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_GUN_DRIVER_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_GUN_DRIVER_SET_1_HEATER_CATHODE_SET_POINT;
   can_message.word2 = 0;
-  can_message.word1 = local_gun_drv_cathode_set_point;
-  can_message.word0 = local_gun_drv_heater_v_set_point;
+  can_message.word1 = local_gun_drv_cathode_v_dose_0;
+  can_message.word0 = local_gun_drv_heater_v_dose_all;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
   MacroETMCanCheckTXBuffer();
 }
 
+
+void ETMCanMasterPulseSyncUpdateMagneTXSetDose0(void) {
+  ETMCanMessage can_message;
+  can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 2));
+  can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_MAGNETX_DOSE_0;
+  can_message.word2 = local_pulse_sync_afc_trig_dose_0;
+  can_message.word1 = local_pulse_sync_gun_trig_stop_max_dose_0;
+  can_message.word0 = local_pulse_sync_gun_trig_start_max_dose_0;
+  ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
+  MacroETMCanCheckTXBuffer();
+}
+
+void ETMCanMasterPulseSyncUpdateMagneTXSetDose1(void) {
+  ETMCanMessage can_message;
+  can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 2));
+  can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_MAGNETX_DOSE_1;
+  can_message.word2 = local_pulse_sync_afc_trig_dose_1;
+  can_message.word1 = local_pulse_sync_gun_trig_stop_max_dose_1;
+  can_message.word0 = local_pulse_sync_gun_trig_start_max_dose_1;
+  ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
+  MacroETMCanCheckTXBuffer();
+}
+ 
+void ETMCanMasterPulseSyncUpdateMagneTXSetDoseAll(void) {
+  ETMCanMessage can_message;
+  can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 2));
+  can_message.word3 = ETM_CAN_REGISTER_PULSE_SYNC_SET_1_MAGNETX_DOSE_ALL;
+  can_message.word2 = local_pulse_sync_hvps_trig_start_dose_all;
+  can_message.word1 = local_pulse_sync_pfn_trig_dose_all;
+  can_message.word0 = local_pulse_sync_pulse_mon_trig_start_dose_all;
+  ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);
+  MacroETMCanCheckTXBuffer();
+}
+
+
+
+/*
 void ETMCanMasterPulseSyncUpdateHighRegZero(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_PULSE_SYNC_BOARD << 2));
@@ -631,7 +680,7 @@ void ETMCanMasterPulseSyncUpdateLowRegOne(void) {
   MacroETMCanCheckTXBuffer();
 }
 
-
+*/
 
 
 
