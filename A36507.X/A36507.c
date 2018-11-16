@@ -1375,11 +1375,11 @@ void InitializeA36507(void) {
 
   _U2RXIF = 0;
   _U2RXIE = 1;
-  _U2RXIP = 5;
+  _U2RXIP = 3;
 
   _U2TXIF = 0;
   _U2TXIE = 1;
-  _U2TXIP = 6;
+  _U2TXIP = 3;
 
   U2BRG = A36507_U2BRG_VALUE;
   U2STA = A36507_U2STA_VALUE;
@@ -1926,7 +1926,7 @@ void ExecuteEthernetCommand(void) {
       
     case REGISTER_HVPS_SET_POINT_DOSE_1:
       global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
-      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 0), next_message.data_2) == 0xFFFF) {
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_1<<4) + 0), next_message.data_2) == 0xFFFF) {
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 	local_hvps_set_point_dose_1 = next_message.data_2;
       }
@@ -1934,7 +1934,7 @@ void ExecuteEthernetCommand(void) {
 
     case REGISTER_ELECTROMAGNET_CURRENT_DOSE_1:
       global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
-      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 1), next_message.data_2) == 0xFFFF) {
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_1<<4) + 1), next_message.data_2) == 0xFFFF) {
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 	local_magnet_current_set_point_dose_1 = next_message.data_2;
       }
@@ -1942,7 +1942,7 @@ void ExecuteEthernetCommand(void) {
     
     case REGISTER_GUN_DRIVER_PULSE_TOP_VOLTAGE_DOSE_1:
       global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
-      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 2), next_message.data_2) == 0xFFFF) {
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_1<<4) + 2), next_message.data_2) == 0xFFFF) {
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 	local_gun_drv_top_v_dose_1 = next_message.data_2;
       }
@@ -1950,7 +1950,7 @@ void ExecuteEthernetCommand(void) {
 
     case REGISTER_GUN_DRIVER_CATHODE_VOLTAGE_DOSE_1:
       global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
-      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 3), next_message.data_2) == 0xFFFF) {
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_1<<4) + 3), next_message.data_2) == 0xFFFF) {
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 	local_gun_drv_cathode_v_dose_1 = next_message.data_2;
       }
@@ -1960,7 +1960,7 @@ void ExecuteEthernetCommand(void) {
 
     case REGISTER_PULSE_SYNC_AFC_TRIGGER_DOSE_1:
       global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
-      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 5), next_message.data_2) == 0xFFFF) {
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_1<<4) + 5), next_message.data_2) == 0xFFFF) {
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 	local_pulse_sync_afc_trig_dose_1 = next_message.data_2;
       }
@@ -1971,7 +1971,7 @@ void ExecuteEthernetCommand(void) {
     
     case REGISTER_PULSE_SYNC_GRID_START_MAX_DOSE_1:
       global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
-      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 7), next_message.data_2) == 0xFFFF) {
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_1<<4) + 7), next_message.data_2) == 0xFFFF) {
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 	local_pulse_sync_gun_trig_start_max_dose_1 = next_message.data_2;
       }
@@ -1981,7 +1981,7 @@ void ExecuteEthernetCommand(void) {
 
     case REGISTER_PULSE_SYNC_GRID_STOP_MAX_DOSE_1:
       global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
-      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 9), next_message.data_2) == 0xFFFF) {
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_1<<4) + 9), next_message.data_2) == 0xFFFF) {
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 	local_pulse_sync_gun_trig_stop_max_dose_1 = next_message.data_2;
       }
@@ -1989,7 +1989,7 @@ void ExecuteEthernetCommand(void) {
 
     case REGISTER_AFC_HOME_POSITION_DOSE_1:
       global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
-      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_0<<4) + 10), next_message.data_2) == 0xFFFF) {
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_DOSE_SETTING_1<<4) + 10), next_message.data_2) == 0xFFFF) {
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 	local_afc_home_position_dose_1 = next_message.data_2;
       }
@@ -2205,8 +2205,7 @@ void ReadConfigFromMirror(void) {
 }
 
 
-
-void __attribute__((interrupt, no_auto_psv)) _U2RXInterrupt(void) {
+void __attribute__((interrupt(__save__(CORCON,SR)),no_auto_psv)) _U2RXInterrupt(void) {
   _U2RXIF = 0;
   while (U2STAbits.URXDA) {
     BufferByte64WriteByte(&uart2_input_buffer, U2RXREG);
@@ -2223,6 +2222,15 @@ void __attribute__((interrupt(__save__(CORCON,SR)),no_auto_psv)) _U2TXInterrupt(
     */
     U2TXREG = BufferByte64ReadByte(&uart2_output_buffer);
   }
+}
+
+
+void __attribute__((interrupt, no_auto_psv)) _OscillatorFail(void) {
+  // Clearly should not get here without a major problem occuring
+  
+  Nop();
+  Nop();
+  __asm__ ("Reset");
 }
 
 
