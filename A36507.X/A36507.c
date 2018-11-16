@@ -850,20 +850,20 @@ void UpdateDebugData(void) {
   
   debug_data_ecb.debug_reg[0x0] = local_hvps_set_point_dose_0;
   debug_data_ecb.debug_reg[0x1] = local_hvps_set_point_dose_1;
-  debug_data_ecb.debug_reg[0x2] = 0;
-  debug_data_ecb.debug_reg[0x3] = local_magnet_current_set_point_dose_0;
-  debug_data_ecb.debug_reg[0x4] = local_magnet_current_set_point_dose_1;
+  debug_data_ecb.debug_reg[0x2] = etm_can_master_next_pulse_level;
+  debug_data_ecb.debug_reg[0x3] = etm_can_master_next_pulse_count;
+  debug_data_ecb.debug_reg[0x4] = 0;
   debug_data_ecb.debug_reg[0x5] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_COUNT);
   debug_data_ecb.debug_reg[0x6] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_ERROR);
   debug_data_ecb.debug_reg[0x7] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_WRITE_I2C_COUNT);
   debug_data_ecb.debug_reg[0x8] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_WRITE_I2C_ERROR);
-  debug_data_ecb.debug_reg[0x9] = 0;
-  debug_data_ecb.debug_reg[0xA] = 0;
-  debug_data_ecb.debug_reg[0xB] = 0;
-  debug_data_ecb.debug_reg[0xC] = 12;
-  debug_data_ecb.debug_reg[0xD] = 12;
-  debug_data_ecb.debug_reg[0xE] = 12;
-  debug_data_ecb.debug_reg[0xF] = 12; 
+  debug_data_ecb.debug_reg[0x9] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT);
+  debug_data_ecb.debug_reg[0xA] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT);
+  debug_data_ecb.debug_reg[0xB] = ETMTCPModbusGetErrorInfo(ERROR_SM_PROCESS_RESPONSE_TIMEOUT_ID);
+  debug_data_ecb.debug_reg[0xC] = ETMTCPModbusGetErrorInfo(COUNT_SM_SOCKET_OBTAINED_MSG_TX);
+  debug_data_ecb.debug_reg[0xD] = ETMTCPModbusGetErrorInfo(COUNT_SM_PROCESS_RESPONSE_MSG_RX);
+  debug_data_ecb.debug_reg[0xE] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_DISCONNECT);
+  debug_data_ecb.debug_reg[0xF] = 0;
 
   
 }
