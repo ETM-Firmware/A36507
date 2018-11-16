@@ -48,7 +48,7 @@ typedef struct {
 
 
 
-#define ETH_GUI_MESSAGE_BUFFER_SIZE   8
+#define ETH_GUI_MESSAGE_BUFFER_SIZE   16
 ETMEthernetMessageFromGUI    eth_message_from_GUI[ ETH_GUI_MESSAGE_BUFFER_SIZE ];
 
 
