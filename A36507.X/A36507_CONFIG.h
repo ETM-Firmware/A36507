@@ -31,7 +31,7 @@
 #define DEFAULT_GUN_DRIVER_PULSE_TOP                                840
 #define DEFAULT_GUN_DRIVER_CATHODE_VOLTAGE                        20000
 #define DEFAULT_SPARE_TRIGGER                                         0
-#define DEFAULT_PULSE_SYNC_AFC_SAMPLE_DELAY                         150
+#define DEFAULT_PULSE_SYNC_AFC_SAMPLE_DELAY                         200
 #define DEFAULT_GUN_START_MIN_DOSE                                  150
 #define DEFAULT_GUN_START_MAX_DOSE                                  100
 #define DEFAULT_GUN_STOP_MIN_DOSE                                   160
@@ -45,7 +45,7 @@
 #define DEFAULT_HVPS_TRIGGER_START                                    0
 #define DEFAULT_HVPS_TRIGGER_STOP                                     0
 #define DEFAULT_TRIGGER_PFN                                           0
-#define DEFAULT_TRIGGER_MAGNETRON_AND_TARGET_CURRENT_START            0
+#define DEFAULT_TRIGGER_MAGNETRON_AND_TARGET_CURRENT_START          200
 #define DEFAULT_TRIGGER_MAGNETRON_AND_TARGET_CURRENT_STOP             0
 #define DEFAULT_X_RAY_ON_TIME                                       100
 #define DEFAULT_GUN_BIAS_VOLTAGE                                      0

@@ -881,11 +881,16 @@ void DoA36507(void) {
     }
   }
 
+  /*
   if (ETMTickGreaterThanNMilliseconds(WATCHDOG_TIMEOUT_MILLISEC, watchdog_timeout_holding_var)) {
     // There is a watchdog timeout
+    if (_FAULT_WATCHDOG_ERROR == 0) {
+      // There is a new watchdog fault, send to the event log
+      SendToEventLog(0xFF00);
+    }
     _FAULT_WATCHDOG_ERROR = 1;
   }
-  
+  */
   etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
   etm_can_master_sync_message.sync_2 = 0x0123;
   etm_can_master_sync_message.sync_3 = 0x4567;
@@ -989,7 +994,7 @@ void DoA36507(void) {
     // Run at 1 second interval
     if (can_master_millisecond_counter >= 1000) {
       can_master_millisecond_counter = 0;
-      SendToEventLog(0xD1DF);
+      //SendToEventLog(0xD1DF);
     }
 
     // Run once a second at 0 milliseconds
