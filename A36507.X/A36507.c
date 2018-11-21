@@ -84,7 +84,7 @@ _FGS(CODE_PROT_OFF);                                                      //
 _FICD(PGD);                                                               //
 
 
-const unsigned int FilamentLookUpTable[64] = {FILAMENT_LOOK_UP_TABLE_VALUES_FOR_MG5193};
+const unsigned int FilamentLookUpTable[64] = {FILAMENT_LOOK_UP_TABLE_VALUES_FOR_MG7095_V2};
 
 
 
@@ -739,7 +739,7 @@ unsigned int CheckCoolingFault(void) {
 unsigned int CheckGunHeaterOffFault(void) {
   // Check to see if there is an active over current condition in the ion pump
 
-  //#ifndef __IGNORE_ION_PUMP_MODULE
+#ifndef __IGNORE_ION_PUMP_MODULE
   if (_ION_PUMP_OVER_CURRENT_ACTIVE) {
     global_data_A36507.gun_heater_holdoff_timer = 0;
     return 1;
@@ -750,6 +750,7 @@ unsigned int CheckGunHeaterOffFault(void) {
   if (_ION_PUMP_NOT_CONFIGURED) {
     return 1;
   }
+#endif
   if (global_data_A36507.gun_heater_holdoff_timer < GUN_HEATER_HOLDOFF_AT_STARTUP) {
     return 1;
   }
@@ -852,10 +853,10 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[0x1] = local_hvps_set_point_dose_1;
   debug_data_ecb.debug_reg[0x2] = etm_can_master_next_pulse_level;
   debug_data_ecb.debug_reg[0x3] = etm_can_master_next_pulse_count;
-  debug_data_ecb.debug_reg[0x4] = 0;
-  debug_data_ecb.debug_reg[0x5] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_COUNT);
-  debug_data_ecb.debug_reg[0x6] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_ERROR);
-  debug_data_ecb.debug_reg[0x7] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_WRITE_I2C_COUNT);
+  debug_data_ecb.debug_reg[0x4] = average_output_power_watts;
+  //debug_data_ecb.debug_reg[0x5] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_COUNT);
+  //debug_data_ecb.debug_reg[0x6] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_ERROR);
+  //debug_data_ecb.debug_reg[0x7] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_WRITE_I2C_COUNT);
   debug_data_ecb.debug_reg[0x8] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_WRITE_I2C_ERROR);
   debug_data_ecb.debug_reg[0x9] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_PROCESS_RESPONSE_TIMEOUT);
   debug_data_ecb.debug_reg[0xA] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_SOCKET_OBTAINED_TIMEOUT);
@@ -1104,9 +1105,6 @@ void DoA36507(void) {
 
 
 unsigned int CalculatePulseEnergyMilliJoules(unsigned int lambda_voltage) {
-  unsigned long power_milli_joule;
-  unsigned int return_data;
-
   /*
     The Pulse Energy is Calculated for Each Pulse
     The Pulse Energy is then multiplied by the PRF to generate the power.
@@ -1122,7 +1120,20 @@ unsigned int CalculatePulseEnergyMilliJoules(unsigned int lambda_voltage) {
 		      = v*v / 2^6 / 347.22
 		      = v*v / 2^6 * 47 / 2^14 (.4% fixed point error)
 		      
+
+
+
+    New Method . . . 
+    power_milli_joule = V^2 / 27275
+    = V^2 * 4920 / 2^27
+
+
   */
+
+  /*
+  unsigned long power_milli_joule;
+  unsigned int return_data;
+
   power_milli_joule = lambda_voltage;
   power_milli_joule *= lambda_voltage;
   power_milli_joule >>= 6;
@@ -1137,39 +1148,46 @@ unsigned int CalculatePulseEnergyMilliJoules(unsigned int lambda_voltage) {
   return_data = power_milli_joule;
 
   return return_data;
+  */
+
+  unsigned long long power_calc;
+  
+  power_calc = lambda_voltage;
+  power_calc *= lambda_voltage;
+  power_calc *= 4920;
+  power_calc >>= 27;
+  return power_calc;
 }
 
 
 void UpdateHeaterScale() {
-  unsigned long temp32;
+  unsigned long long power_calc;
   unsigned int temp16;
-
 
   // DPARKER - UPDATE THIS TO USE THE ENERGY OF THE SELECTED MODE
   // Load the energy per pulse into temp32
   // Use the higher of High/Low Energy set point
-  /*
-    if (local_hv_lambda_high_en_set_point > local_hv_lambda_low_en_set_point) {
-    temp32 = CalculatePulseEnergyMilliJoules(local_hv_lambda_high_en_set_point);
-  } else {
-    temp32 = CalculatePulseEnergyMilliJoules(local_hv_lambda_low_en_set_point);
-  }
-  */
-  temp32 = CalculatePulseEnergyMilliJoules(local_hvps_set_point_dose_0);
 
+  if (etm_can_master_next_pulse_level) {
+    power_calc = CalculatePulseEnergyMilliJoules(local_hvps_set_point_dose_0);
+  } else {
+    power_calc = CalculatePulseEnergyMilliJoules(local_hvps_set_point_dose_1);
+  }
+
+  debug_data_ecb.debug_reg[0x5] = power_calc;
+  debug_data_ecb.debug_reg[0x6] = ETMCanMasterGetPulsePRF();
   
   // Multiply the Energy per Pulse times the PRF (in deci-Hz)
-  temp32 *= ETMCanMasterGetPulsePRF();
+  power_calc *= ETMCanMasterGetPulsePRF();
   if (global_data_A36507.control_state != STATE_XRAY_ON) {
     // Set the power to zero if we are not in the X-RAY ON state
-    temp32 = 0;
+    power_calc = 0;  // DPARKER - TESTING ONLY - CALCULATE POWER WITHOUR FIRING THE SYSTEM
   }
 
-  temp32 >>= 6;
-  temp32 *= 13;
-  temp32 >>= 11;  // Temp32 is now Magnetron Power (in Watts)
+  power_calc *= 839; 
+  power_calc >>= 23; // power_calc is now Magnetron Power (in Watts)
   
-  average_output_power_watts = temp32;
+  average_output_power_watts = power_calc;
   temp16 = average_output_power_watts;
 
   temp16 >>= 7; // Convert to index for our rolloff table
@@ -1177,7 +1195,6 @@ void UpdateHeaterScale() {
     // Prevent Rollover of the index
     // This is a maximum magnitron power of 8064 Watts
     // If the Magnritron power is greater thatn 8064 it will rolloff as if the power was 8064 watts
-    // This would happen at a lambda voltage of 21.2 KV which is well above the maximum voltage of the Lambda
     temp16 = 0x3F;
   }
   
