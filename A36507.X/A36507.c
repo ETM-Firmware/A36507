@@ -12,6 +12,16 @@
 #define EEPROM_PAGE_ECB_DOSE_SETTING_1               0x41
 #define EEPROM_PAGE_ECB_DOSE_SETTING_ALL             0x50
 
+#define EEPROM_PAGE_ECB_DOSE_SETTING_0_FACTORY_DEFAULT               0x60
+#define EEPROM_PAGE_ECB_DOSE_SETTING_1_FACTORY_DEFAULT               0x61
+#define EEPROM_PAGE_ECB_DOSE_SETTING_ALL_FACTORY_DEFAULT             0x70
+
+#define EEPROM_PAGE_ECB_DOSE_SETTING_0_CUSTOMER_BACKUP               0x10
+#define EEPROM_PAGE_ECB_DOSE_SETTING_1_CUSTOMER_BACKUP               0x11
+#define EEPROM_PAGE_ECB_DOSE_SETTING_ALL_CUSTOMER_BACKUP             0x20
+
+
+
 #define EEPROM_WRITE_SUCCESSFUL                      0x100
 #define EEPROM_WRITE_FAILURE                         0x200
 #define EEPROM_WRITE_WAITING                         0x300
@@ -55,12 +65,21 @@ unsigned int test_ref_det_good_message;
 
 void SendWatchdogResponse(unsigned int pulse_count);
 unsigned int LookForWatchdogMessage(void);
+void TestSendWatchdogMessage(void);
+
+
+void CopyCurrentConfig(unsigned int destination);
+void LoadConfig(unsigned int source);
+
+#define USE_FACTORY_DEFAULTS 0
+#define USE_CUSTOMER_BACKUP  1
+
+
+
 
 
 void CRCTest(void);
 
-void WriteConfigToMirror(void);
-void ReadConfigFromMirror(void);
 
 //BUFFERBYTE64 uart1_input_buffer;
 BUFFERBYTE64 uart2_input_buffer;
@@ -864,7 +883,9 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[0xC] = ETMTCPModbusGetErrorInfo(COUNT_SM_SOCKET_OBTAINED_MSG_TX);
   debug_data_ecb.debug_reg[0xD] = ETMTCPModbusGetErrorInfo(COUNT_SM_PROCESS_RESPONSE_MSG_RX);
   debug_data_ecb.debug_reg[0xE] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_DISCONNECT);
-  debug_data_ecb.debug_reg[0xF] = 0;
+  debug_data_ecb.debug_reg[0xF] = global_data_A36507.system_serial_number;
+
+  debug_data_ecb.debug_reg[0x7] = watchdog_test_counter;
 
   
 }
@@ -872,26 +893,37 @@ void UpdateDebugData(void) {
 
 void DoA36507(void) {
   
+#ifdef __WATCHDOG_MASTER_EMULATION
+  static unsigned long watchdog_transmit_timer_holding_var;
+
+  ClrWdt();
+  if (ETMTickRunOnceEveryNMilliseconds(20, &watchdog_transmit_timer_holding_var)) {
+    TestSendWatchdogMessage();
+  }
+#endif
+  
+  
   if (LookForWatchdogMessage()) {
     // Clear the watchdog counter
     watchdog_test_counter++;
-    SendWatchdogResponse(watchdog_test_counter);
     watchdog_timeout_holding_var = ETMTickGet();
+#ifndef __WATCHDOG_MASTER_EMULATION
+    SendWatchdogResponse(watchdog_test_counter);
     if (_SYNC_CONTROL_RESET_ENABLE) {
       _FAULT_WATCHDOG_ERROR = 0;
     }
+#endif
   }
-
-  /*
+  
   if (ETMTickGreaterThanNMilliseconds(WATCHDOG_TIMEOUT_MILLISEC, watchdog_timeout_holding_var)) {
     // There is a watchdog timeout
-    if (_FAULT_WATCHDOG_ERROR == 0) {
+    if (_FAULT_WATCHDOG_ERROR == 1) {
       // There is a new watchdog fault, send to the event log
-      SendToEventLog(0xFF00);
+      //SendToEventLog(0xFF00);
     }
     _FAULT_WATCHDOG_ERROR = 1;
   }
-  */
+
   etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
   etm_can_master_sync_message.sync_2 = 0x0123;
   etm_can_master_sync_message.sync_3 = 0x4567;
@@ -967,6 +999,8 @@ void DoA36507(void) {
     local_data_ecb.log_data[17] = global_data_A36507.most_recent_ref_detector_reading;
     local_data_ecb.log_data[19] = global_data_A36507.system_serial_number;
     mirror_cooling.local_data[0] = MAX_SF6_REFILL_PULSES_IN_BOTTLE;
+
+    local_data_ecb.local_data[4] = global_data_A36507.access_mode;
     
     UpdateDebugData();  // Load the customized debugging data into the debugging registers
     
@@ -1717,7 +1751,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_SYSTEM_SET_TIME 0x1105
 #define REGISTER_SYSTEM_ENABLE_HIGH_SPEED_LOGGING 0x1106
 #define REGISTER_SYSTEM_DISABLE_HIGH_SPEED_LOGGING 0x1107
-#define REGISTER_SYSTEM_ECB_LOAD_FACTORY_SETTINGS_FROM_EEPROM_MIRROR_AND_REBOOT 0x1108
+#define REGISTER_SYSTEM_LOAD_FACTORY_DEFAULTS_AND_REBOOT 0x1108
 #define REGISTER_SYSTEM_SAVE_CURRENT_SETTINGS_TO_CUSTOMER_SAVE 0x1109
 #define REGISTER_SYSTEM_LOAD_CUSTOMER_SETTINGS_SAVE_AND_REBOOT 0x110A
 #define REGISTER_REMOTE_IP_ADDRESS 0x110B
@@ -1725,13 +1759,13 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 
 #define REGISTER_DEBUG_TOGGLE_RESET_DEBUG 0x1200
 #define REGISTER_DEBUG_RESET_MCU 0x1201
-#define REGISTER_ECB_SYSTEM_SERIAL_NUMBER 0x1202
+#define REGISTER_ETM_SYSTEM_SERIAL_NUMBER 0x1202
 #define REGISTER_DEBUG_GUN_DRIVER_RESET_FPGA 0x1203
 #define REGISTER_ETM_ECB_RESET_ARC_AND_PULSE_COUNT 0x1204
 #define REGISTER_ETM_ECB_RESET_SECONDS_POWERED_HV_ON_XRAY_ON 0x1205
 #define REGISTER_ETM_ECB_LOAD_DEFAULT_SYSTEM_SETTINGS_AND_REBOOT 0x1206
-
-
+#define REGISTER_ETM_SET_REVISION_AND_SERIAL_NUMBER 0x1207
+#define REGISTER_ETM_SAVE_CURRENT_SETTINGS_TO_FACTORY_DEFAULT 0x1208
 
 
 
@@ -1741,7 +1775,8 @@ void ExecuteEthernetCommand(void) {
   ETMEthernetMessageFromGUI next_message;
   unsigned long temp_long;
   RTC_TIME set_time;
-
+  unsigned int eeprom_read[16];
+  
   next_message = GetNextMessageFromGUI();
   if (next_message.index == 0xFFFF) {
     // there was no message
@@ -1792,10 +1827,12 @@ void ExecuteEthernetCommand(void) {
   if (global_data_A36507.access_mode == ACCESS_MODE_ETM) {
     switch (next_message.index) {
       
-    case REGISTER_ECB_SYSTEM_SERIAL_NUMBER:
-      //ETMEEPromWriteWord(next_message.index, next_message.data_2);
-      //global_data_A36507.system_serial_number = ETMEEPromReadWord(next_message.index);
-      //global_data_A36507.system_serial_number = next_message.data_2;
+    case REGISTER_ETM_SYSTEM_SERIAL_NUMBER:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_BOARD_CONFIGURATION << 4) + 2), next_message.data_2) == 0xFFFF) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	global_data_A36507.system_serial_number = next_message.data_2;
+      }
       break;
       
     case REGISTER_DEBUG_GUN_DRIVER_RESET_FPGA:
@@ -1825,19 +1862,13 @@ void ExecuteEthernetCommand(void) {
       break;
 
     case REGISTER_DEBUG_RESET_MCU:
-      // DPARKER modified for testing reset while running
-      if (next_message.data_2 == ETM_CAN_ADDR_ETHERNET_BOARD) {
-	__asm__ ("Reset");
-      } else {
-	SendSlaveReset(next_message.data_2);
-      }
-      /*
-	DPARKER LOOK AT THIS
-      
-	if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
-	SendSlaveReset(next_message.data_2);
+      if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
+	if (next_message.data_2 == ETM_CAN_ADDR_ETHERNET_BOARD) {
+	  __asm__ ("Reset");
+	} else {
+	  SendSlaveReset(next_message.data_2);
 	}
-      */
+      }
       break;
       
       /*
@@ -1858,7 +1889,40 @@ void ExecuteEthernetCommand(void) {
 	_SYNC_CONTROL_CLEAR_DEBUG_DATA = 1;
       }
       break;
-            
+
+
+    case REGISTER_ETM_SET_REVISION_AND_SERIAL_NUMBER:
+      if (next_message.data_2 == ETM_CAN_ADDR_ETHERNET_BOARD) {
+	// Set the rev and S/N for the ECB
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
+	if (ETMEEPromReadPage(EEPROM_PAGE_ECB_BOARD_CONFIGURATION, &eeprom_read[0]) == 0xFFFF) {
+	  eeprom_read[0] = next_message.data_1;  // Set The Rev
+	  eeprom_read[1] = next_message.data_0;  // Set the SN
+	  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_BOARD_CONFIGURATION, &eeprom_read[0]) == 0xFFFF) {
+	    // The update was successful
+	    global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
+	  }
+	}
+      } else {
+	// Set the rev and S/N for the Slave
+	if (next_message.data_2 <= 0x000F) {
+	  ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (next_message.data_2 << 2)),
+			      (next_message.data_2 << 12) + 0x180,
+			      0,
+			      next_message.data_1,
+			      next_message.data_0);
+	}
+      }
+      break;
+
+
+    case REGISTER_ETM_SAVE_CURRENT_SETTINGS_TO_FACTORY_DEFAULT:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
+      while (global_data_A36507.eeprom_write_status == EEPROM_WRITE_FAILURE) {
+	CopyCurrentConfig(USE_FACTORY_DEFAULTS);
+      }
+      break;
+      
     }
   }
   
@@ -2129,29 +2193,43 @@ void ExecuteEthernetCommand(void) {
 			  0,
 			  0,
 			  MAX_SF6_REFILL_PULSES_IN_BOTTLE);
+      break;
+      
+    case REGISTER_SYSTEM_SAVE_CURRENT_SETTINGS_TO_CUSTOMER_SAVE:
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
+      while (global_data_A36507.eeprom_write_status == EEPROM_WRITE_FAILURE) {
+	CopyCurrentConfig(USE_CUSTOMER_BACKUP);
+      }
+      break;
+      
+    case REGISTER_SYSTEM_LOAD_FACTORY_DEFAULTS_AND_REBOOT:
+      if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
+	LoadConfig(USE_FACTORY_DEFAULTS);
+	if (global_data_A36507.eeprom_write_status == EEPROM_WRITE_SUCCESSFUL) {
+	  __delay32(1000000);
+	  __asm__ ("Reset");
+	}
+      }
+      break;
 
+    case REGISTER_SYSTEM_LOAD_CUSTOMER_SETTINGS_SAVE_AND_REBOOT:
+      if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
+	global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
+	LoadConfig(USE_CUSTOMER_BACKUP);
+	if (global_data_A36507.eeprom_write_status == EEPROM_WRITE_SUCCESSFUL) {
+	  __delay32(1000000);
+	  __asm__ ("Reset");
+	}
+      }
+      break;
 
       /*
-	DPAKRER FIX THESE DEFAULT SETTINGS COMMANDS
-      
-	case REGISTER_ETM_ECB_SAVE_FACTORY_SETTINGS_TO_EEPROM_MIRROR:
-	WriteConfigToMirror();
-	break;
-
-	case REGISTER_SYSTEM_ECB_LOAD_FACTORY_SETTINGS_FROM_EEPROM_MIRROR_AND_REBOOT:
-	ReadConfigFromMirror();
-	__delay32(1000000);
-	__asm__ ("Reset");
-	break;
-
 	case REGISTER_ETM_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS:
-	if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
-	SendSlaveLoadDefaultEEpromData(next_message.data_2);
-	}
 	break;
-      */
-    
-
+       */
+      
+      
     case REGISTER_SYSTEM_SET_TIME:
       temp_long = next_message.data_2;
       temp_long <<= 16;
@@ -2170,61 +2248,171 @@ void ExecuteEthernetCommand(void) {
       _SYNC_CONTROL_HIGH_SPEED_LOGGING = 0;
       break;
 
-
     }
   }
 }
 
 
-void WriteConfigToMirror(void) {
-  //unsigned int temp_data[16];
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_HTR_MAG_AFC, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HTR_MAG_AFC, 16, temp_data);
+
+
+void CopyCurrentConfig(unsigned int destination) {
+  unsigned int dose_setting_0_destination_page;
+  unsigned int dose_setting_1_destination_page;
+  unsigned int dose_setting_all_destination_page;
+  unsigned int dose_setting_data[16];
   
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_HV_LAMBDA, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HV_LAMBDA, 16, temp_data);
+  global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_GUN_DRV, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_GUN_DRV, 16, temp_data);
+  if (destination == USE_FACTORY_DEFAULTS) {
+    dose_setting_0_destination_page = EEPROM_PAGE_ECB_DOSE_SETTING_0_FACTORY_DEFAULT;
+    dose_setting_1_destination_page = EEPROM_PAGE_ECB_DOSE_SETTING_1_FACTORY_DEFAULT;
+    dose_setting_all_destination_page = EEPROM_PAGE_ECB_DOSE_SETTING_ALL_FACTORY_DEFAULT;
+  } else if (destination == USE_CUSTOMER_BACKUP) {
+    dose_setting_0_destination_page = EEPROM_PAGE_ECB_DOSE_SETTING_0_CUSTOMER_BACKUP;
+    dose_setting_1_destination_page = EEPROM_PAGE_ECB_DOSE_SETTING_1_CUSTOMER_BACKUP;
+    dose_setting_all_destination_page = EEPROM_PAGE_ECB_DOSE_SETTING_ALL_CUSTOMER_BACKUP;
+  }
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_1, 16, temp_data);
+  if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
+	// Failed to read for 3 attempts
+	return;
+      }
+    }
+  }
+  
+  if (ETMEEPromWritePageWithConfirmation(dose_setting_0_destination_page, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(dose_setting_0_destination_page, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(dose_setting_0_destination_page, &dose_setting_data[0]) == 0) {
+	// Unable to write the data
+	return;
+      }
+    }
+  }
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_2, 16, temp_data);
+  
+  if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_1, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_1, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_1, &dose_setting_data[0]) == 0) {
+	// Failed to read for 3 attempts
+	return;
+      }
+    }
+  }
+  
+  if (ETMEEPromWritePageWithConfirmation(dose_setting_1_destination_page, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(dose_setting_1_destination_page, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(dose_setting_1_destination_page, &dose_setting_data[0]) == 0) {
+	// Unable to write the data
+	return;
+      }
+    }
+  }  
+  
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_3, 16, temp_data);
+  if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromReadPage(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
+	// Failed to read for 3 attempts
+	return;
+      }
+    }
+  }
+  
+  if (ETMEEPromWritePageWithConfirmation(dose_setting_all_destination_page, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(dose_setting_all_destination_page, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(dose_setting_all_destination_page, &dose_setting_data[0]) == 0) {
+	// Unable to write the data
+	return;
+      }
+    }
+  }  
+  
+  global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_4, 16, temp_data);
 }
 
-void ReadConfigFromMirror(void) {
-  //unsigned int temp_data[16];
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HTR_MAG_AFC, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HTR_MAG_AFC, 16, temp_data);
+void LoadConfig(unsigned int source) {
+  unsigned int dose_setting_0_source_page;
+  unsigned int dose_setting_1_source_page;
+  unsigned int dose_setting_all_source_page;
+  unsigned int dose_setting_data[16];
+  
+  global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_HV_LAMBDA, 16, temp_data); 
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_HV_LAMBDA, 16, temp_data);
- 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_GUN_DRV, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_GUN_DRV, 16, temp_data);
+  if (source == USE_FACTORY_DEFAULTS) {
+    dose_setting_0_source_page = EEPROM_PAGE_ECB_DOSE_SETTING_0_FACTORY_DEFAULT;
+    dose_setting_1_source_page = EEPROM_PAGE_ECB_DOSE_SETTING_1_FACTORY_DEFAULT;
+    dose_setting_all_source_page = EEPROM_PAGE_ECB_DOSE_SETTING_ALL_FACTORY_DEFAULT;
+  } else if (source == USE_CUSTOMER_BACKUP) {
+    dose_setting_0_source_page = EEPROM_PAGE_ECB_DOSE_SETTING_0_CUSTOMER_BACKUP;
+    dose_setting_1_source_page = EEPROM_PAGE_ECB_DOSE_SETTING_1_CUSTOMER_BACKUP;
+    dose_setting_all_source_page = EEPROM_PAGE_ECB_DOSE_SETTING_ALL_CUSTOMER_BACKUP;
+  }
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_1, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1, 16, temp_data);
+  
+  if (ETMEEPromReadPage(dose_setting_0_source_page, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromReadPage(dose_setting_0_source_page, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromReadPage(dose_setting_0_source_page, &dose_setting_data[0]) == 0) {
+	// Failed to read for 3 attempts
+	return;
+      }
+    }
+  }
+  
+  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_0, &dose_setting_data[0]) == 0) {
+	// Unable to write the data
+	return;
+      }
+    }
+  }
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_2, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_2, 16, temp_data);
+  if (ETMEEPromReadPage(dose_setting_1_source_page, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromReadPage(dose_setting_1_source_page, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromReadPage(dose_setting_1_source_page, &dose_setting_data[0]) == 0) {
+	// Failed to read for 3 attempts
+	return;
+      }
+    }
+  }
+  
+  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_1, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_1, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_1, &dose_setting_data[0]) == 0) {
+	// Unable to write the data
+	return;
+      }
+    }
+  }
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_3, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_3, 16, temp_data);
+  if (ETMEEPromReadPage(dose_setting_all_source_page, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromReadPage(dose_setting_all_source_page, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromReadPage(dose_setting_all_source_page, &dose_setting_data[0]) == 0) {
+	// Failed to read for 3 attempts
+	return;
+      }
+    }
+  }
+  
+  if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
+    if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
+      if (ETMEEPromWritePageWithConfirmation(EEPROM_PAGE_ECB_DOSE_SETTING_ALL, &dose_setting_data[0]) == 0) {
+	// Unable to write the data
+	return;
+      }
+    }
+  }
 
-  //ETMEEPromReadPage(EEPROM_PAGE_SYSTEM_CONFIG_MIRROR_PULSE_SYNC_PER_4, 16, temp_data);
-  //ETMEEPromWritePage(EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_4, 16, temp_data);
+
+  global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 }
+
+
 
 
 void __attribute__((interrupt(__save__(CORCON,SR)),no_auto_psv)) _U2RXInterrupt(void) {
@@ -2287,6 +2475,28 @@ void SendWatchdogResponse(unsigned int pulse_count) {
   BufferByte64WriteByte(&uart2_output_buffer, (crc_calc & 0x00FF));
   
   
+  if (!U2STAbits.UTXBF) {
+    /*
+      The transmit buffer is not full.
+      Move a byte from the output buffer into the transmit buffer
+      All subsequent bytes will be moved from the output buffer to the transmit buffer by the U1 TX Interrupt
+    */
+    U2TXREG = BufferByte64ReadByte(&uart2_output_buffer);
+  }
+}
+
+
+
+void TestSendWatchdogMessage(void) {
+  BufferByte64WriteByte(&uart2_output_buffer, 0xF1);
+  BufferByte64WriteByte(&uart2_output_buffer, 0xF2);
+  BufferByte64WriteByte(&uart2_output_buffer, 0xF3);
+  BufferByte64WriteByte(&uart2_output_buffer, 0x00);
+  BufferByte64WriteByte(&uart2_output_buffer, 0x00);
+  BufferByte64WriteByte(&uart2_output_buffer, 0xF4);
+  BufferByte64WriteByte(&uart2_output_buffer, 0x1E);
+  BufferByte64WriteByte(&uart2_output_buffer, 0x37);
+
   if (!U2STAbits.UTXBF) {
     /*
       The transmit buffer is not full.

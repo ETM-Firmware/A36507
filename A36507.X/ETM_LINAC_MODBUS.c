@@ -312,8 +312,8 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
 	tx_data->data_ptr = (unsigned char *)&high_speed_data_buffer_b[0];
       }
       tx_data->data_length = HIGH_SPEED_DATA_BUFFER_SIZE * sizeof(ETMCanHighSpeedData);
-      tx_data->data_length = 0;
-      tx_data->tx_ready = 0;
+      //tx_data->data_length = 0;
+      tx_data->tx_ready = 1;
       break;
 
     case MODBUS_WR_SCOPE_A:
@@ -412,7 +412,7 @@ void ETMModbusApplicationSpecificTXData(ETMModbusTXData* tx_data_to_send) {
 
   if (pulse_log_ready_to_send) {
     modbus_tx_index = MODBUS_WR_PULSE_LOG;
-    send_message = 0;
+    send_message = 1;
     pulse_log_ready_to_send = 0;
   } else if (0) {
     // FUTURE Event log counter is greater than 32

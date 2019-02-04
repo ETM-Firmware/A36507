@@ -4,6 +4,7 @@
 #include "ETM_IO_PORTS.H"
 #include "ETM_SCALE.H"
 #include "ETM_LINAC_MODBUS.h"
+#include "ETM_TICK.h"
 
 #define ETM_CAN_REGISTER_PULSE_SYNC_SET_1_MAGNETX_DOSE_0      0x3210
 #define ETM_CAN_REGISTER_PULSE_SYNC_SET_1_MAGNETX_DOSE_1      0x3211
@@ -356,10 +357,6 @@ void ETMCanMasterDoCan(void) {
     ETMCanMasterClearDebug();
   }
 
-
-  // DPARKER
-  //ETMCanSendHighSpeedLoggingData();
-  
   if ((global_data_can_master.buffer_a_ready_to_send == 1) && (global_data_can_master.buffer_a_sent == 0)) {
     SendPulseData(SEND_BUFFER_A);
     global_data_can_master.buffer_a_sent = 1;
@@ -1888,6 +1885,102 @@ void __attribute__((interrupt(__save__(CORCON,SR)), no_auto_psv)) _C2Interrupt(v
   _C2IF = 0;
   DoCanInterrupt();
 }
+
+
+// DPARKER REMVOE THIS FUNCTION AFTER PULSE LOG IS WORKING ON MACHINE
+
+void TestDataLog(void) {
+  unsigned int fast_log_buffer_index;
+  unsigned int pulse_time = 0;
+  static unsigned long test_data_long_timer_holding_var;
+
+  if (_SYNC_CONTROL_HIGH_SPEED_LOGGING) {
+    
+    if (ETMTickRunOnceEveryNMilliseconds(100, &test_data_long_timer_holding_var)) {
+      // 100ms has passed - Send the next Message
+      etm_can_master_next_pulse_count++;
+    
+      // Prepare the buffer to store the data
+      fast_log_buffer_index = etm_can_master_next_pulse_count & 0x000F;
+      if (etm_can_master_next_pulse_count & 0x0010) {
+	// We are putting data into buffer A
+	global_data_can_master.buffer_a_ready_to_send = 0;
+	if (fast_log_buffer_index >= 3) {
+	  global_data_can_master.buffer_b_ready_to_send = 1;
+	  global_data_can_master.buffer_a_sent = 0;
+	}
+	  
+	*(unsigned int*)&high_speed_data_buffer_a[fast_log_buffer_index].status_bits = 0; // clear the status bits register
+	high_speed_data_buffer_a[fast_log_buffer_index].pulse_count = etm_can_master_next_pulse_count;
+	if (etm_can_master_next_pulse_level) {
+	  high_speed_data_buffer_a[fast_log_buffer_index].status_bits.high_energy_pulse = 1;
+	}
+
+	high_speed_data_buffer_a[fast_log_buffer_index].x_ray_on_seconds_lsw = mem_time_seconds_now;
+	high_speed_data_buffer_a[fast_log_buffer_index].x_ray_on_milliseconds = pulse_time;
+	  
+	high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_vmon_at_eoc_period = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_vmon_at_trigger = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].hvlambda_vpeak_at_eoc_period = 0;
+	  
+	high_speed_data_buffer_a[fast_log_buffer_index].afc_readback_current_position = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].afc_readback_target_position = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].afc_readback_a_input = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].afc_readback_b_input = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].afc_readback_filtered_error_reading = 0;
+	  
+	high_speed_data_buffer_a[fast_log_buffer_index].ionpump_readback_high_energy_target_current_reading = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].ionpump_readback_low_energy_target_current_reading = 0;
+	  
+	high_speed_data_buffer_a[fast_log_buffer_index].magmon_internal_adc_reading = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].magmon_external_adc_reading = 0;
+	  
+	high_speed_data_buffer_a[fast_log_buffer_index].psync_trigger_width_and_filtered_trigger_width = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].psync_grid_width_and_delay = 0;
+	high_speed_data_buffer_a[fast_log_buffer_index].psync_period = 0;
+	  
+      } else {
+	// We are putting data into buffer B
+	global_data_can_master.buffer_b_ready_to_send = 0;
+	if (fast_log_buffer_index >= 3) {
+	  global_data_can_master.buffer_a_ready_to_send = 1;
+	  global_data_can_master.buffer_b_sent = 0;
+	}
+
+	  	  
+	*(unsigned int*)&high_speed_data_buffer_b[fast_log_buffer_index].status_bits = 0; // Clear the status bits register
+	high_speed_data_buffer_b[fast_log_buffer_index].pulse_count = etm_can_master_next_pulse_count;
+	if (etm_can_master_next_pulse_level) {
+	  high_speed_data_buffer_b[fast_log_buffer_index].status_bits.high_energy_pulse = 1;
+	}
+	  
+	high_speed_data_buffer_b[fast_log_buffer_index].x_ray_on_seconds_lsw = mem_time_seconds_now;
+	high_speed_data_buffer_b[fast_log_buffer_index].x_ray_on_milliseconds = pulse_time;
+	  
+	high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_vmon_at_eoc_period = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_vmon_at_trigger = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].hvlambda_vpeak_at_eoc_period = 0;
+	  
+	high_speed_data_buffer_b[fast_log_buffer_index].afc_readback_current_position = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].afc_readback_target_position = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].afc_readback_a_input = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].afc_readback_b_input = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].afc_readback_filtered_error_reading = 0;
+	  
+	high_speed_data_buffer_b[fast_log_buffer_index].ionpump_readback_high_energy_target_current_reading = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].ionpump_readback_low_energy_target_current_reading = 0;
+	  
+	high_speed_data_buffer_b[fast_log_buffer_index].magmon_internal_adc_reading = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].magmon_external_adc_reading = 0;
+	  
+	high_speed_data_buffer_b[fast_log_buffer_index].psync_trigger_width_and_filtered_trigger_width = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].psync_grid_width_and_delay = 0;
+	high_speed_data_buffer_b[fast_log_buffer_index].psync_period = 0;
+      }
+    }
+  }
+}
+
 
 void DoCanInterrupt(void) {
   ETMCanMessage can_message;

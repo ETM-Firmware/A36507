@@ -40,7 +40,7 @@
 #define DEFAULT_PRF                                                  10 
   
 
-#define DEFAULT_MAGNETRON_HEATER_CURRENT                           8000
+#define DEFAULT_MAGNETRON_HEATER_CURRENT                          10600
 #define DEFAULT_GUN_DRIVER_HEATER_CURRENT                          1450
 #define DEFAULT_HVPS_TRIGGER_START                                    0
 #define DEFAULT_HVPS_TRIGGER_STOP                                     0
