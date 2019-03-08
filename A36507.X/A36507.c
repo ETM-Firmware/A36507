@@ -1487,7 +1487,7 @@ void ReadSystemConfigurationFromEEProm(void) {
   local_pulse_sync_afc_trig_dose_0           = dose_setting_data[5];
   local_pulse_sync_gun_trig_start_max_dose_0 = dose_setting_data[7];
   local_pulse_sync_gun_trig_stop_max_dose_0  = dose_setting_data[9];
-  local_afc_home_position_dose_0             = dose_setting_data[11];
+  local_afc_home_position_dose_0             = dose_setting_data[10];
 
 
   // Read DOSE settings One, this is "LOW DOSE" for MagneTX
@@ -1507,7 +1507,7 @@ void ReadSystemConfigurationFromEEProm(void) {
   local_pulse_sync_afc_trig_dose_1           = dose_setting_data[5];
   local_pulse_sync_gun_trig_start_max_dose_1 = dose_setting_data[7];
   local_pulse_sync_gun_trig_stop_max_dose_1  = dose_setting_data[9];
-  local_afc_home_position_dose_1             = dose_setting_data[11];
+  local_afc_home_position_dose_1             = dose_setting_data[10];
 
   
   // Read DOSE settings that apply to ALL ENERGY levels

@@ -1304,15 +1304,22 @@ void ETMCanMasterProcessLogData(void) {
 	  break;
 
 	case ETM_CAN_DATA_LOG_REGISTER_AFC_FAST_LOG_0:
-	  ptr_high_speed_data->afc_readback_current_position = next_message.word2;
 	  ptr_high_speed_data->afc_readback_target_position = next_message.word1;
+	  ptr_high_speed_data->afc_readback_filtered_error_reading = next_message.word2;
+
+	  //ptr_high_speed_data->afc_readback_current_position = next_message.word2;
+	  //ptr_high_speed_data->afc_readback_target_position = next_message.word1;
 	  // unused word 0
 	  break;
 	  
 	case ETM_CAN_DATA_LOG_REGISTER_AFC_FAST_LOG_1:
-	  ptr_high_speed_data->afc_readback_a_input = next_message.word2;
-	  ptr_high_speed_data->afc_readback_b_input = next_message.word1;
-	  ptr_high_speed_data->afc_readback_filtered_error_reading = next_message.word0;
+	  ptr_high_speed_data->afc_readback_current_position = next_message.word2;
+	  ptr_high_speed_data->afc_readback_a_input = next_message.word1;
+	  ptr_high_speed_data->afc_readback_b_input = next_message.word0;
+	  
+	  //ptr_high_speed_data->afc_readback_a_input = next_message.word2;
+	  //ptr_high_speed_data->afc_readback_b_input = next_message.word1;
+	  //ptr_high_speed_data->afc_readback_filtered_error_reading = next_message.word0;
 	  break;
 	  
 	case ETM_CAN_DATA_LOG_REGISTER_MAGNETRON_MON_FAST_LOG_0:
