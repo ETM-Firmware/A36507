@@ -1335,7 +1335,7 @@ void InitializeA36507(void) {
   }
 
   ETMCanMasterInitialize(CAN_PORT_1, FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
-  ETMCanMasterLoadConfiguration(36507, 251, eeprom_read[0], FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, eeprom_read[1]);
+  ETMCanMasterLoadConfiguration(36507, 100, eeprom_read[0], FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, eeprom_read[1]);
   global_data_A36507.system_serial_number = eeprom_read[2];
 
 
