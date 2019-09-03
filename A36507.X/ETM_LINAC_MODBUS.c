@@ -489,8 +489,8 @@ void ETMLinacModbusInitialize(void) {
   
 
   // DPARKER Load this from EEPROM or USE DEFAULT????
-  ip_config.remote_ip_addr = 0x0F46A8C0;  // 192.168. 70. 15
-  ip_config.ip_addr        = 0x6346A8C0;  // 192.168. 70. 99
+  ip_config.remote_ip_addr = 0x0B01A8C0;  // 192.168.1.11 // 192.168. 70. 15
+  ip_config.ip_addr        = 0x0A01A8C0;  // 192.168.1.10 // 192.168. 70. 99
   ip_config.mask           = 0x00FFFFFF;  // 255.255.255.  0
   ip_config.gate           = 0x00000000;  //   0.  0.  0.  0
   ip_config.dns            = 0x00000000;  //   0.  0.  0.  0
