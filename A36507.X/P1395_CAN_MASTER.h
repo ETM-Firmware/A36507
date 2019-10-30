@@ -3,14 +3,14 @@
 
 #include "P1395_CAN_CORE.h"
 
-//#define __IGNORE_ION_PUMP_MODULE
-//#define __IGNORE_AFC_MODULE
+#define __IGNORE_ION_PUMP_MODULE
+#define __IGNORE_AFC_MODULE
 //#define __IGNORE_GUN_DRIVER_MODULE
-//#define __IGNORE_COOLING_INTERFACE_MODULE
-//#define __IGNORE_HEATER_MAGNET_MODULE
-//#define __IGNORE_HV_LAMBDA_MODULE
-//#define __IGNORE_PULSE_CURRENT_MODULE
-//#define __IGNORE_PULSE_SYNC_MODULE
+#define __IGNORE_COOLING_INTERFACE_MODULE
+#define __IGNORE_HEATER_MAGNET_MODULE
+#define __IGNORE_HV_LAMBDA_MODULE
+#define __IGNORE_PULSE_CURRENT_MODULE
+#define __IGNORE_PULSE_SYNC_MODULE
 #define __IGNORE_TCU
 
 
@@ -236,6 +236,7 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define local_gun_drv_low_en_pulse_top_v                mirror_gun_drv.local_data[1]
 #define local_gun_drv_heater_v_set_point                mirror_gun_drv.local_data[2]
 #define local_gun_drv_cathode_set_point                 mirror_gun_drv.local_data[3]
+#define local_gun_drv_heater_resistance_set_point		mirror_gun_drv.local_data[4]					
 
 
 #define psync_grid_start_high_intensity_3               *(unsigned char*)&mirror_pulse_sync.local_data[0]

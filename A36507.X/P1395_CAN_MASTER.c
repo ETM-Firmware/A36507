@@ -580,7 +580,7 @@ void ETMCanMasterGunDriverUpdateHeaterCathode(void) {
   ETMCanMessage can_message;
   can_message.identifier = (ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_GUN_DRIVER_BOARD << 2));
   can_message.word3 = ETM_CAN_REGISTER_GUN_DRIVER_SET_1_HEATER_CATHODE_SET_POINT;
-  can_message.word2 = 0;
+  can_message.word2 = local_gun_drv_heater_resistance_set_point;
   can_message.word1 = local_gun_drv_cathode_set_point;
   can_message.word0 = local_gun_drv_heater_v_set_point;
   ETMCanAddMessageToBuffer(&etm_can_master_tx_message_buffer, &can_message);

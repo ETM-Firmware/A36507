@@ -1451,10 +1451,11 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   local_magnet_current_set_point_low_energy  = ETMEEPromReadWord((EEPROM_REGISTER_HTR_MAG_MAGNET_CURRENT_LOW_ENERGY + personality));
 
   // Load data for Gun Driver
-  local_gun_drv_heater_v_set_point    = ETMEEPromReadWord(EEPROM_REGISTER_GUN_DRV_HTR_VOLTAGE);
-  local_gun_drv_high_en_pulse_top_v   = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_HIGH_PULSE_TOP + (3*personality)));
-  local_gun_drv_low_en_pulse_top_v    = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_LOW_PULSE_TOP + (3*personality)));
-  local_gun_drv_cathode_set_point     = ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_CATHODE + (3*personality)));
+  local_gun_drv_heater_v_set_point    		= ETMEEPromReadWord(EEPROM_REGISTER_GUN_DRV_HTR_VOLTAGE);
+  local_gun_drv_high_en_pulse_top_v   		= ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_HIGH_PULSE_TOP + (3*personality)));
+  local_gun_drv_low_en_pulse_top_v    		= ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_LOW_PULSE_TOP + (3*personality)));
+  local_gun_drv_cathode_set_point     		= ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_CATHODE + (3*personality)));
+  local_gun_drv_heater_resistance_set_point	= ETMEEPromReadWord(EEPROM_REGISTER_GUN_DRV_RESISTANCE);
 
   // Load data for Pulse Sync
   ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
@@ -1527,6 +1528,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_GUN_DRIVER_HIGH_ENERGY_PULSE_TOP_VOLTAGE 0x0021
 #define REGISTER_GUN_DRIVER_LOW_ENERGY_PULSE_TOP_VOLTAGE 0x0022
 #define REGISTER_GUN_DRIVER_CATHODE_VOLTAGE 0x0023
+#define REGISTER_GUN_DRIVER_HEATER_RESISTANCE 0x002D
 
 #define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_A_B 0x0030
 #define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_C_D 0x0031
@@ -1671,6 +1673,12 @@ void ExecuteEthernetCommand(unsigned int personality) {
 
     case REGISTER_GUN_DRIVER_HEATER_VOLTAGE:
       local_gun_drv_heater_v_set_point = next_message.data_2;
+      eeprom_register = next_message.index;
+      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      break;
+	  
+	case REGISTER_GUN_DRIVER_HEATER_RESISTANCE:
+      local_gun_drv_heater_resistance_set_point = next_message.data_2;
       eeprom_register = next_message.index;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
