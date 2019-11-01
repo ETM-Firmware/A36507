@@ -1686,7 +1686,7 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
 	  
 	  case REGISTER_GUN_DRIVER_REGULATION_MODE:
-      local_gun_drv_heater_resistance_set_point = next_message.data_2;
+      local_gun_drv_regulation_mode = next_message.data_2;
       eeprom_register = next_message.index;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
       break;
