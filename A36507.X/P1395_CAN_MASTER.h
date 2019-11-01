@@ -236,7 +236,8 @@ extern ETMCanBoardDebuggingData debug_data_slave_mirror;
 #define local_gun_drv_low_en_pulse_top_v                mirror_gun_drv.local_data[1]
 #define local_gun_drv_heater_v_set_point                mirror_gun_drv.local_data[2]
 #define local_gun_drv_cathode_set_point                 mirror_gun_drv.local_data[3]
-#define local_gun_drv_heater_resistance_set_point		mirror_gun_drv.local_data[4]					
+#define local_gun_drv_heater_resistance_set_point		mirror_gun_drv.local_data[4]
+#define local_gun_drv_regulation_mode					mirror_gun_drv.local_data[5]	
 
 
 #define psync_grid_start_high_intensity_3               *(unsigned char*)&mirror_pulse_sync.local_data[0]

@@ -312,6 +312,7 @@ extern A36507GlobalVars global_data_A36507;
 #define EEPROM_REGISTER_GUN_DRV_LOW_PULSE_TOP                       0x0022
 #define EEPROM_REGISTER_GUN_DRV_CATHODE                             0x0023
 #define EEPROM_REGISTER_GUN_DRV_RESISTANCE                          0x002D
+#define EEPROM_REGISTER_GUN_REGULATION_MODE                         0x002E
 
 
 #endif

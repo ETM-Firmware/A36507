@@ -1456,6 +1456,7 @@ void ReadSystemConfigurationFromEEProm(unsigned int personality) {
   local_gun_drv_low_en_pulse_top_v    		= ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_LOW_PULSE_TOP + (3*personality)));
   local_gun_drv_cathode_set_point     		= ETMEEPromReadWord((EEPROM_REGISTER_GUN_DRV_CATHODE + (3*personality)));
   local_gun_drv_heater_resistance_set_point	= ETMEEPromReadWord(EEPROM_REGISTER_GUN_DRV_RESISTANCE);
+  local_gun_drv_regulation_mode				= ETMEEPromReadWord(EEPROM_REGISTER_GUN_REGULATION_MODE);
 
   // Load data for Pulse Sync
   ETMEEPromReadPage((EEPROM_PAGE_SYSTEM_CONFIG_PULSE_SYNC_PER_1 + personality), 16, (unsigned int*)&mirror_pulse_sync.local_data[0]);
@@ -1529,6 +1530,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_GUN_DRIVER_LOW_ENERGY_PULSE_TOP_VOLTAGE 0x0022
 #define REGISTER_GUN_DRIVER_CATHODE_VOLTAGE 0x0023
 #define REGISTER_GUN_DRIVER_HEATER_RESISTANCE 0x002D
+#define REGISTER_GUN_DRIVER_REGULATION_MODE 0x002E
 
 #define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_A_B 0x0030
 #define REGISTER_PULSE_SYNC_GRID_PULSE_DELAY_HIGH_ENERGY_C_D 0x0031
@@ -1678,6 +1680,12 @@ void ExecuteEthernetCommand(unsigned int personality) {
       break;
 	  
 	case REGISTER_GUN_DRIVER_HEATER_RESISTANCE:
+      local_gun_drv_heater_resistance_set_point = next_message.data_2;
+      eeprom_register = next_message.index;
+      ETMEEPromWriteWord(eeprom_register, next_message.data_2);
+      break;
+	  
+	  case REGISTER_GUN_DRIVER_REGULATION_MODE:
       local_gun_drv_heater_resistance_set_point = next_message.data_2;
       eeprom_register = next_message.index;
       ETMEEPromWriteWord(eeprom_register, next_message.data_2);
