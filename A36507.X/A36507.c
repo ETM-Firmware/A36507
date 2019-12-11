@@ -37,7 +37,7 @@ _FGS(CODE_PROT_OFF);                                                      //
 _FICD(PGD);                                                               //
 
 
-const unsigned int FilamentLookUpTable[64] = {FILAMENT_LOOK_UP_TABLE_VALUES_FOR_MG5193};
+const unsigned int FilamentLookUpTable[64] = {FILAMENT_LOOK_UP_TABLE_VALUES_FOR_MG7095_TRY_2};
 
 
 
