@@ -1194,11 +1194,16 @@ unsigned int CalculatePulseEnergyMilliJoules(unsigned int lambda_voltage) {
 		      = v*v / 2^6 / 347.22
 		      = v*v / 2^6 * 47 / 2^14 (.4% fixed point error)
 		      
+
+    DPARKER - Updating per John R - Multiply the calcualted power by .8
+    Change the 47 multiplier to 38
+
   */
   power_milli_joule = lambda_voltage;
   power_milli_joule *= lambda_voltage;
   power_milli_joule >>= 6;
-  power_milli_joule *= 47;
+  // power_milli_joule *= 47;
+  power_milli_joule *= 38;  // Per John R to reduce the calculation by 20%
   power_milli_joule >>= 14;
 
   if (power_milli_joule >= 0xFFFF) {
