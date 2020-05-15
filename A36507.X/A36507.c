@@ -75,6 +75,8 @@ void LoadConfig(unsigned int source);
 #define USE_CUSTOMER_BACKUP  1
 
 
+unsigned int last_recieved_sequence;
+
 
 
 
@@ -872,7 +874,7 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[0x1] = local_hvps_set_point_dose_1;
   debug_data_ecb.debug_reg[0x2] = etm_can_master_next_pulse_level;
   debug_data_ecb.debug_reg[0x3] = etm_can_master_next_pulse_count;
-  debug_data_ecb.debug_reg[0x4] = average_output_power_watts;
+  debug_data_ecb.debug_reg[0x4] = last_recieved_sequence;
   //debug_data_ecb.debug_reg[0x5] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_COUNT);
   //debug_data_ecb.debug_reg[0x6] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_READ_I2C_ERROR);
   //debug_data_ecb.debug_reg[0x7] = ETMEEPromReturnDebugData(ETM_EEPROM_DEBUG_DATA_WRITE_I2C_COUNT);
@@ -883,9 +885,9 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[0xC] = ETMTCPModbusGetErrorInfo(COUNT_SM_SOCKET_OBTAINED_MSG_TX);
   debug_data_ecb.debug_reg[0xD] = ETMTCPModbusGetErrorInfo(COUNT_SM_PROCESS_RESPONSE_MSG_RX);
   debug_data_ecb.debug_reg[0xE] = ETMTCPModbusGetErrorInfo(ERROR_COUNT_SM_DISCONNECT);
-  debug_data_ecb.debug_reg[0xF] = global_data_A36507.system_serial_number;
+  //debug_data_ecb.debug_reg[0xF] = global_data_A36507.system_serial_number;
 
-  debug_data_ecb.debug_reg[0x7] = watchdog_test_counter;
+  debug_data_ecb.debug_reg[0xF] = watchdog_test_counter;
 
   
 }
@@ -1335,7 +1337,12 @@ void InitializeA36507(void) {
   }
 
   ETMCanMasterInitialize(CAN_PORT_1, FCY_CLK, ETM_CAN_ADDR_ETHERNET_BOARD, _PIN_RG13, 4);
+
+#ifdef __WATCHDOG_MASTER_EMULATION
+  ETMCanMasterLoadConfiguration(36507, 999, eeprom_read[0], FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, eeprom_read[1]);
+#else
   ETMCanMasterLoadConfiguration(36507, SOFTWARE_DASH_NUMBER, eeprom_read[0], FIRMWARE_AGILE_REV, FIRMWARE_BRANCH, FIRMWARE_BRANCH_REV, eeprom_read[1]);
+#endif
   global_data_A36507.system_serial_number = eeprom_read[2];
 
 
@@ -2459,21 +2466,20 @@ void SendWatchdogResponse(unsigned int pulse_count) {
   unsigned int crc_calc;
   data_to_send[0] = 0xF1;
   data_to_send[1] = 0xF2;
-  data_to_send[2] = 0xF3;
-  data_to_send[3] = (pulse_count >> 8);
-  data_to_send[4] = pulse_count;
-  data_to_send[5] = 0xF4;
+  data_to_send[2] = (last_recieved_sequence >> 8);
+  data_to_send[3] = last_recieved_sequence;
+  data_to_send[4] = (pulse_count >> 8);
+  data_to_send[5] = pulse_count;;
   crc_calc = ETMCRC16(&data_to_send[0], 6);
-
+  
   BufferByte64WriteByte(&uart2_output_buffer, data_to_send[0]);
   BufferByte64WriteByte(&uart2_output_buffer, data_to_send[1]);
   BufferByte64WriteByte(&uart2_output_buffer, data_to_send[2]);
   BufferByte64WriteByte(&uart2_output_buffer, data_to_send[3]);
   BufferByte64WriteByte(&uart2_output_buffer, data_to_send[4]);
   BufferByte64WriteByte(&uart2_output_buffer, data_to_send[5]);
-  BufferByte64WriteByte(&uart2_output_buffer, (crc_calc >> 8));
   BufferByte64WriteByte(&uart2_output_buffer, (crc_calc & 0x00FF));
-  
+  BufferByte64WriteByte(&uart2_output_buffer, (crc_calc >> 8));
   
   if (!U2STAbits.UTXBF) {
     /*
@@ -2488,14 +2494,27 @@ void SendWatchdogResponse(unsigned int pulse_count) {
 
 
 void TestSendWatchdogMessage(void) {
-  BufferByte64WriteByte(&uart2_output_buffer, 0xF1);
-  BufferByte64WriteByte(&uart2_output_buffer, 0xF2);
-  BufferByte64WriteByte(&uart2_output_buffer, 0xF3);
-  BufferByte64WriteByte(&uart2_output_buffer, 0x00);
-  BufferByte64WriteByte(&uart2_output_buffer, 0x00);
-  BufferByte64WriteByte(&uart2_output_buffer, 0xF4);
-  BufferByte64WriteByte(&uart2_output_buffer, 0x1E);
-  BufferByte64WriteByte(&uart2_output_buffer, 0x37);
+  static unsigned int sequence;
+  unsigned char message[9];
+  unsigned int crc_calc;
+
+  sequence++;
+  message[0] = 0xF1;
+  message[1] = 0xF2;
+  message[2] = ((sequence >> 8) & 0xFF);
+  message[3] = (sequence & 0xFF);
+  message[4] = 0xF3;
+  message[5] = 0xF4;
+  crc_calc = ETMCRC16(&message[0], 6);
+
+  BufferByte64WriteByte(&uart2_output_buffer, message[0]);
+  BufferByte64WriteByte(&uart2_output_buffer, message[1]);
+  BufferByte64WriteByte(&uart2_output_buffer, message[2]);
+  BufferByte64WriteByte(&uart2_output_buffer, message[3]);
+  BufferByte64WriteByte(&uart2_output_buffer, message[4]);
+  BufferByte64WriteByte(&uart2_output_buffer, message[5]);
+  BufferByte64WriteByte(&uart2_output_buffer, (crc_calc & 0x00FF));
+  BufferByte64WriteByte(&uart2_output_buffer, (crc_calc >> 8));
 
   if (!U2STAbits.UTXBF) {
     /*
@@ -2528,12 +2547,12 @@ unsigned int LookForWatchdogMessage(void) {
       continue;
     }
     message[2] = BufferByte64ReadByte(&uart2_input_buffer);
-    if (message[2] != 0xF3) {
+    message[3] = BufferByte64ReadByte(&uart2_input_buffer);
+
+    message[4] = BufferByte64ReadByte(&uart2_input_buffer);
+    if (message[4] != 0xF3) {
       continue;
     }
-    message[3] = BufferByte64ReadByte(&uart2_input_buffer);
-    message[4] = BufferByte64ReadByte(&uart2_input_buffer);
-
 
     message[5] = BufferByte64ReadByte(&uart2_input_buffer);
     if (message[5] != 0xF4) {
@@ -2555,6 +2574,9 @@ unsigned int LookForWatchdogMessage(void) {
       global_data_A36507.most_recent_watchdog_reading <<= 8;
       global_data_A36507.most_recent_watchdog_reading += message[3];
       message_received = 1;
+      last_recieved_sequence = message[2];
+      last_recieved_sequence <<= 8;
+      last_recieved_sequence += message[3];
       BufferByte64Initialize(&uart2_input_buffer);
     }
   }

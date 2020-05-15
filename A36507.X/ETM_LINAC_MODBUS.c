@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include "ETM_IO_PORTS.h"  //DPARKER Fix this
-
+ 
 
 static void AddMessageFromGUI(unsigned char * buffer_ptr);
 static unsigned int NewMessageInEventLog(void);
@@ -490,7 +490,11 @@ void ETMLinacModbusInitialize(void) {
 
   // DPARKER Load this from EEPROM or USE DEFAULT????
   ip_config.remote_ip_addr = 0x3D19A8C0;  // 192.168.25.61 // 192.168.1.11 // 192.168. 70. 15
+#ifdef __LINAC_EMULATOR_MODE
+  ip_config.ip_addr        = 0x4119A8C0;  // 192.168.25.65 // 192.168.1.10 // 192.168. 70. 99
+#else
   ip_config.ip_addr        = 0x3C19A8C0;  // 192.168.25.60 // 192.168.1.10 // 192.168. 70. 99
+#endif
   ip_config.mask           = 0x00FFFFFF;  // 255.255.255.  0
   ip_config.gate           = 0x00000000;  //   0.  0.  0.  0
   ip_config.dns            = 0x00000000;  //   0.  0.  0.  0
