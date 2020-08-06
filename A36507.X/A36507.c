@@ -347,6 +347,9 @@ void DoStateMachine(void) {
       if (CheckStandbyFault()) {
 	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
       }
+      if (global_data_A36507.auto_condition_requested) {
+	DoAutoCondition();  // This will load the initial pulse parameters
+      }
      }
     break;
 
@@ -431,6 +434,7 @@ void DoStateMachine(void) {
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_DRIVE_UP;
 	global_data_A36507.auto_condition_requested = 0;
+	ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
       }
       if (CheckHVOnFault()) {
 	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
@@ -519,6 +523,7 @@ void DoStateMachine(void) {
     global_data_A36507.reset_requested = 0;
     global_data_A36507.reset_hold_timer = 0;
     global_data_A36507.auto_condition_requested = 0;
+    ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
     while (global_data_A36507.control_state == STATE_FAULT_LATCH_DECISION) {
       DoA36507();
       if (global_data_A36507.reset_hold_timer > MINIMUM_FAULT_HOLD_TIME) { 
@@ -1656,6 +1661,11 @@ void ExecuteEthernetCommand(unsigned int personality) {
   }
 
   if (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
+    // Do not process ethernet commands while auto conditioning or things could go crazy afterwards
+    return;
+  }
+
+  if (global_data_A36507.auto_condition_requested) {
     // Do not process ethernet commands while auto conditioning or things could go crazy afterwards
     return;
   }
