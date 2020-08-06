@@ -39,6 +39,13 @@ _FICD(PGD);                                                               //
 
 const unsigned int FilamentLookUpTable[64] = {FILAMENT_LOOK_UP_TABLE_VALUES_FOR_MG5193};
 
+const unsigned int auto_condition_voltages[100]        = {AUTO_CONDITIONING_VOLTAGE_VALUES};
+const unsigned int auto_condition_magnet_currents[100] = {AUTO_CONDITIONING_CURRENT_VALUES};
+const unsigned int auto_condition_prfs[100]            = {AUTO_CONDITIONING_PRF_VALUES};
+const unsigned int auto_condition_times[100]           = {AUTO_CONDITIONING_TIME_VALUES};
+
+#define AUTO_CONDITION_POSITION_DONE 98
+#define AUTO_CONDITION_POSITION_WAIT_10_SECONDS 99
 
 
 // ---------------------- Control Functions ---------------------------- //
@@ -58,6 +65,8 @@ unsigned int CheckHVOnFault(void);
 unsigned int CheckCoolingFault(void);
 unsigned int CheckGunHeaterOffFault(void);
 
+
+void DoAutoCondition(void);
 
 void DoA36507(void);
 /*
@@ -174,12 +183,6 @@ int main(void) {
     DoStateMachine();
   }
 }
-
-
-
-
-
-
 
 
 void DoStateMachine(void) {
@@ -335,7 +338,8 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
-     while (global_data_A36507.control_state == STATE_STANDBY) {
+    global_data_A36507.auto_condition_requested = 0;
+      while (global_data_A36507.control_state == STATE_STANDBY) {
       DoA36507();
       if (!_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_DRIVE_UP;
@@ -420,9 +424,13 @@ void DoStateMachine(void) {
       DoA36507();
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF == 0) {
 	global_data_A36507.control_state = STATE_XRAY_ON;
+	if (global_data_A36507.auto_condition_requested) {
+	  global_data_A36507.control_state = STATE_XRAY_ON_AUTO_CONDITION;
+	}
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_DRIVE_UP;
+	global_data_A36507.auto_condition_requested = 0;
       }
       if (CheckHVOnFault()) {
 	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
@@ -459,6 +467,45 @@ void DoStateMachine(void) {
     break;
 
 
+  case STATE_XRAY_ON_AUTO_CONDITION:
+    SendToEventLog(LOG_ID_ENTERED_STATE_XRAY_ON_AUTO_CONDITION);
+    _SYNC_CONTROL_RESET_ENABLE = 0;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
+    _SYNC_CONTROL_PULSE_SYNC_DISABLE_XRAY = 0;
+    _SYNC_CONTROL_SYSTEM_HV_DISABLE = 0;
+    _SYNC_CONTROL_PULSE_SYNC_FAULT_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 0;
+    _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
+    global_data_A36507.high_voltage_on_fault_counter = 0;
+    global_data_A36507.auto_condition_timer = 0;
+    global_data_A36507.auto_condition_requested = 0;
+    while (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
+      DoA36507();
+      DoAutoCondition();
+      
+      if (_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
+	global_data_A36507.control_state = STATE_READY;
+      }
+      if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
+	global_data_A36507.control_state = STATE_READY;
+      }
+      if (CheckHVOnFault()) {
+	global_data_A36507.control_state = STATE_FAULT_HOLD;  // Why would you ever need to make this decision if X-Rays were on
+	if (_PULSE_MON_NOT_READY) {
+	  // The system shut down due to a problem with the magnetron current monitor board
+	  if (global_data_A36507.auto_condition_position >= 22) {
+	    global_data_A36507.auto_condition_position -= 22;
+	  } else {
+	    global_data_A36507.auto_condition_position = 0;
+	  }
+	}
+      }
+    }
+    ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
+    break;
+
+
   case STATE_FAULT_LATCH_DECISION:
     SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_LATCH_DECISION);
     _SYNC_CONTROL_RESET_ENABLE = 0;
@@ -471,6 +518,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     global_data_A36507.reset_requested = 0;
     global_data_A36507.reset_hold_timer = 0;
+    global_data_A36507.auto_condition_requested = 0;
     while (global_data_A36507.control_state == STATE_FAULT_LATCH_DECISION) {
       DoA36507();
       if (global_data_A36507.reset_hold_timer > MINIMUM_FAULT_HOLD_TIME) { 
@@ -842,6 +890,7 @@ unsigned int CheckHVOnFault(void) {
 }
 
 
+
 /*
 #define DEBUG_ETMMODBUS
 
@@ -941,12 +990,12 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[4]  = test_ref_det_good_message; 
   debug_data_ecb.debug_reg[5]  = global_data_A36507.most_recent_ref_detector_reading; 
   debug_data_ecb.debug_reg[6]  = test_uart_data_recieved; 
-  debug_data_ecb.debug_reg[7]  = 7; 
+  debug_data_ecb.debug_reg[7]  = global_data_A36507.auto_condition_position; 
 
-  debug_data_ecb.debug_reg[8]  = 8; 
-  debug_data_ecb.debug_reg[9]  = 9; 
-  debug_data_ecb.debug_reg[10] = 10; 
-  debug_data_ecb.debug_reg[11] = 11; 
+  debug_data_ecb.debug_reg[8]  = global_data_A36507.auto_condition_timer; 
+  debug_data_ecb.debug_reg[9]  = global_data_A36507.auto_condition_arc_detected; 
+  debug_data_ecb.debug_reg[10] = global_data_A36507.auto_condition_requested; 
+  debug_data_ecb.debug_reg[11] = etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic; 
 
   debug_data_ecb.debug_reg[12] = 12; 
   debug_data_ecb.debug_reg[13] = 0;
@@ -958,11 +1007,20 @@ void UpdateDebugData(void) {
 void DoA36507(void) {
   unsigned int fast_log_index;
 
+  
+  //etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
+  
+  if (global_data_A36507.control_state != STATE_XRAY_ON_AUTO_CONDITION) {
+    etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = 0;
+    etm_can_master_sync_message.sync_2 = 0x0123;
+    etm_can_master_sync_message.sync_3 = 0x0001;
 
-  etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
-  etm_can_master_sync_message.sync_2 = 0x0123;
-  etm_can_master_sync_message.sync_3 = 0x4567;
-
+    if (global_data_A36507.auto_condition_requested) {
+      // IF auto Conditioning has been requested.  Instruct the pusle sync board to start off not pulsing
+      etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = 0x17FF;
+    }
+  }
+    
   ETMCanMasterDoCan();
   TCPmodbus_task();
   ExecuteEthernetCommand(personality_select_from_pulse_sync);
@@ -1026,7 +1084,7 @@ void DoA36507(void) {
 
   // Update the SYNC message with the control state
   // DPARKER as far as I know, this is never used - consider removing
-  ETMCanMasterSetSyncState(global_data_A36507.control_state);
+  //ETMCanMasterSetSyncState(global_data_A36507.control_state);
 
 
   // Load log_data Memory for types that can not be mapped directly into memory
@@ -1062,7 +1120,11 @@ void DoA36507(void) {
       global_data_A36507.gun_heater_holdoff_timer++;
     }
 
-
+    if (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
+      global_data_A36507.auto_condition_timer++;
+    } else {
+      global_data_A36507.auto_condition_timer = 0;
+    }
 
     /*
       The following tasks require use of the i2c bus which can hold the processor for a lot of time
@@ -1555,6 +1617,7 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_SYSTEM_ENABLE_HIGH_SPEED_LOGGING 0xE301
 #define REGISTER_SYSTEM_DISABLE_HIGH_SPEED_LOGGING 0xE302
 #define REGISTER_SYSTEM_ECB_LOAD_FACTORY_SETTINGS_FROM_EEPROM_MIRROR_AND_REBOOT 0xE303
+#define REGISTER_SYSTEM_ECB_MAGNETRON_CONDITONING 0xE304
 
 #define REGISTER_ETM_ECB_RESET_ARC_AND_PULSE_COUNT 0xE400
 #define REGISTER_ETM_ECB_RESET_SECONDS_POWERED_HV_ON_XRAY_ON 0xE401
@@ -1566,6 +1629,9 @@ void LoadDefaultSystemCalibrationToEEProm(void) {
 #define REGISTER_DEBUG_GUN_DRIVER_RESET_FPGA 0xE501
 #define REGISTER_DEBUG_RESET_MCU 0xE502
 #define REGISTER_DEBUG_TEST_PULSE_FAULT 0xE503
+
+
+
 
 
 void ExecuteEthernetCommand(unsigned int personality) {
@@ -1588,7 +1654,12 @@ void ExecuteEthernetCommand(unsigned int personality) {
     // there was no message
     return;
   }
-  
+
+  if (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
+    // Do not process ethernet commands while auto conditioning or things could go crazy afterwards
+    return;
+  }
+
   if ((next_message.index & 0x0F00) == 0x0100) {
     // this is a calibration set message, route to appropriate board
     if ((next_message.index & 0xF000) == 0xE000) {
@@ -1867,6 +1938,16 @@ void ExecuteEthernetCommand(unsigned int personality) {
       __asm__ ("Reset");
       break;
 
+
+    case REGISTER_SYSTEM_ECB_MAGNETRON_CONDITONING:
+      if (global_data_A36507.control_state == STATE_STANDBY) {
+	global_data_A36507.auto_condition_requested = 1;
+	if (next_message.data_2 < AUTO_CONDITION_POSITION_DONE) {
+	  global_data_A36507.auto_condition_position = next_message.data_2;  
+	} 
+      }
+      break;
+      
     case REGISTER_ETM_ECB_SEND_SLAVE_RELOAD_EEPROM_WITH_DEFAULTS:
       if ((global_data_A36507.control_state < STATE_DRIVE_UP) || (global_data_A36507.control_state > STATE_XRAY_ON)) {
 	SendSlaveLoadDefaultEEpromData(next_message.data_2);
@@ -2299,3 +2380,80 @@ void CRCTest(void) {
 }
 
 
+
+void DoAutoCondition(void) {
+  static unsigned int timer_reset_count;
+  static unsigned int next_position_to_use;
+  
+  if (global_data_A36507.auto_condition_timer >= auto_condition_times[global_data_A36507.auto_condition_position]) {
+
+    // Get the next position
+    if (global_data_A36507.auto_condition_position == AUTO_CONDITION_POSITION_WAIT_10_SECONDS) {
+      global_data_A36507.auto_condition_position = next_position_to_use;
+    } else {
+      global_data_A36507.auto_condition_position++;
+      if (global_data_A36507.auto_condition_position >= AUTO_CONDITION_POSITION_DONE) {
+	global_data_A36507.auto_condition_position = AUTO_CONDITION_POSITION_DONE;
+      }
+    }
+
+    // New position so clear the timer and the timer reset count
+    global_data_A36507.auto_condition_timer = 0;
+    timer_reset_count = 0;
+  }
+
+  
+  // Set the Lambda
+  local_hv_lambda_high_en_set_point = auto_condition_voltages[global_data_A36507.auto_condition_position];
+  local_hv_lambda_low_en_set_point  = auto_condition_voltages[global_data_A36507.auto_condition_position];
+
+  // Set the Magnet
+  local_magnet_current_set_point_high_energy = auto_condition_magnet_currents[global_data_A36507.auto_condition_position];
+  local_magnet_current_set_point_low_energy  = auto_condition_magnet_currents[global_data_A36507.auto_condition_position];
+
+  // Set the grid timing
+  // This should create 100ns pulse before the RF pulse
+  local_pulse_sync_timing_reg_2_word_0 = 0;
+  local_pulse_sync_timing_reg_2_word_1 = 0;
+  local_pulse_sync_timing_reg_3_word_0 = 0x0505;
+  local_pulse_sync_timing_reg_3_word_1 = 0x0505;
+
+  local_pulse_sync_timing_reg_0_word_0 = 0;
+  local_pulse_sync_timing_reg_0_word_1 = 0;
+  local_pulse_sync_timing_reg_1_word_0 = 0x0505;
+  local_pulse_sync_timing_reg_1_word_1 = 0x0505;
+
+  
+  // Set prf command to pulse sync
+  /* 
+     Do Not change the PRF for the 2 few seconds.
+     Why you ask???  Good question
+     When we first enter the Auto Condition Mode, all the setpoints are at the nominal operation points
+     This gives a few seconds for the Auto Condition setpoints (lower voltages and such) to be loaded before pulsing is enabled.
+     We can't change the set points before we enter the auto condition state or we could store bogus values in the EEPROM
+     We can howeve disable pulsing as soon as auto condition mode is requested so that is what we do.
+  */
+  if (global_data_A36507.auto_condition_timer > 200) {
+    etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = auto_condition_prfs[global_data_A36507.auto_condition_position];
+  }
+  
+  //DPARKER ADD THE RESPONSE TO ARCS
+  if (auto_condition_arc_detected) {
+    auto_condition_arc_detected = 0;
+    global_data_A36507.auto_condition_timer = 0;
+    timer_reset_count++;
+    etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = 0x17FF; // Disable Pulsing (will resume at new setpoints in 2 seconds)
+    if (timer_reset_count >= 3) {
+      // There were 3 timer resets in this pulse sequence.
+      // Shut down for 10 seconds then resume 1 voltage setting lower
+      timer_reset_count = 0;
+      global_data_A36507.auto_condition_position = AUTO_CONDITION_POSITION_WAIT_10_SECONDS;
+      if (global_data_A36507.auto_condition_position >= 11) {
+	next_position_to_use = global_data_A36507.auto_condition_position - 11;
+      } else {
+	next_position_to_use = 0;
+      }
+      timer_reset_count = 0;
+    }
+  }
+}

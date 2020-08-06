@@ -8,7 +8,7 @@
 unsigned int can_master_millisecond_counter;
 unsigned int previous_disable_xray_value;
 unsigned int personality_loaded;
-
+unsigned int auto_condition_arc_detected;
 
 void UpdateSlaveEventLog(ETMCanStatusRegister* previous_status, ETMCanStatusRegister* current_status, unsigned int slave_select);
 
@@ -34,7 +34,7 @@ typedef struct {
 
 ETMCanBoardDebuggingData debug_data_ecb;
 ETMCanBoardDebuggingData debug_data_slave_mirror;
-ETMCanSyncMessage    etm_can_master_sync_message;
+//ETMCanSyncMessage    etm_can_master_sync_message;
 
 
 typedef struct {
@@ -334,7 +334,7 @@ void ETMCanMasterLoadConfiguration(unsigned long agile_id, unsigned int agile_da
 }
 
 void ETMCanMasterSetSyncState(unsigned int state) {
-  etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = state;
+  //etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = state;
 }
 
 
@@ -517,7 +517,7 @@ void ETMCanMasterSendSync(void) {
   ETMCanMessage sync_message;
   sync_message.identifier = ETM_CAN_MSG_SYNC_TX;
   sync_message.word0 = _SYNC_CONTROL_WORD;
-  sync_message.word2 = etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic;
+  sync_message.word1 = etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic;  // This will be used for auto conditioning
   sync_message.word2 = etm_can_master_sync_message.sync_2;
   sync_message.word3 = etm_can_master_sync_message.sync_3;
   
@@ -690,6 +690,9 @@ void ETMCanMasterUpdateSlaveStatus(ETMCanMessage* message_ptr) {
     UpdateSlaveEventLog(&mirror_pulse_mon.status, &status_message, source_board);
     mirror_pulse_mon.status = status_message;
     board_status_received.magnetron_current_board = 1;
+    if (mirror_pulse_mon.status.control_notice_bits.notice_0) {
+      auto_condition_arc_detected = 1;
+    }
     break;
 
   case ETM_CAN_ADDR_PULSE_SYNC_BOARD:

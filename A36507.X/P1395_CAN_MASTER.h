@@ -340,6 +340,7 @@ extern ETMCanHighSpeedData high_speed_data_buffer_b[HIGH_SPEED_DATA_BUFFER_SIZE]
 extern ETMCanHighSpeedData etm_can_high_speed_data_test;                          // Used by TCP/IP Module
 extern unsigned int etm_can_active_debugging_board_id;                            // Used by TCP/IP Module
 
+extern unsigned int auto_condition_arc_detected;
 
 
 // Public Functions
@@ -380,6 +381,7 @@ void ETMCanMasterClearHighSpeedLogging(void);
 #define LOG_ID_ENTERED_STATE_DRIVE_UP 0x0140
 #define LOG_ID_ENTERED_STATE_READY 0x0150
 #define LOG_ID_ENTERED_STATE_XRAY_ON 0x0160
+#define LOG_ID_ENTERED_STATE_XRAY_ON_AUTO_CONDITION 0x0164
 #define LOG_ID_ENTERED_STATE_FAULT_HOLD 0x0180
 #define LOG_ID_ENTERED_STATE_FAULT_RESET_HOLD 0x0186
 #define LOG_ID_ENTERED_STATE_FAULT_LATCH_DECISION 0x018A
