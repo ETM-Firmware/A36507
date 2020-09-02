@@ -339,7 +339,8 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     global_data_A36507.auto_condition_requested = 0;
-      while (global_data_A36507.control_state == STATE_STANDBY) {
+    ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
+    while (global_data_A36507.control_state == STATE_STANDBY) {
       DoA36507();
       if (!_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_DRIVE_UP;
@@ -402,10 +403,14 @@ void DoStateMachine(void) {
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
+	global_data_A36507.auto_condition_requested = 0;
+	ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
       }
       if (CheckStandbyFault()) {
 	global_data_A36507.drive_up_fault_counter++;
 	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
+	global_data_A36507.auto_condition_requested = 0;
+	ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
       }
     }
     break;
@@ -484,6 +489,11 @@ void DoStateMachine(void) {
     global_data_A36507.high_voltage_on_fault_counter = 0;
     global_data_A36507.auto_condition_timer = 0;
     global_data_A36507.auto_condition_requested = 0;
+    ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
+			ETM_CAN_REGISTER_AFC_CMD_SELECT_MANUAL_MODE,
+			0,
+			0,
+			0);
     while (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
       DoA36507();
       DoAutoCondition();
@@ -506,6 +516,11 @@ void DoStateMachine(void) {
 	}
       }
     }
+    ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
+			ETM_CAN_REGISTER_AFC_CMD_SELECT_AFC_MODE,
+			0,
+			0,
+			0);
     ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
     break;
 
@@ -998,7 +1013,7 @@ void UpdateDebugData(void) {
   debug_data_ecb.debug_reg[7]  = global_data_A36507.auto_condition_position; 
 
   debug_data_ecb.debug_reg[8]  = global_data_A36507.auto_condition_timer; 
-  debug_data_ecb.debug_reg[9]  = global_data_A36507.auto_condition_arc_detected; 
+  debug_data_ecb.debug_reg[9]  = auto_condition_arc_detected; 
   debug_data_ecb.debug_reg[10] = global_data_A36507.auto_condition_requested; 
   debug_data_ecb.debug_reg[11] = etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic; 
 
@@ -1103,7 +1118,10 @@ void DoA36507(void) {
   local_data_ecb.log_data[17] = global_data_A36507.most_recent_ref_detector_reading;
   local_data_ecb.log_data[19] = global_data_A36507.system_serial_number;
   mirror_cooling.local_data[0] = MAX_SF6_REFILL_PULSES_IN_BOTTLE;
+  local_data_ecb.local_data[2] = global_data_A36507.auto_condition_position;
+  local_data_ecb.local_data[3] = global_data_A36507.auto_condition_requested;
 
+  
   UpdateDebugData();  // Load the customized debugging data into the debugging registers
 
 
@@ -1282,6 +1300,7 @@ unsigned int CalculatePulseEnergyMilliJoules(unsigned int lambda_voltage) {
 void UpdateHeaterScale() {
   unsigned long temp32;
   unsigned int temp16;
+  unsigned int prf_modification;
 
   // Load the energy per pulse into temp32
   // Use the higher of High/Low Energy set point
@@ -1292,15 +1311,88 @@ void UpdateHeaterScale() {
   }
   
   // Multiply the Energy per Pulse times the PRF (in deci-Hz)
-  temp32 *= ETMCanMasterGetPulsePRF();
-  if (global_data_A36507.control_state != STATE_XRAY_ON) {
-    // Set the power to zero if we are not in the X-RAY ON state
+
+  if ((global_data_A36507.control_state == STATE_XRAY_ON) || (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION)) {
+    temp32 *= ETMCanMasterGetPulsePRF();
+  } else {
     temp32 = 0;
   }
 
   temp32 >>= 6;
   temp32 *= 13;
   temp32 >>= 11;  // Temp32 is now Magnetron Power (in Watts)
+  
+  
+  if (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
+    // Calculate the power given the real rep rate
+    switch (etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic) {
+      
+    case 0x170F:
+      // 25Hz
+      prf_modification = 16;
+      break;
+
+    case 0x1709:
+      // 40Hz
+      prf_modification = 26;
+      break;
+
+    case 0x1707:
+      // 50Hz
+      prf_modification = 32;
+      break;
+
+    case 0x1705:
+      // 66Hz
+      prf_modification = 42;
+      break;
+
+
+    case 0x1704:
+      // 80Hz
+      prf_modification = 51;
+      break;
+
+    case 0x1703:
+      // 100Hz
+      prf_modification = 64;
+      break;
+
+    case 0x1702:
+      // 133Hz
+      prf_modification = 85;
+      break;
+
+    case 0x1701:
+      // 200Hz
+      prf_modification = 128;
+      break;
+
+    case 0x1723:
+      // 300Hz
+      prf_modification = 192;
+      break;
+
+    case 0x1700:
+      // 400Hz
+      prf_modification = 256;
+      break;
+
+    case 0x17FF:
+      // NOT PULSING
+      prf_modification = 0;
+      break;
+
+    default:
+      prf_modification = 0;
+      break;
+    }
+    
+    temp32 *= prf_modification;
+    temp32 >>= 8;
+  }
+    
+
   
   average_output_power_watts = temp32;
   temp16 = average_output_power_watts;
@@ -1658,6 +1750,18 @@ void ExecuteEthernetCommand(unsigned int personality) {
   if (next_message.index == 0xFFFF) {
     // there was no message
     return;
+  }
+
+  if (next_message.index == REGISTER_CMD_COOLANT_INTERFACE_ALLOW_25_MORE_SF6_PULSES) {
+    auto_condition_arc_detected = 1;
+  }
+
+  if (next_message.index == REGISTER_CMD_COOLANT_INTERFACE_SET_SF6_PULSES_IN_BOTTLE) {
+    auto_condition_arc_detected = 1;
+  }
+  
+  if (next_message.index == REGISTER_CMD_AFC_MANUAL_TARGET_POSITION) {
+    auto_condition_arc_detected = 1;
   }
 
   if (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
@@ -2435,17 +2539,8 @@ void DoAutoCondition(void) {
 
   
   // Set prf command to pulse sync
-  /* 
-     Do Not change the PRF for the 2 few seconds.
-     Why you ask???  Good question
-     When we first enter the Auto Condition Mode, all the setpoints are at the nominal operation points
-     This gives a few seconds for the Auto Condition setpoints (lower voltages and such) to be loaded before pulsing is enabled.
-     We can't change the set points before we enter the auto condition state or we could store bogus values in the EEPROM
-     We can howeve disable pulsing as soon as auto condition mode is requested so that is what we do.
-  */
-  if (global_data_A36507.auto_condition_timer > 200) {
-    etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = auto_condition_prfs[global_data_A36507.auto_condition_position];
-  }
+  etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = auto_condition_prfs[global_data_A36507.auto_condition_position];
+  
   
   //DPARKER ADD THE RESPONSE TO ARCS
   if (auto_condition_arc_detected) {
@@ -2457,13 +2552,13 @@ void DoAutoCondition(void) {
       // There were 3 timer resets in this pulse sequence.
       // Shut down for 10 seconds then resume 1 voltage setting lower
       timer_reset_count = 0;
-      global_data_A36507.auto_condition_position = AUTO_CONDITION_POSITION_WAIT_10_SECONDS;
       if (global_data_A36507.auto_condition_position >= 11) {
 	next_position_to_use = global_data_A36507.auto_condition_position - 11;
       } else {
 	next_position_to_use = 0;
       }
       timer_reset_count = 0;
+      global_data_A36507.auto_condition_position = AUTO_CONDITION_POSITION_WAIT_10_SECONDS;
     }
   }
 }

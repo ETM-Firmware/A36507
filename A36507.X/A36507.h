@@ -213,7 +213,7 @@ typedef struct {
 
   unsigned int auto_condition_position;
   unsigned int auto_condition_timer;
-  unsigned int auto_condition_arc_detected;
+  //unsigned int auto_condition_arc_detected;
   unsigned int auto_condition_requested;
   
 } A36507GlobalVars;

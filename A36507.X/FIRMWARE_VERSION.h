@@ -3,7 +3,7 @@
 
 #define FIRMWARE_AGILE_REV     4
 #define FIRMWARE_BRANCH        137
-#define FIRMWARE_BRANCH_REV    4
+#define FIRMWARE_BRANCH_REV    8
 
 
 #endif
