@@ -284,7 +284,7 @@ extern A36507GlobalVars global_data_A36507;
 #define STATE_DRIVE_UP                               0x40
 #define STATE_READY                                  0x50
 #define STATE_XRAY_ON                                0x60
-#define STATE_XRAY_ON_AUTO_CONDITION                 0x64
+//#define STATE_XRAY_ON_AUTO_CONDITION                 0x64
 
 #define STATE_FAULT_HOLD                             0x80
 #define STATE_FAULT_RESET_HOLD                       0x86

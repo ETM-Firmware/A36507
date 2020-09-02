@@ -338,8 +338,6 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_WARMUP_LED = 0;
     _SYNC_CONTROL_PULSE_SYNC_STANDBY_LED = 1;
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
-    global_data_A36507.auto_condition_requested = 0;
-    ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
     while (global_data_A36507.control_state == STATE_STANDBY) {
       DoA36507();
       if (!_PULSE_SYNC_CUSTOMER_HV_OFF) {
@@ -398,19 +396,18 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     while (global_data_A36507.control_state == STATE_DRIVE_UP) {
       DoA36507();
+      if (global_data_A36507.auto_condition_requested) {
+	DoAutoCondition();
+      }
       if (!CheckHVOnFault()) {
 	global_data_A36507.control_state = STATE_READY;
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_STANDBY;
-	global_data_A36507.auto_condition_requested = 0;
-	ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
       }
       if (CheckStandbyFault()) {
 	global_data_A36507.drive_up_fault_counter++;
 	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
-	global_data_A36507.auto_condition_requested = 0;
-	ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
       }
     }
     break;
@@ -430,16 +427,14 @@ void DoStateMachine(void) {
     _STATUS_DRIVE_UP_TIMEOUT = 0;
      while (global_data_A36507.control_state == STATE_READY) {
       DoA36507();
+      if (global_data_A36507.auto_condition_requested) {
+	DoAutoCondition();
+      }
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF == 0) {
 	global_data_A36507.control_state = STATE_XRAY_ON;
-	if (global_data_A36507.auto_condition_requested) {
-	  global_data_A36507.control_state = STATE_XRAY_ON_AUTO_CONDITION;
-	}
       }
       if (_PULSE_SYNC_CUSTOMER_HV_OFF) {
 	global_data_A36507.control_state = STATE_DRIVE_UP;
-	global_data_A36507.auto_condition_requested = 0;
-	ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
       }
       if (CheckHVOnFault()) {
 	global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
@@ -462,6 +457,9 @@ void DoStateMachine(void) {
     global_data_A36507.high_voltage_on_fault_counter = 0;
     while (global_data_A36507.control_state == STATE_XRAY_ON) {
       DoA36507();
+      if (global_data_A36507.auto_condition_requested) {
+	DoAutoCondition();
+      }
       if (_PULSE_SYNC_CUSTOMER_XRAY_OFF) {
 	global_data_A36507.control_state = STATE_READY;
       }
@@ -471,12 +469,21 @@ void DoStateMachine(void) {
       if (CheckHVOnFault()) {
 	//global_data_A36507.control_state = STATE_FAULT_LATCH_DECISION;
 	global_data_A36507.control_state = STATE_FAULT_HOLD;  // Why would you ever need to make this decision if X-Rays were on
+	if (_PULSE_MON_NOT_READY) {
+	  // The system shut down due to a problem with the magnetron current monitor board
+	  if (global_data_A36507.auto_condition_position >= 22) {
+	    global_data_A36507.auto_condition_position -= 22;
+	  } else {
+	    global_data_A36507.auto_condition_position = 0;
+	  }
+	}
       }
     }
     break;
+    
 
-
-  case STATE_XRAY_ON_AUTO_CONDITION:
+    /*
+    case STATE_XRAY_ON_AUTO_CONDITION:
     SendToEventLog(LOG_ID_ENTERED_STATE_XRAY_ON_AUTO_CONDITION);
     _SYNC_CONTROL_RESET_ENABLE = 0;
     _SYNC_CONTROL_PULSE_SYNC_DISABLE_HV = 0;
@@ -488,7 +495,7 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     global_data_A36507.high_voltage_on_fault_counter = 0;
     global_data_A36507.auto_condition_timer = 0;
-    global_data_A36507.auto_condition_requested = 0;
+    //global_data_A36507.auto_condition_requested = 0;
     ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
 			ETM_CAN_REGISTER_AFC_CMD_SELECT_MANUAL_MODE,
 			0,
@@ -523,7 +530,7 @@ void DoStateMachine(void) {
 			0);
     ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
     break;
-
+    */
 
   case STATE_FAULT_LATCH_DECISION:
     SendToEventLog(LOG_ID_ENTERED_STATE_FAULT_LATCH_DECISION);
@@ -537,8 +544,6 @@ void DoStateMachine(void) {
     _SYNC_CONTROL_PULSE_SYNC_READY_LED = 0;
     global_data_A36507.reset_requested = 0;
     global_data_A36507.reset_hold_timer = 0;
-    global_data_A36507.auto_condition_requested = 0;
-    ReadSystemConfigurationFromEEProm(personality_select_from_pulse_sync);
     while (global_data_A36507.control_state == STATE_FAULT_LATCH_DECISION) {
       DoA36507();
       if (global_data_A36507.reset_hold_timer > MINIMUM_FAULT_HOLD_TIME) { 
@@ -1027,18 +1032,14 @@ void UpdateDebugData(void) {
 void DoA36507(void) {
   unsigned int fast_log_index;
 
-  
-  //etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = global_data_A36507.control_state;
-  
-  if (global_data_A36507.control_state != STATE_XRAY_ON_AUTO_CONDITION) {
-    etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = 0;
-    etm_can_master_sync_message.sync_2 = 0x0123;
-    etm_can_master_sync_message.sync_3 = 0x0001;
-
-    if (global_data_A36507.auto_condition_requested) {
-      // IF auto Conditioning has been requested.  Instruct the pusle sync board to start off not pulsing
+  if (global_data_A36507.auto_condition_requested) {
+    if (global_data_A36507.control_state != STATE_XRAY_ON) {
+      // IF auto Conditioning has been requested and we are not in X_RAY_ON.  Instruct the pusle sync board not pulse
       etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = 0x17FF;
     }
+  } else {
+    // IF auto Conditioning is not request, instruct pulse sync board to act normally
+    etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic = 0;
   }
     
   ETMCanMasterDoCan();
@@ -1143,7 +1144,7 @@ void DoA36507(void) {
       global_data_A36507.gun_heater_holdoff_timer++;
     }
 
-    if (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
+    if (global_data_A36507.control_state == STATE_XRAY_ON) {
       global_data_A36507.auto_condition_timer++;
     } else {
       global_data_A36507.auto_condition_timer = 0;
@@ -1312,7 +1313,7 @@ void UpdateHeaterScale() {
   
   // Multiply the Energy per Pulse times the PRF (in deci-Hz)
 
-  if ((global_data_A36507.control_state == STATE_XRAY_ON) || (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION)) {
+  if (global_data_A36507.control_state == STATE_XRAY_ON) {
     temp32 *= ETMCanMasterGetPulsePRF();
   } else {
     temp32 = 0;
@@ -1322,8 +1323,8 @@ void UpdateHeaterScale() {
   temp32 *= 13;
   temp32 >>= 11;  // Temp32 is now Magnetron Power (in Watts)
   
-  
-  if (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
+
+  if (global_data_A36507.auto_condition_requested) {
     // Calculate the power given the real rep rate
     switch (etm_can_master_sync_message.sync_1_ecb_state_for_fault_logic) {
       
@@ -1752,23 +1753,34 @@ void ExecuteEthernetCommand(unsigned int personality) {
     return;
   }
 
+  //  DPARKER - THESE HAVE BEEN ADDED FOR TESTING ON GUI ONLY
   if (next_message.index == REGISTER_CMD_COOLANT_INTERFACE_ALLOW_25_MORE_SF6_PULSES) {
     auto_condition_arc_detected = 1;
   }
-
   if (next_message.index == REGISTER_CMD_COOLANT_INTERFACE_SET_SF6_PULSES_IN_BOTTLE) {
     auto_condition_arc_detected = 1;
   }
-  
   if (next_message.index == REGISTER_CMD_AFC_MANUAL_TARGET_POSITION) {
     auto_condition_arc_detected = 1;
   }
+  // END AUTO CONDITION GUI TESTING
 
-  if (global_data_A36507.control_state == STATE_XRAY_ON_AUTO_CONDITION) {
-    // Do not process ethernet commands while auto conditioning or things could go crazy afterwards
-    return;
+  
+  if (global_data_A36507.auto_condition_requested) {
+    if (next_message.index == REGISTER_SYSTEM_ECB_MAGNETRON_CONDITONING) {
+      if (next_message.data_2 == 0x01EF) {
+	// This is a command to stop the auto conditioning.
+	// Reset the Linac
+	__asm__ ("Reset");
+      }
+      
+      if (next_message.data_2 == 0x071E) {
+	// This is a special message to simulate an arc
+	auto_condition_arc_detected = 1;
+      }
+    } 
   }
-
+    
   if (global_data_A36507.auto_condition_requested) {
     // Do not process ethernet commands while auto conditioning or things could go crazy afterwards
     return;
@@ -2054,11 +2066,22 @@ void ExecuteEthernetCommand(unsigned int personality) {
 
 
     case REGISTER_SYSTEM_ECB_MAGNETRON_CONDITONING:
-      if (global_data_A36507.control_state == STATE_STANDBY) {
-	global_data_A36507.auto_condition_requested = 1;
-	if (next_message.data_2 < AUTO_CONDITION_POSITION_DONE) {
-	  global_data_A36507.auto_condition_position = next_message.data_2;  
-	} 
+      if (next_message.data_2 <= 98) {
+	// If the argument is greater than 98, do not start the auto condition process
+	if (global_data_A36507.control_state == STATE_STANDBY) {
+	  global_data_A36507.auto_condition_requested = 1;
+	  ETMCanMasterSendMsg((ETM_CAN_MSG_CMD_TX | (ETM_CAN_ADDR_AFC_CONTROL_BOARD << 2)),
+			      ETM_CAN_REGISTER_AFC_CMD_SELECT_MANUAL_MODE,
+			      0,
+			      0,
+			      0);
+	  if (next_message.data_2 < AUTO_CONDITION_POSITION_DONE) {
+	    global_data_A36507.auto_condition_position = next_message.data_2;
+	    if (global_data_A36507.auto_condition_position >= 98) {
+	      global_data_A36507.auto_condition_position = 0;
+	    }
+	  } 
+	}
       }
       break;
       
