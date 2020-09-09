@@ -687,12 +687,12 @@ void ETMCanMasterUpdateSlaveStatus(ETMCanMessage* message_ptr) {
     break;
 
   case ETM_CAN_ADDR_MAGNETRON_CURRENT_BOARD:
+    if (status_message.control_notice_bits.notice_0) {
+      auto_condition_arc_detected = 1;
+    }
     UpdateSlaveEventLog(&mirror_pulse_mon.status, &status_message, source_board);
     mirror_pulse_mon.status = status_message;
     board_status_received.magnetron_current_board = 1;
-    if (mirror_pulse_mon.status.control_notice_bits.notice_0) {
-      auto_condition_arc_detected = 1;
-    }
     break;
 
   case ETM_CAN_ADDR_PULSE_SYNC_BOARD:
