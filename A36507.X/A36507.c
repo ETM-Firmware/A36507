@@ -916,7 +916,7 @@ void DoA36507(void) {
     }
 #endif
   }
-  
+
   if (ETMTickGreaterThanNMilliseconds(WATCHDOG_TIMEOUT_MILLISEC, watchdog_timeout_holding_var)) {
     // There is a watchdog timeout
     if (_FAULT_WATCHDOG_ERROR == 1) {
@@ -1835,8 +1835,11 @@ void ExecuteEthernetCommand(void) {
     switch (next_message.index) {
       
     case REGISTER_ETM_SYSTEM_SERIAL_NUMBER:
-      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;    
-      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_BOARD_CONFIGURATION << 4) + 2), next_message.data_2) == 0xFFFF) {
+      global_data_A36507.eeprom_write_status = EEPROM_WRITE_FAILURE;   
+  #ifndef __LINAC_EMULATOR_MODE     
+      if (ETMEEPromWriteWordWithConfirmation(((EEPROM_PAGE_ECB_BOARD_CONFIGURATION << 4) + 2), next_message.data_2) == 0xFFFF) 
+  #endif
+      {
 	global_data_A36507.eeprom_write_status = EEPROM_WRITE_SUCCESSFUL;
 	global_data_A36507.system_serial_number = next_message.data_2;
       }

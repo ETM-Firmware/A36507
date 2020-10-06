@@ -12,7 +12,7 @@ static void AddMessageFromGUI(unsigned char * buffer_ptr);
 static unsigned int NewMessageInEventLog(void);
 static unsigned int EventLogMessageSize(void);
 static unsigned char GetNextSendIndex(void);
-static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type);
+static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type, unsigned char is_2nd_tcp_client);
 
 enum {
   MODBUS_WR_CYCLE_START,
@@ -54,6 +54,15 @@ ETMEthernetMessageFromGUI    eth_message_from_GUI[ ETH_GUI_MESSAGE_BUFFER_SIZE ]
 
 static unsigned char         last_index_sent = 0;  // DPARKER why is this global
 static unsigned char         modbus_command_request = 0;  /* how many commands from GUI */
+// This is used to time the "standard" ethernet messages at 1 per 100mS
+unsigned long timer_write_holding_var;
+#ifdef ADD_SECOND_MODBUS_CLIENT
+static unsigned char         last_index_sent2 = 0;  // DPARKER why is this global
+static unsigned char         modbus_command_request2 = 0;  /* how many commands from GUI */
+// This is used to time the "standard" ethernet messages at 1 per 100mS
+unsigned long timer_write_holding_var2;
+#endif
+
 static unsigned char         eth_message_from_GUI_put_index;
 static unsigned char         eth_message_from_GUI_get_index;
 
@@ -61,8 +70,6 @@ static unsigned char         eth_message_from_GUI_get_index;
 static unsigned char         pulse_log_buffer_select;
 static unsigned char         pulse_log_ready_to_send = 0;
 
-// This is used to time the "standard" ethernet messages at 1 per 100mS
-unsigned long timer_write_holding_var;
 
 #define HEADER_LENGTH_CHAR 12
 
@@ -210,10 +217,12 @@ static unsigned char GetNextSendIndex(void) {
 #define SIZE_DEBUG_DATA      80
 
 
-static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) {
+static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type, unsigned char is_2nd_tcp_client) {
   static unsigned pulse_index = 0;        // index for eash tracking
   static unsigned transaction_number = 0; // Index for each transaction
-
+#ifdef ADD_SECOND_MODBUS_CLIENT
+  static unsigned transaction_number2 = 0; // Index for each transaction
+#endif
 
   tx_data->data_length = 0;
   tx_data->tx_ready = 0;
@@ -294,6 +303,9 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
       break;
 
     case MODBUS_WR_EVENTS:
+#ifdef ADD_SECOND_MODBUS_CLIENT
+	  if (is_2nd_tcp_client) break;	 // no event log for 2nd ip
+#endif    
       tx_data->tx_ready = 0;
       if (NewMessageInEventLog()) {
 	tx_data->data_ptr = (unsigned char *)&event_log.event_data[event_log.gui_index];
@@ -303,6 +315,9 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
       break;
 
     case MODBUS_WR_PULSE_LOG:
+#ifdef ADD_SECOND_MODBUS_CLIENT
+	  if (is_2nd_tcp_client) break;	 // no event log for 2nd ip
+#endif    
       // DPARKER - Test the pulse log
       // DPARKER - I Don't think that pulse index is needed
       pulse_index++;  // overflows at 65535
@@ -357,8 +372,19 @@ static void PrepareTXMessage(ETMModbusTXData *tx_data, unsigned char data_type) 
 
   if (tx_data->tx_ready) {
 
-    transaction_number++;
-    last_index_sent = data_type;
+#ifdef ADD_SECOND_MODBUS_CLIENT
+	  if (is_2nd_tcp_client) { 
+      	transaction_number2++;
+        last_index_sent2 = data_type;
+      }
+      else { 
+      	transaction_number++;
+        last_index_sent = data_type;
+      }
+#else
+      transaction_number++;
+      last_index_sent = data_type;
+#endif    
     debug_data_ecb.debug_reg[13]++;  // Dparker move this to some debugging information
     
    // Prepare the header message
@@ -440,7 +466,7 @@ void ETMModbusApplicationSpecificTXData(ETMModbusTXData* tx_data_to_send) {
 
 
   if (send_message) { 
-    PrepareTXMessage(tx_data_to_send, modbus_tx_index);
+    PrepareTXMessage(tx_data_to_send, modbus_tx_index, 0);
     if (modbus_tx_index != MODBUS_WR_EVENTS) {
       //ETMTCPModbusWaitForResponse();  // Event log is not repeatable so no need to wait for response
     }
@@ -449,7 +475,86 @@ void ETMModbusApplicationSpecificTXData(ETMModbusTXData* tx_data_to_send) {
   //return data_to_send;
 }
 
+#ifdef ADD_SECOND_MODBUS_CLIENT
+static unsigned char GetNextSendIndex2(void) {
+  static unsigned char scheduled_modbus_message_counter = 0;
 
+  scheduled_modbus_message_counter++;
+  if (scheduled_modbus_message_counter >= MODBUS_WR_DEBUG_DATA) {
+    scheduled_modbus_message_counter = MODBUS_WR_CYCLE_START;
+    scheduled_modbus_message_counter++;
+  }
+  
+  return scheduled_modbus_message_counter;
+}
+
+void ETMModbusApplicationSpecificTXData2(ETMModbusTXData* tx_data_to_send) {
+  //ETMModbusTXData data_to_send;
+  unsigned char send_message;
+  unsigned char modbus_tx_index;
+  // See if there are any high speed messages to be sent
+
+  send_message = 0;
+#if 0
+  if (pulse_log_ready_to_send) {
+    modbus_tx_index = MODBUS_WR_PULSE_LOG;
+    send_message = 1;
+    pulse_log_ready_to_send = 0;
+  } else if (0) {
+    // FUTURE Event log counter is greater than 32
+  } else if (0) {
+    // FUTURE Scope trace A is ready to send
+  } else if (0) {
+    // FUTURE Scope trace B is ready to send
+  } else if (0) {
+    // FUTURE Scope trace High Voltage is ready to send
+  } else if (0) {
+    // FUTURE Magnetron Current Scope
+  } else 
+#endif  
+  if (modbus_command_request2) {
+    modbus_tx_index = MODBUS_RD_COMMAND_DETAIL;
+    send_message = 1;
+    debug_data_ecb.debug_reg[14]++;
+    modbus_command_request2 = 0;
+  } else {
+    // Execute regularly scheduled command - No need to check to see if they were recieved we will resend them again soon enough
+    if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var2)) {
+      // 100ms has passed - Send the next Message
+      modbus_tx_index = GetNextSendIndex2();
+      send_message = 1;
+    }
+  }
+
+
+  if (send_message) { 
+    PrepareTXMessage(tx_data_to_send, modbus_tx_index, 1);
+    if (modbus_tx_index != MODBUS_WR_EVENTS) {
+      //ETMTCPModbusWaitForResponse();  // Event log is not repeatable so no need to wait for response
+    }
+  }
+  
+  //return data_to_send;
+}
+
+void ETMModbusApplicationSpecificRXData2(unsigned char data_RX[]) {
+  
+  if (data_RX[6] != last_index_sent2) {
+    // does not match the sent command
+    // DPARKER - increment some sort of error count
+    return;
+  }
+
+  if (last_index_sent2 == MODBUS_RD_COMMAND_DETAIL) {
+    AddMessageFromGUI(&data_RX[12]);
+  } else { 
+    /* write commands return command count in the reference field */
+    modbus_command_request2 = (data_RX[8] << 8) | data_RX[9];
+  }
+    
+}
+
+#endif
 
 
 void ETMModbusApplicationSpecificRXData(unsigned char data_RX[]) {
@@ -490,6 +595,10 @@ void ETMLinacModbusInitialize(void) {
 
   // DPARKER Load this from EEPROM or USE DEFAULT????
   ip_config.remote_ip_addr = 0x3D19A8C0;  // 192.168.25.61 // 192.168.1.11 // 192.168. 70. 15
+#ifdef ADD_SECOND_MODBUS_CLIENT
+  ip_config.remote_ip_addr2 = 0x3E19A8C0;  // 192.168.25.62 // 192.168.1.11 // 192.168. 70. 15
+#endif
+
 #ifdef __LINAC_EMULATOR_MODE
   ip_config.ip_addr        = 0x4119A8C0;  // 192.168.25.65 // 192.168.1.10 // 192.168. 70. 99
 #else

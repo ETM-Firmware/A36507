@@ -401,7 +401,6 @@ void ETMCanMasterProcessMessage(void) {
       debug_data_ecb.can_unknown_msg_id++;
     } 
   }
-  
   debug_data_ecb.can_tx_buf_overflow = etm_can_master_tx_message_buffer.message_overwrite_count;
   debug_data_ecb.can_rx_buf_overflow = etm_can_master_rx_message_buffer.message_overwrite_count;
   debug_data_ecb.can_rx_log_buf_overflow = etm_can_master_rx_data_log_buffer.message_overwrite_count;

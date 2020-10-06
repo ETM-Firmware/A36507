@@ -3,7 +3,7 @@
 
 #include "P1395_CAN_CORE.h"
 
-//#define __LINAC_EMULATOR_MODE
+#define __LINAC_EMULATOR_MODE
 
 #ifdef __LINAC_EMULATOR_MODE
 
