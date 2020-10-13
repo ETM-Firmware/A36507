@@ -607,7 +607,7 @@ void ETMLinacModbusInitialize(void) {
   // DPARKER Load this from EEPROM or USE DEFAULT????
   ip_config.remote_ip_addr = 0x3D19A8C0;  // 192.168.25.61 // 192.168.1.11 // 192.168. 70. 15
 #ifdef ADD_SECOND_MODBUS_CLIENT
-  ip_config.remote_ip_addr2 = 0x3E19A8C0;  // 192.168.25.62 // 192.168.1.11 // 192.168. 70. 15
+  ip_config.remote_ip_addr2 = 0x0A19A8C0;  // 192.168.25.10 // 192.168.1.11 // 192.168. 70. 15
 #endif
 
 #ifdef __LINAC_EMULATOR_MODE
