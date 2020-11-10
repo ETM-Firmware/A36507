@@ -523,20 +523,21 @@ void ETMModbusApplicationSpecificTXData2(ETMModbusTXData* tx_data_to_send) {
     // FUTURE Magnetron Current Scope
   } else 
 #endif  
-  if (modbus_command_request2) {
-    modbus_tx_index = MODBUS_RD_COMMAND_DETAIL;
-    send_message = 1;
-    debug_data_ecb.debug_reg[14]++;
-    modbus_command_request2 = 0;
-  } else {
     // Execute regularly scheduled command - No need to check to see if they were recieved we will resend them again soon enough
     if (ETMTickRunOnceEveryNMilliseconds(100, &timer_write_holding_var2)) {
       // 100ms has passed - Send the next Message
-      modbus_tx_index = GetNextSendIndex2();
-      send_message = 1;
-    }
+    if (modbus_command_request2) {
+	    modbus_tx_index = MODBUS_RD_COMMAND_DETAIL;
+	    send_message = 1;
+	    debug_data_ecb.debug_reg[14]++;
+	    modbus_command_request2 = 0;
+     }
+     else
+     {  
+        modbus_tx_index = GetNextSendIndex2();
+        send_message = 1;
+     }
   }
-
 
   if (send_message) { 
     PrepareTXMessage(tx_data_to_send, modbus_tx_index, 1);
