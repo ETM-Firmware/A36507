@@ -704,7 +704,11 @@ WORD BuildModbusOutput_write_commands(unsigned char index)
       	// check if there are new events
         if (event_log.gui_index == event_log.write_index) break;  /* no new events */
 
-	total_bytes = ((event_log.write_index - event_log.gui_index) & 0x7F) * sizeof(TYPE_EVENT);
+	total_bytes = ((event_log.write_index - event_log.gui_index) & 0x7F);
+	if (total_bytes > 64) {
+	  total_bytes = 64;
+	}
+	total_bytes *= sizeof(TYPE_EVENT);
 	
         BuildModbusOutput_write_header(total_bytes);   
 
